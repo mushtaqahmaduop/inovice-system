@@ -1,0 +1,1 @@
+ALTER TABLE "_migration_smoke_test" ADD COLUMN "note" text;
