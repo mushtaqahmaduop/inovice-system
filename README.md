@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invoice System
 
-## Getting Started
+Single-tenant invoice & customer ledger for a UAE government services / typing centre.
+Next.js 15 App Router · Supabase (Postgres) · Drizzle · Tailwind + shadcn/ui · pnpm.
 
-First, run the development server:
+**Read first, every session:** `CLAUDE.md` (hard rules) → `PROJECT_PLAN.md` → `DECISIONS.md` → `SCHEMA_DESIGN.md` → `BUILD_PHASES.md`. Review history lives in `docs/`; the approved UI prototype in `reference/`.
+
+## Local development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local   # fill in STAGING Supabase values
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Node 20+ with **pnpm 9**. All work happens on feature branches — never commit to `main` (CLAUDE.md §1).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environments & the migration drill
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Two Supabase projects exist: **staging** and **production**.
 
-## Learn More
+| Environment | Database | Who deploys |
+|---|---|---|
+| Local dev | staging | you |
+| Vercel preview (every branch/PR) | staging | auto on push |
+| Vercel production | production | only from merged `main`, deliberately |
 
-To learn more about Next.js, take a look at the following resources:
+**The drill — staging first, always (BUILD_PHASES rule 5):**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Write schema changes in `db/schema.ts`, generate with `pnpm db:generate` (migrations are **append-only** — never edit an applied migration, D-07).
+2. Apply to **staging**: `pnpm db:migrate` (uses `DATABASE_URL_MIGRATIONS` — the **session pooler, port 5432**; the transaction pooler on 6543 rejects drizzle-kit's prepared statements. The app itself uses `DATABASE_URL` on 6543).
+3. Verify on staging (tests, preview deploy).
+4. Only after merge to `main`: apply the same migrations to production.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Production migrations never run from a feature branch, and never run first.
 
-## Deploy on Vercel
+## Money
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All monetary values are **fils (AED × 100) as `bigint`** end-to-end — never floats, never `numeric` (CLAUDE.md §3.3). Display via JetBrains Mono.
