@@ -1,0 +1,1 @@
+DROP TABLE "_migration_smoke_test" CASCADE;
