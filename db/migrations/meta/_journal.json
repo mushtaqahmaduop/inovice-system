@@ -15,6 +15,27 @@
       "when": 1783184674770,
       "tag": "0001_chief_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783189679139,
+      "tag": "0002_eminent_toxin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783189736289,
+      "tag": "0003_deep_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783189850616,
+      "tag": "0004_trgm_and_auth_fk",
+      "breakpoints": true
     }
   ]
 }
