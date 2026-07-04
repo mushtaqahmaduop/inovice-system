@@ -57,6 +57,13 @@
       "when": 1783197558709,
       "tag": "0007_rls_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783198821895,
+      "tag": "0008_mfa_recovery_codes",
+      "breakpoints": true
     }
   ]
 }
