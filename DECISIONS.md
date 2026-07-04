@@ -14,7 +14,7 @@
 
 ### Stack
 - **D-05** Next.js 15 App Router, TypeScript strict, single Vercel deployment. No separate API server, no Fastify, no Redis, no BullMQ.
-- **D-06** Supabase: Postgres + Auth (TOTP MFA for admin) + Realtime + Storage. **Pro tier from day one** (daily backups for FTA 5-year retention).
+- **D-06** Supabase: Postgres + Auth (TOTP MFA for admin) + Realtime + Storage. **Pro tier from day one.** *(Reworded per ADJUDICATION #19 / REVIEW_REPORT F-3: Pro daily backups are disaster recovery, retained on the order of days — they are NOT the FTA 5-year retention mechanism. Retention = the live database + a **monthly `pg_dump` exported to client-owned storage** + a periodic restore drill, per BUILD_PHASES Phase 7.)*
 - **D-07** Drizzle ORM, append-only SQL migrations.
 - **D-08** Tailwind + shadcn/ui, react-hook-form + zod, Zustand, TanStack Table. Resend for email, Sentry for errors.
 - **D-09** **No server-side PDF generation.** Browser print CSS only. Walk-ins get paper; regular clients print-to-PDF. No PDF libraries.
@@ -32,6 +32,11 @@
 ### Scope (MVP includes)
 - **D-18** CSV export, session revocation (admin), and global search are MVP scope.
 - **D-19** Roles: Admin (owner, full access, TOTP required) and Staff (create/view invoices, record payments; no user management, no Settings, no void/credit, no delete). Server-side enforcement.
+
+### Post-adjudication decisions (2026-07-04, per ADJUDICATION.md)
+- **D-24** Extra charges are modeled as per-invoice dynamic **columns** with a per-line junction: `invoice_extra_columns` (label, vatable, position) + `invoice_line_fees` (line_id, column_id, unit amount, frozen VAT). JSONB storage rejected (ADJUDICATION R-1: typed bigint, NOT NULL, and FK integrity are real constraints on money; junction is the natural home for frozen per-charge VAT).
+- **D-25** Payment methods live in a `payment_methods` lookup table (admin-editable rows, FK from `payments.method_id`) — DB-enforced integrity **and** runtime configurability, no CHECK constraint hardcoding open Q-10, no migration per change (ADJUDICATION R-2).
+- **D-26** Conditional-reopen rule for D-09 (no server-side PDF): **if Q-07's answer is a thermal printer, D-09 must be formally reopened with Mushtaq** — thermal receipts are genuinely incompatible with A4 print CSS (ADJUDICATION R-8). *Status: recorded as the adjudicated rule; flagged for Mushtaq's explicit confirmation — see VERIFY register V-7.*
 
 ### Design — "Stamped Paper"
 - **D-20** Light `#f6f5f2` / dark `#0a0d12`. Single accent FTA federal blue (`#003b5c` / `#5b95c4`) for action signals only. Burnt orange `#c2410c` for overdue only. No gradients.
@@ -58,3 +63,17 @@
 - **Q-11–Q-17** Remaining items from the WhatsApp brief (reporting expectations, email sending needs, invoice due-date conventions, discount handling, go-live date, training expectations, domain purchase). Reconcile this list against the actual brief text — the WhatsApp version is authoritative.
 
 **Rule:** if the client's answers contradict a locked decision, stop and raise it with Mushtaq — do not silently change a D-item.
+
+---
+
+## C. VERIFY register — external confirmation required (ADJUDICATION #18)
+
+> **Owner: the client's accountant (~1 hour), before Phase 6 print sign-off.** These are regulatory/vendor facts that must NOT be resolved from an AI's memory or by a coding session. Record the answer + source + date against each entry when confirmed. Findings referenced resolve in `docs/REVIEW_REPORT.md`.
+
+- **V-1 (F-1)** The authoritative FTA mandatory-field list for a full tax invoice (supply date? per-line tax display? discount display?) — confirm against the current Executive Regulations / FTA guides.
+- **V-2 (F-2)** Simplified tax invoice: exact eligibility conditions and threshold (commonly cited AED 10,000 / unregistered recipient) — determines which format walk-in invoices use.
+- **V-3 (S-4)** Annual-reset numbering: are visually duplicate `INV-NN` numbers across years (distinguished only by date) acceptable to the FTA? **Also flagged for Mushtaq** — if the answer is no, D-12's no-year format must be revisited with the client.
+- **V-4 (F-5)** The exact FTA VAT-rounding provision (nearest fils, line-item basis assumed in SCHEMA_DESIGN §3.1) — record the citation in SCHEMA_DESIGN once confirmed.
+- **V-5 (F-3)** Current Supabase Pro backup-retention terms — confirms the D-06 reword and sizes the monthly-export duty.
+- **V-6 (F-4a)** Post-deregistration correction path: how to correct/void-and-replace a VAT-era invoice after deregistration (replacement cannot charge VAT).
+- **V-7 (R-8/D-26)** *Awaiting Mushtaq, not the accountant:* explicit confirmation of the D-09 conditional-reopen rule (thermal printer answer to Q-07 ⇒ the PDF discussion reopens).

@@ -9,7 +9,7 @@
 - `DECISIONS.md` — locked decisions (D-01…D-23) + open client questions (Q-01…)
 - `SCHEMA_DESIGN.md` — full data model + issue_invoice() transaction spec
 - `BUILD_PHASES.md` — ordered, session-sized task plan
-- `REVIEW_PROMPTS.md` — pre-build review workflow (Claude Code + Codex cross-check)
+- `docs/REVIEW_PROMPTS.md` — pre-build review workflow (completed 2026-07-04; outputs in `docs/`: REVIEW_REPORT.md, CODEX_REVIEW.md, ADJUDICATION.md)
 - `/reference/invoice_system_v2.html` — approved UI prototype (calculations verified against a real client invoice)
 
 **Changes from v1:** issued invoices immutable (was: editable with restrictions); `payments` table replaces `paid_amount`; `invoice_events` append-only model; CSV export, session revocation, global search moved into MVP; Supabase Pro from day one; **server-side PDF generation removed entirely** — browser print CSS only; invoice preview changed from split view to slide-over drawer with mandatory confirm-at-issue.
@@ -45,7 +45,7 @@ Plus ad-hoc extra charges (courier, stamp, photocopy) with per-charge VAT-abilit
 
 **Numbering:** sequential `INV-NN`, resets each January, format configurable (D-12). Client's stated preference — locked.
 
-**Compliance anchors:** UAE FTA tax-invoice requirements and 5-year record retention → Supabase Pro (daily backups) from day one (D-06). Exact FTA field requirements to be verified during the review phase (REVIEW_PROMPTS.md, marked VERIFY).
+**Compliance anchors:** UAE FTA tax-invoice requirements and 5-year record retention — retention = live DB + monthly `pg_dump` to client-owned storage + restore drill (D-06 as reworded; Pro daily backups are disaster recovery, not retention). Exact FTA specifics await accountant confirmation — see the VERIFY register in DECISIONS.md §C.
 
 ## 3. Scope
 
@@ -87,7 +87,7 @@ Infra: Vercel (app) + Supabase Pro (~$25/mo) + Resend (free tier) + Sentry (free
 
 Single Next.js app. Server actions (or route handlers) are the only write path; all money mutations funnel through Postgres functions — most importantly `issue_invoice()` (see SCHEMA_DESIGN.md §3). RLS on all tables as defense-in-depth behind app-level authz. Client-side totals are display-only; the server recomputes everything at issue. Realtime subscription drives the shared invoice list. No background jobs.
 
-Data model: 9 tables — settings, profiles, customers, invoices, invoice_lines, invoice_extra_charges, payments, invoice_events, invoice_counters. Full spec in SCHEMA_DESIGN.md. Money stored as fils (bigint), never floats.
+Data model: 12 tables — settings, profiles, customers, services, payment_methods, invoices, invoice_lines, invoice_extra_columns, invoice_line_fees, payments, invoice_events, invoice_counters. Full spec in SCHEMA_DESIGN.md (v2). Money stored as fils (bigint), never floats.
 
 ## 6. Key technical decisions (summary — details in DECISIONS.md / SCHEMA_DESIGN.md)
 
@@ -116,13 +116,13 @@ Data model: 9 tables — settings, profiles, customers, invoices, invoice_lines,
 
 6 working weeks across 8 phases (BUILD_PHASES.md). Demo milestone (triggers 40% payment): end of Phase 4 + task 5.1 — client can create, issue, preview/print, and record payment. Client's requested 2-week compression is noted but not committed; quality of financial correctness work (Phase 1) is not compressible.
 
-**Gate before Phase 0:** the review workflow in REVIEW_PROMPTS.md (Fable review → Codex cross-check → adjudication → approved changes applied).
+**Gate before Phase 0:** the review workflow in `docs/REVIEW_PROMPTS.md` — **completed 2026-07-04** (Fable review → cross-check → adjudication → all 30 approved changes applied to the living documents).
 
 ## 10. Risks (top level — full register produced in review phase)
 
 1. **Client answers pending (Q-01…Q-17)** — blocked tasks marked in BUILD_PHASES.md; build configurable, never assume. Arabic print requirement (Q-08) is the biggest scope wildcard.
 2. **Scope creep via relationship dynamics** — the agreement + this plan's scope section are the defense; additions are chargeable.
 3. **Payment delays** — mitigated by 30/40/40 milestone structure tied to demonstrable software.
-4. **Numbering/immutability bugs** — the reputation-enders; mitigated by DB-level enforcement + concurrency tests as explicit "done" criteria (tasks 1.2).
+4. **Numbering/immutability bugs** — the reputation-enders; mitigated by DB-level enforcement + concurrency tests as explicit "done" criteria (tasks 1.2a/1.2b).
 5. **Solo-operator bus factor** — handover terms, documented runbook at delivery (task 7.5), client owns domain.
 6. **VAT deregistration mid-project** — already designed for (D-16); only Settings defaults change.
