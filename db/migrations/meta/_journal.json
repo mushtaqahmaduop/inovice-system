@@ -43,6 +43,13 @@
       "when": 1783195019259,
       "tag": "0005_issue_invoice_and_parent_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783196852372,
+      "tag": "0006_immutability_and_append_only",
+      "breakpoints": true
     }
   ]
 }

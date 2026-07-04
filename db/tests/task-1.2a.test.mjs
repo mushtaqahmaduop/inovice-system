@@ -79,14 +79,12 @@ const dubaiYear = Number(
 );
 
 async function wipe() {
-  // Order matters: events/payments have plain FKs; invoices cascade to
-  // children (parent deleted first, so the §4.3 trigger allows the cascade).
-  await sql`delete from invoice_events`;
-  await sql`delete from payments`;
-  await sql`delete from invoices`;
-  await sql`delete from customers`;
-  await sql`delete from invoice_counters`;
-  await sql`delete from settings`;
+  // TRUNCATE, not DELETE: since task 1.2b the delete guard and append-only
+  // triggers (correctly) forbid row deletes on issued invoices, events and
+  // payments. TRUNCATE fires no row triggers and we run as the table owner.
+  await sql`truncate table invoice_events, payments, invoice_line_fees,
+    invoice_extra_columns, invoice_lines, invoices, customers,
+    invoice_counters, settings cascade`;
   await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
             values ('Staging Test Co', true, ${RATE_BP}, 'INV-{NN}')`;
 }
