@@ -259,6 +259,23 @@ export const invoiceEvents = pgTable(
   ]
 );
 
+/* ── mfa_recovery_codes — task 2.1 [#24]. Supabase has no native TOTP
+      recovery codes, so we store SHA-256 hashes of one-time codes generated at
+      enrollment. Consuming one (RUNBOOK-admin-mfa-recovery) unenrolls the TOTP
+      factor via the admin API so the admin can re-enroll. Owner-scoped RLS in
+      the companion SQL of the same migration. ─────────────────────────────── */
+export const mfaRecoveryCodes = pgTable(
+  "mfa_recovery_codes",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull(), // FK to auth.users in companion SQL
+    codeHash: text("code_hash").notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("mfa_recovery_codes_user_id_idx").on(t.userId)]
+);
+
 /* ── 2.12 invoice_counters — gapless numbering state; issue_invoice() only ── */
 export const invoiceCounters = pgTable("invoice_counters", {
   year: integer("year").primaryKey(),
