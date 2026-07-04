@@ -29,7 +29,8 @@ This file contains hard rules for every Claude Code session. Read PROJECT_PLAN.m
 ## 3. Invoice domain rules (non-negotiable invariants)
 
 ### 3.1 Immutability
-- **Issued invoices are immutable. Ever.** No UPDATE path may modify the financial content of an invoice once its status is `issued` (or beyond). Enforce at three layers: UI (no edit affordance), application (server actions reject), and **database (trigger or RLS policy blocking UPDATE on issued rows' financial columns)**.
+- **Issued invoices are immutable. Ever.** No UPDATE path may modify the financial content of an invoice once its status is `issued` (or beyond). Enforce at three layers: UI (no edit affordance), application (server actions reject), and **database — a trigger is MANDATORY; RLS policies and privilege revocation are additional layers, never alternatives** (RLS is bypassed by `service_role` and the Supabase dashboard; only triggers bind every path).
+- **The `draft → issued` transition may only ever be executed by calling `issue_invoice()` as a single statement.** Never reimplement it as an application-managed multi-statement transaction (no `BEGIN` from the app, no math in application memory feeding the seal).
 - Corrections to an issued invoice happen only via a new document (credit note / replacement invoice), never by editing.
 - Draft invoices are freely editable. The `draft → issued` transition is the sealing moment.
 
@@ -41,7 +42,7 @@ This file contains hard rules for every Claude Code session. Read PROJECT_PLAN.m
 - Every line has two fee components: **Government Fee (0% VAT, passthrough — not revenue)** and **Service/Typing Fee (5% VAT — actual revenue)**. Plus optional dynamic extra columns, each with its own VAT-ability flag.
 - **VAT rate and VAT-registration state are snapshotted onto the invoice at issue time.** Never compute an issued invoice's VAT from current Settings.
 - The Settings VAT toggle (registered / deregistered) affects **future** invoices only.
-- All monetary values: store as integers in fils (AED minor unit) or `numeric` — **never floating point**. Display with JetBrains Mono.
+- All monetary values: store as **integers in fils (AED minor unit) as `bigint` — the only permitted representation**. Never floating point, never `numeric`, never mixed representations. Display with JetBrains Mono.
 
 ### 3.4 Payments & events
 - Payments live in a **`payments` table** (one row per payment). There is no `paid_amount` column to mutate. Invoice payment status (`unpaid` / `partial` / `paid`) is derived from the sum of payments vs invoice total.
@@ -54,6 +55,7 @@ This file contains hard rules for every Claude Code session. Read PROJECT_PLAN.m
 - Roles: **Admin** (owner — full access, TOTP required) and **Staff**. Staff cannot: manage users, change Settings, void/credit invoices, or delete anything. Enforce server-side, never UI-only.
 - Session revocation (admin can kill any user's sessions) is MVP scope, not a later phase.
 - All inputs validated with zod on the server. Never trust client-computed totals — recompute all money server-side at issue time.
+- **Identity and role come from the server-verified session only** (`auth.getUser()` / the verified JWT). Never accept a user id, role, or any other principal as a client-supplied parameter — not in server actions, not in route handlers, not "just for convenience."
 
 ## 5. Design system rules — "Stamped Paper"
 
@@ -61,6 +63,7 @@ This file contains hard rules for every Claude Code session. Read PROJECT_PLAN.m
 - **Single accent:** FTA federal blue (`#003b5c` light / `#5b95c4` dark) — used ONLY for action signals. **Burnt orange `#c2410c` — used ONLY for overdue.** No other accent colors, no gradients.
 - **Typography:** Inter Tight for UI text; **JetBrains Mono for ALL numerics** (amounts, invoice numbers, dates in tables). **No serif fonts anywhere** — explicitly no Instrument Serif.
 - Editorial details from the approved prototype: Roman numeral row indices, hairline borders, "Paid · sealed" lock indicators, stamp-style document reference top-right.
+- **Vocabulary: "sealed" means issued/immutable — independent of payment status.** An issued-unpaid invoice is just as sealed as a paid one. Keep the "Paid · sealed" client-facing label only where it cannot mislead staff into thinking unpaid invoices are editable.
 - **Invoice preview:** slide-over drawer (~45–50% width, Esc/outside-click closes) via shadcn Sheet — never a permanent split view. Issuing an invoice always shows a mandatory preview + "Confirm & Issue" step before sealing.
 - Use only design tokens (CSS variables) defined in the theme. No hardcoded hex values in components.
 
