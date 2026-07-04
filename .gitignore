@@ -38,3 +38,5 @@ desktop.ini
 # Editor state
 .vscode/
 .idea/
+.vercel
+.env*
