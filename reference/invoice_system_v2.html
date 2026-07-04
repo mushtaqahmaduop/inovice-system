@@ -1,0 +1,2844 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marjan Business Services — Invoice Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ──────────────────────────────────────────────────────────
+     TOKENS
+     ────────────────────────────────────────────────────────── */
+  :root[data-theme="light"] {
+    --paper: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #ecebe7;
+    --surface-3: #e3e1db;
+    --ink: #0f1419;
+    --ink-2: #4a4f57;
+    --ink-3: #8a8e94;
+    --ink-4: #b8bbbf;
+    --hairline: #e0ddd6;
+    --hairline-strong: #c7c4bb;
+    --accent: #003b5c;
+    --accent-hover: #00527d;
+    --accent-soft: #e5edf2;
+    --warning: #c2410c;
+    --warning-soft: #fef0e6;
+    --success: #15633c;
+    --success-soft: #e6f0ea;
+    --shadow-focus: 0 0 0 3px rgba(0, 59, 92, 0.15);
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0a0d12;
+    --surface: #11151c;
+    --surface-2: #181d26;
+    --surface-3: #20262f;
+    --ink: #e6e4dd;
+    --ink-2: #a8a59c;
+    --ink-3: #6b6963;
+    --ink-4: #45433e;
+    --hairline: #1f242d;
+    --hairline-strong: #2f353f;
+    --accent: #5b95c4;
+    --accent-hover: #7badd5;
+    --accent-soft: #122530;
+    --warning: #d97744;
+    --warning-soft: #2a1810;
+    --success: #4a9d72;
+    --success-soft: #122218;
+    --shadow-focus: 0 0 0 3px rgba(91, 149, 196, 0.2);
+  }
+
+  * { box-sizing: border-box; }
+  *::before, *::after { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: 'cv11' 1, 'ss01' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background 0.18s ease, color 0.18s ease;
+    min-height: 100vh;
+  }
+
+  .num, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* ──────────────────────────────────────────────────────────
+     APP SHELL
+     ────────────────────────────────────────────────────────── */
+  #app {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── SIDEBAR ──────────────────────────────────────────── */
+  #sidebar {
+    background: var(--surface);
+    border-right: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+
+  .brand {
+    padding: 18px 20px 14px;
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  .brand-mark {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .brand-mark .seal {
+    width: 26px;
+    height: 26px;
+    border: 0.5px solid var(--ink);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: -0.02em;
+    transform: translateY(2px);
+  }
+  .brand-name {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+  .brand-meta {
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .nav-section {
+    padding: 16px 20px 6px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 20px;
+    font-size: 13px;
+    color: var(--ink-2);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    user-select: none;
+  }
+  .nav-item:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+  .nav-item.active {
+    color: var(--ink);
+    border-left-color: var(--accent);
+    background: var(--surface-2);
+  }
+  .nav-item .nav-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    flex-shrink: 0;
+    color: currentColor;
+  }
+  .nav-item .nav-icon svg { width: 100%; height: 100%; display: block; }
+  .nav-item .nav-label { flex: 1; }
+  .nav-item .nav-tag {
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .nav-item[data-admin-only="true"] .nav-tag { color: var(--accent); }
+
+  .sidebar-foot {
+    margin-top: auto;
+    padding: 14px 20px;
+    border-top: 0.5px solid var(--hairline);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pulse-dot {
+    width: 6px; height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.95; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* ─── TOP BAR ──────────────────────────────────────────── */
+  #topbar {
+    background: var(--paper);
+    border-bottom: 0.5px solid var(--hairline);
+    height: 56px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .topbar-left {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .page-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .doc-ref {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .topbar-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border: 0.5px solid var(--hairline-strong);
+    background: var(--surface);
+    color: var(--ink-2);
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    user-select: none;
+  }
+  .topbar-chip:hover {
+    color: var(--ink);
+    border-color: var(--ink-3);
+  }
+  .topbar-chip .chip-icon {
+    width: 13px;
+    height: 13px;
+    display: inline-flex;
+  }
+  .topbar-chip .chip-icon svg { width: 100%; height: 100%; }
+  .role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px 0 10px;
+    height: 28px;
+    border: 0.5px solid var(--hairline-strong);
+    background: var(--surface);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    user-select: none;
+    position: relative;
+  }
+  .role-chip:hover { border-color: var(--ink-3); }
+  .role-chip .role-name {
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .role-chip .role-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: var(--ink);
+    color: var(--paper);
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .role-chip[data-role="staff"] .role-badge {
+    background: transparent;
+    border: 0.5px solid var(--ink-3);
+    color: var(--ink-2);
+  }
+
+  .role-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--surface);
+    border: 0.5px solid var(--hairline-strong);
+    border-radius: 4px;
+    min-width: 200px;
+    overflow: hidden;
+    display: none;
+    z-index: 50;
+  }
+  .role-menu.open { display: block; }
+  .role-menu-item {
+    padding: 9px 12px;
+    font-size: 12.5px;
+    color: var(--ink);
+    cursor: pointer;
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .role-menu-item:last-child { border-bottom: none; }
+  .role-menu-item:hover { background: var(--surface-2); }
+  .role-menu-item .role-menu-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+
+  /* ─── PAGE HOST ──────────────────────────────────────────── */
+  #page-host {
+    padding: 28px 32px 64px;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ─── COMMON COMPONENTS ──────────────────────────────────── */
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .section-head {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    height: 32px;
+    border-radius: 4px;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    border: 0.5px solid var(--hairline-strong);
+    background: var(--surface);
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .btn:hover { border-color: var(--ink-2); background: var(--surface-2); }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .btn-primary:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+  .btn-ghost:hover { color: var(--ink); background: var(--surface-2); border-color: transparent; }
+  .btn-icon-only { width: 32px; padding: 0; justify-content: center; }
+  .btn-icon { width: 13px; height: 13px; display: inline-flex; }
+  .btn-icon svg { width: 100%; height: 100%; }
+  .btn-sm { height: 26px; padding: 0 10px; font-size: 11.5px; }
+
+  /* Briefing card (dashboard hero) */
+  .briefing {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    padding: 22px 24px;
+    margin-bottom: 22px;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .briefing-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .briefing-prose {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    max-width: 640px;
+    margin: 0;
+  }
+  .briefing-prose em {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    font-weight: 500;
+  }
+  .briefing-prose .marked {
+    color: var(--warning);
+    font-weight: 500;
+    font-style: normal;
+  }
+  .briefing-prose .marked-accent {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* KPI strip */
+  .kpi-strip {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 22px;
+    overflow: hidden;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .kpi {
+    padding: 16px 20px;
+    border-right: 0.5px solid var(--hairline);
+  }
+  .kpi:last-child { border-right: none; }
+  .kpi-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .kpi-value.kpi-warn { color: var(--warning); }
+  .kpi-unit {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-left: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-top: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  /* Ledger Table */
+  .ledger-card {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .ledger-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px 12px;
+  }
+  .ledger-filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .ledger-filters .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border: 0.5px solid var(--hairline-strong);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11.5px;
+    color: var(--ink-2);
+    transition: all 0.12s ease;
+    background: var(--surface);
+  }
+  .filter-chip:hover { border-color: var(--ink-3); color: var(--ink); }
+  .filter-chip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  .ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ledger-table thead tr {
+    border-top: 0.5px solid var(--hairline);
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  .ledger-table th {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    text-align: left;
+    padding: 9px 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ledger-table th:first-child { padding-left: 20px; width: 36px; }
+  .ledger-table th:last-child { padding-right: 20px; text-align: right; }
+  .ledger-table th.right { text-align: right; }
+  .ledger-table tbody tr {
+    border-bottom: 0.5px solid var(--hairline);
+    transition: background 0.1s ease;
+    cursor: pointer;
+  }
+  .ledger-table tbody tr:hover { background: var(--surface-2); }
+  .ledger-table tbody tr:last-child { border-bottom: none; }
+  .ledger-table td {
+    padding: 11px 12px;
+    color: var(--ink);
+    vertical-align: middle;
+  }
+  .ledger-table td:first-child { padding-left: 20px; }
+  .ledger-table td:last-child { padding-right: 20px; text-align: right; }
+  .ledger-table td.right { text-align: right; }
+  .ledger-table .roman {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    color: var(--ink-4);
+    font-size: 12px;
+  }
+  .ledger-table .invoice-no {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .ledger-table .invoice-no.draft { color: var(--ink-3); }
+  .ledger-table .customer-name { color: var(--ink); font-weight: 400; }
+  .ledger-table .secondary { color: var(--ink-2); font-size: 12px; }
+
+  .role-tag {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    padding: 2px 5px;
+    border-radius: 2px;
+    margin-left: 6px;
+    height: 16px;
+    line-height: 1;
+  }
+  .role-tag.role-admin {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .role-tag.role-staff {
+    background: transparent;
+    border: 0.5px solid var(--hairline-strong);
+    color: var(--ink-3);
+  }
+
+  .status-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .status-cell .status-icon { width: 12px; height: 12px; }
+  .status-cell .status-icon svg { width: 100%; height: 100%; display: block; }
+  .status-overdue { color: var(--warning); }
+  .status-paid { color: var(--ink-2); }
+  .status-draft { color: var(--ink-3); }
+  .status-void { color: var(--ink-3); text-decoration: line-through; }
+  .status-unpaid { color: var(--accent); }
+
+  /* Pulse new row */
+  @keyframes new-row {
+    0% { background: var(--accent-soft); }
+    100% { background: transparent; }
+  }
+  .ledger-table tbody tr.new-row {
+    animation: new-row 2s ease-out;
+  }
+
+  /* Live session footer on cards */
+  .live-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-top: 0.5px solid var(--hairline);
+    background: var(--surface-2);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .live-foot .left { display: flex; align-items: center; gap: 6px; }
+
+  /* ─── FORM ─────────────────────────────────────────────── */
+  .form-grid {
+    display: grid;
+    gap: 14px;
+  }
+  .form-row-2 { grid-template-columns: 1fr 1fr; }
+  .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+  .input, .select, .textarea {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline-strong);
+    color: var(--ink);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .input.mono-input { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  .input:focus, .select:focus, .textarea:focus {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-focus);
+  }
+  .textarea { min-height: 70px; resize: vertical; line-height: 1.5; }
+  .input::placeholder, .textarea::placeholder { color: var(--ink-4); }
+
+  /* New invoice split layout */
+  .new-inv-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .card-block {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .card-block-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-block-head h3 {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 15px;
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  /* Line items table */
+  .line-items {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-top: 8px;
+  }
+  .line-items thead tr { border-bottom: 0.5px solid var(--hairline); }
+  .line-items th {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    text-align: left;
+    padding: 8px 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .line-items th.right { text-align: right; }
+  .line-items td {
+    padding: 6px 4px;
+    vertical-align: middle;
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  .line-items td:first-child { padding-left: 0; }
+  .line-items td:last-child { padding-right: 0; }
+  .line-items input, .line-items select {
+    width: 100%;
+    background: transparent;
+    border: 0.5px solid transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 12.5px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.1s, background 0.1s;
+  }
+  .line-items input:hover, .line-items select:hover { border-color: var(--hairline-strong); }
+  .line-items input:focus, .line-items select:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: var(--shadow-focus);
+  }
+  .line-items input.right, .line-items td.right { text-align: right; }
+  .line-items .num-input { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size: 12px; }
+  .line-items .row-actions { width: 30px; text-align: right; }
+  .line-items .remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+    transition: color 0.12s;
+  }
+  .line-items .remove-btn:hover { color: var(--warning); }
+  .line-items .remove-btn svg { width: 12px; height: 12px; }
+
+  .add-line-row {
+    padding-top: 10px;
+  }
+
+  /* Totals */
+  .totals-block {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 320px;
+    margin-left: auto;
+  }
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .totals-row .v { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .totals-grand {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-top: 10px;
+    margin-top: 4px;
+    border-top: 0.5px solid var(--hairline);
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .totals-grand .label {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    font-weight: 500;
+  }
+  .totals-grand .v {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* ─── INVOICE PREVIEW (PDF-LIKE) ──────────────────────── */
+  .preview-doc {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    padding: 30px 28px;
+    font-size: 12px;
+    color: var(--ink);
+    position: sticky;
+    top: 76px;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+  .preview-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+  .preview-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 16px;
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  .preview-company h2 {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    margin: 0 0 6px;
+  }
+  .preview-company p {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .preview-company .trn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+    margin-top: 4px;
+  }
+  .preview-title {
+    text-align: right;
+  }
+  .preview-title .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .preview-title h1 {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    margin: 4px 0 8px;
+  }
+  .preview-title .meta-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-2);
+    margin: 3px 0;
+  }
+  .preview-title .meta-line .l { color: var(--ink-3); margin-right: 6px; }
+
+  .preview-billto {
+    padding: 16px 0;
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .preview-billto .col { flex: 1; }
+  .preview-billto .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+  }
+  .preview-billto .v {
+    font-size: 12.5px;
+    color: var(--ink);
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .preview-billto .v-sub {
+    font-size: 11px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .preview-billto .trn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-3);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .preview-table thead tr {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .preview-table th {
+    text-align: left;
+    padding: 7px 8px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+  .preview-table th.right { text-align: right; }
+  .preview-table td {
+    padding: 8px;
+    border-bottom: 0.5px solid var(--hairline);
+    vertical-align: top;
+    color: var(--ink);
+  }
+  .preview-table .num-cell { font-family: 'JetBrains Mono', monospace; }
+
+  .preview-totals {
+    margin-left: auto;
+    width: 60%;
+    margin-top: 16px;
+  }
+  .preview-totals .tr {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+  .preview-totals .tr .v { font-family: 'JetBrains Mono', monospace; color: var(--ink); }
+  .preview-totals .grand {
+    margin-top: 8px;
+    padding: 9px 12px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 3px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .preview-totals .grand .v { font-family: 'JetBrains Mono', monospace; }
+
+  .preview-foot {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 0.5px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── SEAL (paid notation) ─────────────────────────────── */
+  .seal-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 0.5px solid var(--ink-3);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: var(--ink-2);
+    text-transform: uppercase;
+  }
+  .seal-tag.seal-paid { color: var(--success); border-color: var(--success); }
+  .seal-tag.seal-overdue { color: var(--warning); border-color: var(--warning); }
+  .seal-tag svg { width: 11px; height: 11px; }
+
+  /* ─── CARD-LIST (customers / services / employees) ───── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .record-card {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    padding: 16px 18px;
+    transition: border-color 0.12s, background 0.18s ease;
+    cursor: pointer;
+  }
+  .record-card:hover { border-color: var(--ink-3); }
+  .record-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .record-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .record-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .record-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 0.5px solid var(--hairline);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+  .record-stats .stat-num {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* ─── AUDIT LIST ──────────────────────────────────── */
+  .audit-list {
+    background: var(--surface);
+    border: 0.5px solid var(--hairline);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .audit-row {
+    display: grid;
+    grid-template-columns: 130px 100px 1fr 120px;
+    gap: 16px;
+    padding: 11px 20px;
+    align-items: baseline;
+    border-bottom: 0.5px solid var(--hairline);
+    font-size: 12.5px;
+  }
+  .audit-row:last-child { border-bottom: none; }
+  .audit-row:hover { background: var(--surface-2); }
+  .audit-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); letter-spacing: 0.02em; }
+  .audit-actor { color: var(--ink); display: flex; align-items: center; }
+  .audit-action { color: var(--ink-2); }
+  .audit-action b { color: var(--ink); font-weight: 500; }
+  .audit-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); text-align: right; letter-spacing: 0.04em; }
+
+  /* ─── EMPTY/PROSE ─────────────────────────────────── */
+  .editorial-line {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    max-width: 640px;
+    margin: 0 0 16px;
+  }
+  .editorial-line em {
+    font-family: 'Inter Tight', sans-serif;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* ─── TOAST ───────────────────────────────────────── */
+  #toast-host {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    font-family: 'Inter Tight', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    animation: toast-in 0.25s ease-out;
+    max-width: 380px;
+  }
+  .toast .tnum { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .toast.toast-leave { animation: toast-out 0.2s ease-in forwards; }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toast-out {
+    to { opacity: 0; transform: translateY(8px); }
+  }
+
+  /* ─── DROPDOWN MENU (customer/service autocomplete) ─── */
+  .dropdown-menu {
+    position: absolute;
+    background: var(--surface);
+    border: 0.5px solid var(--hairline-strong);
+    border-radius: 4px;
+    z-index: 60;
+    max-height: 280px;
+    overflow-y: auto;
+    width: 100%;
+    min-width: 240px;
+  }
+  .dropdown-item {
+    padding: 9px 12px;
+    font-size: 12.5px;
+    color: var(--ink);
+    cursor: pointer;
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: var(--surface-2); }
+  .dropdown-item .dropdown-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+  }
+  .dropdown-item.add-new {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ─── BANNER (admin restriction notice) ─────────────── */
+  .restrict-banner {
+    background: var(--accent-soft);
+    border: 0.5px solid var(--accent);
+    border-radius: 6px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .restrict-banner .icon { color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
+  .restrict-banner .icon svg { width: 100%; height: 100%; }
+  .restrict-banner .text {
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .restrict-banner .text b { font-weight: 500; }
+
+  /* hidden util */
+  .hidden { display: none !important; }
+  .vat-tag-inline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+  }
+
+  /* RESPONSIVE: simple breakpoint at 1024 */
+  @media (max-width: 1100px) {
+    .new-inv-grid { grid-template-columns: 1fr; }
+    .preview-doc { position: static; }
+    .kpi-strip { grid-template-columns: 1fr 1fr; }
+    .kpi:nth-child(2) { border-right: none; }
+    .kpi:nth-child(1), .kpi:nth-child(2) { border-bottom: 0.5px solid var(--hairline); }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 760px) {
+    #app { grid-template-columns: 1fr; }
+    #sidebar { position: static; height: auto; }
+    .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    .kpi-strip { grid-template-columns: 1fr 1fr; }
+    .form-row-2, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
+  }
+
+  /* ─── SCROLLBAR ────────────────────────── */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ─── SIDEBAR ────────────────────────────────────────── -->
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <span class="seal">MS</span>
+        <div>
+          <div class="brand-name">Marjan Services</div>
+        </div>
+      </div>
+      <div class="brand-meta">BUSINESS · GOVT · TYPING</div>
+    </div>
+
+    <nav id="nav">
+      <div class="nav-section">Ledger</div>
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="5" height="5"/><rect x="9" y="2.5" width="5" height="5"/><rect x="2" y="9.5" width="5" height="4"/><rect x="9" y="9.5" width="5" height="4"/></svg></span>
+        <span class="nav-label">Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="invoices">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2h7l3 3v9H3z"/><path d="M10 2v3h3M5 8h6M5 11h6"/></svg></span>
+        <span class="nav-label">Invoices</span>
+        <span class="nav-tag" id="nav-invoice-count">24</span>
+      </div>
+      <div class="nav-item" data-page="new-invoice">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2v12M2 8h12"/></svg></span>
+        <span class="nav-label">New invoice</span>
+      </div>
+
+      <div class="nav-section">Records</div>
+      <div class="nav-item" data-page="customers">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="2.5"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg></span>
+        <span class="nav-label">Customers</span>
+        <span class="nav-tag">12</span>
+      </div>
+      <div class="nav-item" data-page="services">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3.5h12M2 8h12M2 12.5h12"/></svg></span>
+        <span class="nav-label">Services</span>
+        <span class="nav-tag">8</span>
+      </div>
+
+      <div class="nav-section" data-admin-only>Administration</div>
+      <div class="nav-item" data-page="employees" data-admin-only="true">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="2.2"/><circle cx="11.5" cy="7" r="1.8"/><path d="M2 13c0-2 2-3.5 4-3.5s4 1.5 4 3.5M9 13c0-1.5 1.3-2.5 2.5-2.5S14 11.5 14 13"/></svg></span>
+        <span class="nav-label">Employees</span>
+        <span class="nav-tag">ADM</span>
+      </div>
+      <div class="nav-item" data-page="audit" data-admin-only="true">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2v3M2 8h3M11 8h3M8 11v3"/><circle cx="8" cy="8" r="3"/></svg></span>
+        <span class="nav-label">Audit log</span>
+        <span class="nav-tag">ADM</span>
+      </div>
+      <div class="nav-item" data-page="settings" data-admin-only="true">
+        <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4"/></svg></span>
+        <span class="nav-label">Settings</span>
+        <span class="nav-tag">ADM</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-foot">
+      <span class="pulse-dot"></span>
+      <span id="session-live-text">Live · 3 signed in</span>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN ─────────────────────────────────────────── -->
+  <main id="main">
+    <header id="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="doc-ref" id="doc-ref">LDG/2026/06/27 · 0334</div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-chip" id="theme-toggle" title="Toggle theme">
+          <span class="chip-icon" id="theme-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M3 13l1.5-1.5M11.5 4.5L13 3"/></svg></span>
+          <span id="theme-label">Light</span>
+        </button>
+
+        <div class="role-chip" id="role-chip" data-role="admin">
+          <span class="role-name" id="role-name">Mushtaq Ahmed</span>
+          <span class="role-badge" id="role-badge">ADMIN</span>
+          <div class="role-menu" id="role-menu">
+            <div class="role-menu-item" data-role-set="admin">
+              <span>Mushtaq Ahmed (you)</span>
+              <span class="role-menu-tag">ADMIN</span>
+            </div>
+            <div class="role-menu-item" data-role-set="staff:Noor Ghani">
+              <span>View as Noor Ghani</span>
+              <span class="role-menu-tag">STAFF</span>
+            </div>
+            <div class="role-menu-item" data-role-set="staff:Abu Khalil">
+              <span>View as Abu Khalil</span>
+              <span class="role-menu-tag">STAFF</span>
+            </div>
+            <div class="role-menu-item" data-role-set="staff:Ahmed Rashid">
+              <span>View as Ahmed Rashid</span>
+              <span class="role-menu-tag">STAFF</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="page-host"><!-- pages render here --></section>
+  </main>
+</div>
+
+<div id="toast-host"></div>
+
+<script>
+/* ──────────────────────────────────────────────────────────
+   STATE & DATA
+   ────────────────────────────────────────────────────────── */
+const SVG = {
+  lock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V5a3 3 0 016 0v2"/></svg>',
+  alert: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2L1.5 13.5h13z"/><path d="M8 6v3M8 11v.5"/></svg>',
+  pencil: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z"/></svg>',
+  bullet: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.5"/></svg>',
+  download: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2v9M4 8l4 4 4-4M2 14h12"/></svg>',
+  plus: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 3v10M3 8h10"/></svg>',
+  x: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg>',
+  shield: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.5l5.5 2v4.5c0 3-2.2 5.5-5.5 6.5-3.3-1-5.5-3.5-5.5-6.5V3.5z"/><path d="M5.5 8l2 2 3.5-3.5"/></svg>',
+  send: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 8l12-6-4 12-3-5z"/></svg>',
+  sun: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M3 13l1.5-1.5M11.5 4.5L13 3"/></svg>',
+  moon: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 9.5A6 6 0 016.5 3a6 6 0 109.5 6.5z"/></svg>',
+  check: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg>'
+};
+
+const company = {
+  name: 'Marjan Business Services LLC',
+  tagline: 'Government Transactions · Typing · Document Clearance',
+  address: 'Shop 14, Al Maktoum Road, Deira, Dubai, UAE',
+  phone: '+971 4 555 0142',
+  email: 'info@marjanservices.ae',
+  trn: '100123456700003',
+  bank: 'Emirates NBD · AE07 0260 0010 1234 5678 9012',
+  vatRegistered: true, // toggle in Settings — when false, all new invoices print as plain "Invoice" without VAT
+};
+
+const employees = [
+  { id: 'u1', name: 'Mushtaq Ahmed', email: 'owner@marjanservices.ae', role: 'admin', joined: '2024-01-08', invoices: 0, lastSeen: 'now' },
+  { id: 'u2', name: 'Noor Ghani', email: 'noor@marjanservices.ae', role: 'staff', joined: '2024-03-12', invoices: 412, lastSeen: '14s' },
+  { id: 'u3', name: 'Abu Khalil', email: 'khalil@marjanservices.ae', role: 'staff', joined: '2024-04-02', invoices: 287, lastSeen: '2m' },
+  { id: 'u4', name: 'Ahmed Rashid', email: 'ahmed@marjanservices.ae', role: 'staff', joined: '2024-05-18', invoices: 251, lastSeen: '7m' },
+  { id: 'u5', name: 'Salim Hasan', email: 'salim@marjanservices.ae', role: 'staff', joined: '2024-06-21', invoices: 198, lastSeen: '1h' },
+  { id: 'u6', name: 'Fahd Mohammed', email: 'fahd@marjanservices.ae', role: 'staff', joined: '2024-08-04', invoices: 142, lastSeen: '3h' },
+];
+
+const customers = [
+  // Regular business clients (since 2008 — like the client said)
+  { id: 'c1', name: 'Bait Al Joudah Food Stuff Trading LLC', trn: '104024892200003', address: 'Deira, Dubai, UAE', contact: 'Mr. Faisal', phone: '+971 50 123 4567', invoices: 87, totalBilled: 12480, type: 'regular' },
+  { id: 'c2', name: 'Multi Cool Van Refrigerated Transport', trn: '100456789300003', address: 'Al Quoz Industrial 4, Dubai', contact: 'Mr. Ravi', phone: '+971 55 287 5075', invoices: 64, totalBilled: 8970, type: 'regular' },
+  { id: 'c3', name: 'Al Madina General Trading', trn: '100345678900003', address: 'Naif Road, Deira, Dubai', contact: 'Mr. Hassan', phone: '+971 50 222 1144', invoices: 142, totalBilled: 21340, type: 'regular' },
+  { id: 'c4', name: 'Emirates Auto Spare Parts', trn: '100567891200003', address: 'Sharjah Industrial Area 2', contact: 'Mr. Imran', phone: '+971 56 411 8800', invoices: 38, totalBilled: 5820, type: 'regular' },
+  // Walk-in / personal customers
+  { id: 'c5', name: 'ABU KHALIL CUSTOMER', trn: '', address: 'Walk-in', contact: '', phone: '+971 55 411 2207', invoices: 4, totalBilled: 2410, type: 'walkin' },
+  { id: 'c6', name: 'FATIMA AL ZAHRA', trn: '', address: 'Walk-in', contact: '', phone: '+971 50 888 1190', invoices: 2, totalBilled: 1640, type: 'walkin' },
+  { id: 'c7', name: 'MOHAMMED HASSAN', trn: '', address: 'Walk-in', contact: '', phone: '+971 56 232 7714', invoices: 1, totalBilled: 800, type: 'walkin' },
+  { id: 'c8', name: 'AISHA AL MANSOORI', trn: '', address: 'Walk-in', contact: '', phone: '+971 55 671 4408', invoices: 3, totalBilled: 2150, type: 'walkin' },
+];
+
+const services = [
+  // Government transactions (govt fee passthrough + typing fee revenue)
+  { id: 's1', name: 'Emirates ID Renewal', govt: 270, service: 70, unit: 'person' },
+  { id: 's2', name: 'Residency Visa — Renewal', govt: 1100, service: 150, unit: 'person' },
+  { id: 's3', name: 'Residency Visa — New Application', govt: 2350, service: 200, unit: 'person' },
+  { id: 's4', name: 'Trade License Renewal', govt: 1800, service: 300, unit: 'license' },
+  { id: 's5', name: 'Labor Card — New', govt: 350, service: 100, unit: 'person' },
+  { id: 's6', name: 'Labor Card — Renewal', govt: 300, service: 80, unit: 'person' },
+  { id: 's7', name: 'Driving License — Renewal', govt: 300, service: 50, unit: 'person' },
+  { id: 's8', name: 'Immigration Clearance Letter', govt: 200, service: 80, unit: 'doc' },
+  { id: 's9', name: 'EID + Residency Bundle (Renewal)', govt: 756, service: 44, unit: 'bundle' },
+  // Typing-only (no govt fee, all revenue)
+  { id: 's10', name: 'Document Typing — Arabic', govt: 0, service: 30, unit: 'page' },
+  { id: 's11', name: 'Document Typing — English', govt: 0, service: 25, unit: 'page' },
+  { id: 's12', name: 'Photocopy + Stamping', govt: 0, service: 5, unit: 'doc' },
+  { id: 's13', name: 'Document Translation', govt: 0, service: 80, unit: 'page' },
+];
+
+// New line item shape: { desc, qty, fees: { columnId: amount } }
+// Columns are stored per-invoice so each invoice can have its own extra columns
+let invoices = [
+  { id: 'i1', no: 'INV-156', date: '2026-05-24', customerId: 'c2',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [
+      { desc: 'Residency Visa Renewal — 2 employees', qty: 2, fees: { govt: 1100, service: 150 } },
+    ],
+    status: 'overdue', issuedBy: 'u2', issuedAt: '2026-05-24 14:23', paid: 0 },
+
+  { id: 'i2', no: 'INV-155', date: '2026-06-13', customerId: 'c1',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [
+      { desc: 'Trade License Renewal — annual', qty: 1, fees: { govt: 1800, service: 300 } },
+      { desc: 'Document Typing — Arabic', qty: 4, fees: { govt: 0, service: 30 } },
+    ],
+    status: 'unpaid', issuedBy: 'u3', issuedAt: '2026-06-13 10:11', paid: 0 },
+
+  { id: 'i3', no: 'INV-154', date: '2026-06-18', customerId: 'c5',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [
+      { desc: 'Renew EID and Residency', qty: 1, fees: { govt: 756, service: 44 } },
+    ],
+    status: 'paid', issuedBy: 'u2', issuedAt: '2026-06-18 09:42', paid: 802.20 },
+
+  { id: 'i4', no: 'INV-153', date: '2026-06-20', customerId: 'c3',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+      { id: 'courier', label: 'Courier', vatable: false, removable: true },
+    ],
+    items: [
+      { desc: 'Labor Card — Renewal × 5 workers', qty: 5, fees: { govt: 300, service: 80, courier: 25 } },
+    ],
+    status: 'paid', issuedBy: 'u1', issuedAt: '2026-06-20 17:08', paid: 2025.00 },
+
+  { id: 'i5', no: 'INV-152', date: '2026-06-22', customerId: 'c6',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [
+      { desc: 'Driving License Renewal', qty: 1, fees: { govt: 300, service: 50 } },
+    ],
+    status: 'paid', issuedBy: 'u4', issuedAt: '2026-06-22 12:55', paid: 352.50 },
+
+  { id: 'i6', no: 'INV-151', date: '2026-06-24', customerId: 'c4',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [
+      { desc: 'Emirates ID Renewal × 3 employees', qty: 3, fees: { govt: 270, service: 70 } },
+    ],
+    status: 'partial', issuedBy: 'u3', issuedAt: '2026-06-24 16:30', paid: 500.00 },
+
+  { id: 'i7', no: 'INV-150', date: '2026-06-25', customerId: 'c3',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [
+      { desc: 'Immigration Clearance Letter', qty: 2, fees: { govt: 200, service: 80 } },
+    ],
+    status: 'unpaid', issuedBy: 'u2', issuedAt: '2026-06-25 11:20', paid: 0 },
+
+  { id: 'i8', no: null, date: '2026-06-27', customerId: 'c1',
+    columns: [
+      { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+      { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+    ],
+    items: [], status: 'draft', issuedBy: 'u4', issuedAt: '2026-06-27 09:14', paid: 0 },
+];
+
+const auditLog = [
+  { time: '2026-06-27 14:23:08', actor: 'u4', action: 'opened draft', target: 'invoice for Bait Al Joudah' },
+  { time: '2026-06-27 13:55:42', actor: 'u3', action: 'logged in', target: 'from IP 39.42.18.221' },
+  { time: '2026-06-27 13:42:17', actor: 'u2', action: 'viewed', target: 'INV-154' },
+  { time: '2026-06-27 11:08:33', actor: 'u1', action: 'updated service price', target: 'Trade License Renewal · service fee 280 → 300' },
+  { time: '2026-06-26 17:20:55', actor: 'u1', action: 'marked paid', target: 'INV-153 sealed · AED 2,025' },
+  { time: '2026-06-26 16:41:09', actor: 'u3', action: 'added customer', target: 'FATIMA AL ZAHRA (walk-in)' },
+  { time: '2026-06-25 18:00:14', actor: 'u1', action: 'logged in', target: 'from IP 94.205.51.78' },
+  { time: '2026-06-25 11:20:38', actor: 'u2', action: 'issued', target: 'INV-150 · AED 588 · Al Madina General Trading' },
+  { time: '2026-06-24 16:30:51', actor: 'u3', action: 'issued', target: 'INV-151 · AED 1,072.50 · Emirates Auto Spare Parts' },
+  { time: '2026-06-22 12:55:09', actor: 'u4', action: 'issued', target: 'INV-152 · AED 352.50 · AISHA AL MANSOORI' },
+  { time: '2026-06-20 17:08:22', actor: 'u1', action: 'issued', target: 'INV-153 · AED 2,025 · Al Madina General Trading' },
+  { time: '2026-06-18 09:42:17', actor: 'u2', action: 'issued', target: 'INV-154 · AED 802.20 · ABU KHALIL CUSTOMER' },
+];
+
+let state = {
+  page: 'dashboard',
+  theme: 'light',
+  currentUser: employees[0], // admin by default
+  invoiceCounter: 156, // next will be 157 — resets each January (per client requirement)
+  // Draft invoice state
+  draftColumns: [
+    { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+    { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+  ],
+  draftItems: [],
+  draftCustomer: null,
+  draftDate: '2026-06-27',
+  draftNotes: 'Thank you for your business.',
+  draftTerms: 'Government fees are passed through to authorities. Service fees include VAT at 5% where applicable.',
+  filter: { status: 'all' },
+};
+
+/* ──────────────────────────────────────────────────────────
+   UTILITIES
+   ────────────────────────────────────────────────────────── */
+const fmt = n => Number(n||0).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = n => Number(n||0).toLocaleString('en-AE');
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function nextInvoiceNumber() {
+  const next = state.invoiceCounter + 1;
+  return { full: `INV-${String(next).padStart(2, '0')}`, n: next };
+}
+
+// New: calc handles per-invoice columns
+function calcInvoice(items, columns) {
+  let govtTotal = 0;
+  let serviceTotal = 0;
+  let extraTaxable = 0;
+  let extraNonTaxable = 0;
+  let vat = 0;
+
+  items.forEach(it => {
+    const qty = it.qty || 0;
+    columns.forEach(col => {
+      const amount = qty * (it.fees?.[col.id] || 0);
+      if (col.id === 'govt') govtTotal += amount;
+      else if (col.id === 'service') {
+        serviceTotal += amount;
+        vat += amount * 0.05;
+      }
+      else if (col.vatable) {
+        extraTaxable += amount;
+        vat += amount * 0.05;
+      } else {
+        extraNonTaxable += amount;
+      }
+    });
+  });
+
+  const subtotal = govtTotal + serviceTotal + extraTaxable + extraNonTaxable;
+  const total = subtotal + (company.vatRegistered ? vat : 0);
+  return { govtTotal, serviceTotal, extraTaxable, extraNonTaxable, subtotal, vat: company.vatRegistered ? vat : 0, total };
+}
+
+function lineTotal(item, columns) {
+  let sum = 0;
+  let vat = 0;
+  columns.forEach(col => {
+    const amt = (item.qty || 0) * (item.fees?.[col.id] || 0);
+    sum += amt;
+    if (col.vatable && company.vatRegistered) vat += amt * 0.05;
+  });
+  return sum + vat;
+}
+
+function invoiceTotal(inv) {
+  return calcInvoice(inv.items, inv.columns || state.draftColumns).total;
+}
+
+function getEmployee(id) { return employees.find(e => e.id === id) || { name: 'Unknown', role: 'staff' }; }
+function getCustomer(id) { return customers.find(c => c.id === id); }
+
+function toast(msg, sub = '') {
+  const host = $('#toast-host');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span style="width:14px;height:14px;color:var(--success)">${SVG.check}</span><span>${msg}${sub ? ` · <span class="tnum">${sub}</span>` : ''}</span>`;
+  host.appendChild(el);
+  setTimeout(() => { el.classList.add('toast-leave'); setTimeout(() => el.remove(), 250); }, 3500);
+}
+
+/* ──────────────────────────────────────────────────────────
+   THEME & ROLE
+   ────────────────────────────────────────────────────────── */
+function setTheme(t) {
+  state.theme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  $('#theme-icon').innerHTML = t === 'light' ? SVG.sun : SVG.moon;
+  $('#theme-label').textContent = t === 'light' ? 'Light' : 'Dark';
+  try { localStorage.setItem('inv-theme', t); } catch(e) {}
+}
+
+function setRole(spec) {
+  if (spec === 'admin') {
+    state.currentUser = employees[0];
+  } else if (spec.startsWith('staff:')) {
+    const name = spec.slice(6);
+    state.currentUser = employees.find(e => e.name === name) || employees[1];
+  }
+  applyRole();
+}
+
+function applyRole() {
+  const u = state.currentUser;
+  $('#role-name').textContent = u.name + (u.role === 'admin' ? ' (you)' : '');
+  $('#role-badge').textContent = u.role.toUpperCase();
+  $('#role-chip').setAttribute('data-role', u.role);
+
+  // hide/show admin-only nav items AND the Administration section header
+  $$('[data-admin-only]').forEach(el => {
+    el.classList.toggle('hidden', u.role !== 'admin');
+  });
+  // if on admin page and now staff, bounce back
+  const adminPages = ['employees', 'audit', 'settings'];
+  if (u.role !== 'admin' && adminPages.includes(state.page)) {
+    nav('dashboard');
+  } else {
+    renderCurrentPage();
+  }
+}
+
+/* ──────────────────────────────────────────────────────────
+   PAGES
+   ────────────────────────────────────────────────────────── */
+function nav(page) {
+  state.page = page;
+  $$('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+  renderCurrentPage();
+}
+
+function renderCurrentPage() {
+  const titles = {
+    dashboard: 'Dashboard',
+    invoices: 'All invoices',
+    'new-invoice': 'Issue a new invoice',
+    customers: 'Customer ledger',
+    services: 'Service catalogue',
+    employees: 'Employee directory',
+    audit: 'Audit log',
+    settings: 'Company settings',
+  };
+  $('#page-title').textContent = titles[state.page] || '';
+
+  // Doc ref updates per page with a deterministic pattern
+  const refs = {
+    dashboard: `LDG/2026/06/27 · ${String(state.invoiceCounter + 1).padStart(2, '0')}`,
+    invoices: `LDG/2026/06/27 · ${String(state.invoiceCounter + 1).padStart(2, '0')}`,
+    'new-invoice': `DFT/2026/06/27 · ${String(state.invoiceCounter + 1).padStart(2, '0')}`,
+    customers: `REC/CST · ${String(customers.length).padStart(2, '0')}`,
+    services: `REC/SVC · ${String(services.length).padStart(2, '0')}`,
+    employees: `ADM/USR · ${String(employees.length).padStart(2, '0')}`,
+    audit: 'ADM/LOG · 24h',
+    settings: 'ADM/CFG · v1',
+  };
+  $('#doc-ref').textContent = refs[state.page] || '';
+
+  const host = $('#page-host');
+  const renderer = pageRenderers[state.page];
+  if (renderer) host.innerHTML = renderer();
+  bindPage();
+}
+
+const pageRenderers = {
+  dashboard: renderDashboard,
+  invoices: renderInvoices,
+  'new-invoice': renderNewInvoice,
+  customers: renderCustomers,
+  services: renderServices,
+  employees: renderEmployees,
+  audit: renderAudit,
+  settings: renderSettings,
+};
+
+/* ─── PAGE: DASHBOARD ─────────────────────────────────── */
+function renderDashboard() {
+  const monthInvoices = invoices.filter(i => i.date && i.date.startsWith('2026-06') && i.status !== 'draft');
+  const totalBilled = monthInvoices.reduce((s, i) => s + invoiceTotal(i), 0);
+  const totalGovt = monthInvoices.reduce((s, i) => s + calcInvoice(i.items, i.columns).govtTotal, 0);
+  const totalService = monthInvoices.reduce((s, i) => s + calcInvoice(i.items, i.columns).serviceTotal, 0);
+  const totalVat = monthInvoices.reduce((s, i) => s + calcInvoice(i.items, i.columns).vat, 0);
+  const outstanding = invoices
+    .filter(i => i.status === 'unpaid' || i.status === 'overdue' || i.status === 'partial')
+    .reduce((s, i) => s + invoiceTotal(i) - (i.paid || 0), 0);
+  const overdueCount = invoices.filter(i => i.status === 'overdue').length;
+  const nextNum = String(state.invoiceCounter + 1).padStart(2, '0');
+
+  const recent = [...invoices].filter(i => i.status !== 'draft').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const u = state.currentUser;
+  const greeting = u.role === 'admin' ? `Good afternoon, Mushtaq` : `Welcome back, ${u.name.split(' ')[0]}`;
+
+  return `
+    <div class="briefing">
+      <div class="briefing-head">
+        <div class="eyebrow">Today's briefing · 27 Jun 2026</div>
+        <div class="eyebrow">${greeting}</div>
+      </div>
+      <p class="briefing-prose">
+        ${monthInvoices.length} invoices were issued this month, billing customers <em>AED ${fmt(totalBilled)}</em> in total. Of that, <em>AED ${fmt(totalGovt)}</em> was government fees passed through to the authorities — your actual service revenue was <em>AED ${fmt(totalService)}</em>. <span class="marked">${overdueCount} invoice${overdueCount===1?'':'s'} remain unpaid past 30 days</span>. ${u.role === 'admin' ? '5 of your 5 staff' : '5 colleagues'} are active today.
+      </p>
+    </div>
+
+    <div class="kpi-strip">
+      <div class="kpi">
+        <div class="kpi-label">Service revenue · this month</div>
+        <div class="kpi-value">${fmt(totalService).split('.')[0]}<span class="kpi-unit">AED</span></div>
+        <div class="kpi-sub">your actual income</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Govt fees passthrough</div>
+        <div class="kpi-value">${fmt(totalGovt).split('.')[0]}<span class="kpi-unit">AED</span></div>
+        <div class="kpi-sub">collected on behalf of customers</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Outstanding</div>
+        <div class="kpi-value kpi-warn">${fmt(outstanding).split('.')[0]}<span class="kpi-unit">AED</span></div>
+        <div class="kpi-sub">${overdueCount} overdue · ${invoices.filter(i=>i.status==='unpaid').length} unpaid · ${invoices.filter(i=>i.status==='partial').length} partial</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Next invoice no.</div>
+        <div class="kpi-value mono">${nextNum}</div>
+        <div class="kpi-sub">INV-${nextNum} · resets each Jan</div>
+      </div>
+    </div>
+
+    <div class="ledger-card">
+      <div class="ledger-head">
+        <h3 class="section-head">Recent invoices</h3>
+        <div class="ledger-filters">
+          <span style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.04em">Filter</span>
+          <button class="filter-chip active" data-quickfilter="all">All</button>
+          <button class="filter-chip" data-quickfilter="overdue">Overdue</button>
+          <button class="filter-chip" data-quickfilter="unpaid">Unpaid</button>
+          <button class="filter-chip" data-quickfilter="partial">Partial</button>
+          <button class="filter-chip" data-quickfilter="paid">Paid</button>
+        </div>
+      </div>
+      <table class="ledger-table" id="dashboard-ledger">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Invoice</th>
+            <th>Customer</th>
+            <th>Issued by</th>
+            <th class="right">Amount (AED)</th>
+            <th class="right">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recent.map((inv, i) => renderInvoiceRow(inv, i + 1)).join('')}
+        </tbody>
+      </table>
+      <div class="live-foot">
+        <div class="left"><span class="pulse-dot"></span><span>Live · ${employees.length - 1} staff signed in · last action 14s ago</span></div>
+        <div>Session · ${u.role === 'admin' ? 'Peshawar / Owner device' : 'Dubai / Staff device'} · IP 39.42.xx.xx</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderInvoiceRow(inv, idx) {
+  const cust = getCustomer(inv.customerId);
+  const emp = getEmployee(inv.issuedBy);
+  const total = invoiceTotal(inv);
+  const romans = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx', 'xxi', 'xxii', 'xxiii', 'xxiv', 'xxv'];
+  const statusMap = {
+    overdue: { cls: 'status-overdue', icon: SVG.alert, label: `Overdue ${overdueDays(inv.date)}d` },
+    unpaid: { cls: 'status-unpaid', icon: SVG.bullet, label: 'Awaiting payment' },
+    partial: { cls: 'status-unpaid', icon: SVG.bullet, label: `Partial · ${fmt(inv.paid||0)} paid` },
+    paid: { cls: 'status-paid', icon: SVG.lock, label: 'Paid · sealed' },
+    draft: { cls: 'status-draft', icon: SVG.pencil, label: 'Draft · live' },
+    void: { cls: 'status-void', icon: SVG.x, label: 'Voided' },
+  };
+  const s = statusMap[inv.status] || statusMap.unpaid;
+
+  return `
+    <tr data-invoice="${inv.id}">
+      <td class="roman">${romans[idx - 1] || idx}</td>
+      <td><span class="invoice-no${inv.status === 'draft' ? ' draft' : ''}">${inv.no || '— draft —'}</span></td>
+      <td><span class="customer-name">${esc(cust ? cust.name : 'Untitled')}</span></td>
+      <td class="secondary">${esc(emp.name.split(' ').map((p,i)=>i===0?p[0]+'.':p).join(' '))} <span class="role-tag role-${emp.role}">${emp.role.toUpperCase()}</span></td>
+      <td class="right num">${total ? fmt(total) : '—'}</td>
+      <td><span class="status-cell ${s.cls}"><span class="status-icon">${s.icon}</span>${s.label}</span></td>
+    </tr>
+  `;
+}
+
+function overdueDays(dateStr) {
+  const d = new Date(dateStr);
+  const today = new Date('2026-06-27');
+  const days = Math.floor((today - d) / (1000 * 60 * 60 * 24)) - 30;
+  return Math.max(days, 0);
+}
+
+/* ─── PAGE: INVOICES ──────────────────────────────────── */
+function renderInvoices() {
+  const u = state.currentUser;
+  const list = [...invoices].filter(i => i.status !== 'draft').sort((a, b) => b.date.localeCompare(a.date));
+  const filtered = state.filter.status === 'all' ? list : list.filter(i => i.status === state.filter.status);
+
+  return `
+    <p class="editorial-line">${list.length} invoices on record. ${u.role === 'admin' ? 'You can void or seal any invoice from this view.' : 'You may view any invoice but only the owner can void or seal.'} Filtering and search apply across all staff.</p>
+
+    <div class="ledger-card">
+      <div class="ledger-head">
+        <div style="display:flex;gap:12px;align-items:center">
+          <h3 class="section-head">All invoices</h3>
+          <input class="input" placeholder="Search invoice no. or customer..." id="invoices-search" style="width:280px;height:28px;font-size:12.5px"/>
+        </div>
+        <div class="ledger-filters">
+          <button class="filter-chip ${state.filter.status==='all'?'active':''}" data-quickfilter="all">All</button>
+          <button class="filter-chip ${state.filter.status==='overdue'?'active':''}" data-quickfilter="overdue">Overdue</button>
+          <button class="filter-chip ${state.filter.status==='unpaid'?'active':''}" data-quickfilter="unpaid">Unpaid</button>
+          <button class="filter-chip ${state.filter.status==='paid'?'active':''}" data-quickfilter="paid">Paid</button>
+        </div>
+      </div>
+      <table class="ledger-table" id="full-ledger">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Invoice</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Issued by</th>
+            <th class="right">Amount (AED)</th>
+            <th class="right">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map((inv, i) => renderInvoiceRowFull(inv, i + 1)).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderInvoiceRowFull(inv, idx) {
+  const cust = getCustomer(inv.customerId);
+  const emp = getEmployee(inv.issuedBy);
+  const total = invoiceTotal(inv);
+  const romans = ['i','ii','iii','iv','v','vi','vii','viii','ix','x','xi','xii','xiii','xiv','xv','xvi','xvii','xviii','xix','xx','xxi','xxii','xxiii','xxiv','xxv','xxvi','xxvii','xxviii','xxix','xxx'];
+  const statusMap = {
+    overdue: { cls: 'status-overdue', icon: SVG.alert, label: `Overdue ${overdueDays(inv.date)}d` },
+    unpaid: { cls: 'status-unpaid', icon: SVG.bullet, label: 'Awaiting payment' },
+    partial: { cls: 'status-unpaid', icon: SVG.bullet, label: `Partial · ${fmt(inv.paid||0)} paid` },
+    paid: { cls: 'status-paid', icon: SVG.lock, label: 'Paid · sealed' },
+    draft: { cls: 'status-draft', icon: SVG.pencil, label: 'Draft' },
+  };
+  const s = statusMap[inv.status] || statusMap.unpaid;
+
+  return `
+    <tr data-invoice="${inv.id}">
+      <td class="roman">${romans[idx - 1] || idx}</td>
+      <td><span class="invoice-no">${inv.no || '— draft —'}</span></td>
+      <td class="secondary num">${inv.date}</td>
+      <td><span class="customer-name">${esc(cust ? cust.name : 'Untitled')}</span></td>
+      <td class="secondary">${esc(emp.name)} <span class="role-tag role-${emp.role}">${emp.role.toUpperCase()}</span></td>
+      <td class="right num">${fmt(total)}</td>
+      <td><span class="status-cell ${s.cls}"><span class="status-icon">${s.icon}</span>${s.label}</span></td>
+    </tr>
+  `;
+}
+
+/* ─── PAGE: NEW INVOICE ──────────────────────────────────── */
+function renderNewInvoice() {
+  const nextNo = nextInvoiceNumber().full;
+  const u = state.currentUser;
+  if (state.draftItems.length === 0) {
+    state.draftItems = [blankLineItem()];
+  }
+
+  return `
+    <p class="editorial-line">Issued by <em>${esc(u.name)}</em> · acting as <em>${u.role === 'admin' ? 'Owner' : 'Staff'}</em>. The invoice number is reserved the moment you click Issue — and shared in real time with everyone else on the team.</p>
+
+    <div class="new-inv-grid">
+      <!-- ───── LEFT: FORM ───── -->
+      <div>
+        <div class="card-block">
+          <div class="card-block-head">
+            <h3>Header</h3>
+            <span class="eyebrow">Auto-numbered</span>
+          </div>
+          <div class="form-grid form-row-3">
+            <div class="field">
+              <label class="field-label">Invoice number</label>
+              <input class="input mono-input" id="f-inv-no" value="${nextNo}" readonly title="Reserved on issue — cannot be edited"/>
+            </div>
+            <div class="field">
+              <label class="field-label">Invoice date</label>
+              <input class="input mono-input" type="date" id="f-inv-date" value="${state.draftDate}"/>
+            </div>
+            <div class="field">
+              <label class="field-label">Reserved by</label>
+              <input class="input" value="${esc(u.name)}" readonly/>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-block">
+          <div class="card-block-head">
+            <h3>Bill to</h3>
+            <button class="btn btn-sm btn-ghost" id="customer-clear">Clear</button>
+          </div>
+          <div class="form-grid">
+            <div class="field" style="position:relative">
+              <label class="field-label">Customer</label>
+              <input class="input" id="f-customer" placeholder="Type to search or pick a customer..." autocomplete="off"/>
+              <div class="dropdown-menu hidden" id="customer-dropdown"></div>
+            </div>
+            <div class="form-grid form-row-2">
+              <div class="field">
+                <label class="field-label">TRN (optional)</label>
+                <input class="input mono-input" id="f-cust-trn" placeholder="100xxxxxxxxxxxx"/>
+              </div>
+              <div class="field">
+                <label class="field-label">Contact / phone</label>
+                <input class="input" id="f-cust-phone" placeholder="+971 ..."/>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Address</label>
+              <input class="input" id="f-cust-address" placeholder="Office, area, emirate"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-block">
+          <div class="card-block-head">
+            <h3>Line items</h3>
+            <span class="eyebrow">VAT applied per column · 5%</span>
+          </div>
+
+          <div id="column-manager" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <span class="eyebrow" style="font-family:'JetBrains Mono',monospace">FEE COLUMNS</span>
+            <div id="column-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <button class="btn btn-sm btn-ghost" id="add-column" style="font-size:11.5px"><span class="btn-icon">${SVG.plus}</span>Add column</button>
+          </div>
+
+          <div style="overflow-x:auto">
+            <table class="line-items" id="line-items-table">
+              <thead id="line-items-head"></thead>
+              <tbody id="line-items-body"></tbody>
+            </table>
+          </div>
+
+          <div class="add-line-row">
+            <button class="btn btn-sm" id="add-line"><span class="btn-icon">${SVG.plus}</span>Add line</button>
+            <button class="btn btn-sm btn-ghost" id="add-from-catalog" style="margin-left:6px">From service catalogue</button>
+          </div>
+
+          <div class="totals-block" id="totals-block"></div>
+        </div>
+
+        <div class="card-block">
+          <div class="card-block-head">
+            <h3>Notes & terms</h3>
+          </div>
+          <div class="form-grid form-row-2">
+            <div class="field">
+              <label class="field-label">Notes (printed on PDF)</label>
+              <textarea class="textarea" id="f-notes">${esc(state.draftNotes)}</textarea>
+            </div>
+            <div class="field">
+              <label class="field-label">Payment terms (printed on PDF)</label>
+              <textarea class="textarea" id="f-terms">${esc(state.draftTerms)}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn" id="save-draft">Save as draft</button>
+          <button class="btn btn-primary" id="issue-invoice"><span class="btn-icon">${SVG.send}</span>Issue invoice · reserve ${nextNo.split('-').pop()}</button>
+        </div>
+      </div>
+
+      <!-- ───── RIGHT: PREVIEW ───── -->
+      <div>
+        <div class="preview-doc" id="preview-doc">
+          <!-- preview rendered here -->
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderColumnChips() {
+  const host = $('#column-chips');
+  if (!host) return;
+  host.innerHTML = state.draftColumns.map(col => `
+    <span class="topbar-chip" style="height:24px;font-size:11px;padding:0 8px;cursor:default">
+      ${esc(col.label)}
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-3);letter-spacing:0.08em;margin-left:2px">
+        ${col.vatable ? '5% VAT' : '0% VAT'}
+      </span>
+      ${col.removable ? `<button class="remove-btn" data-remove-col="${col.id}" style="padding:1px 2px;margin-left:4px;color:var(--ink-3)">${SVG.x}</button>` : ''}
+    </span>
+  `).join('');
+}
+
+function renderLineItems() {
+  const head = $('#line-items-head');
+  const tbody = $('#line-items-body');
+  if (!tbody || !head) return;
+
+  // Build header
+  head.innerHTML = `
+    <tr>
+      <th style="width:auto">Description</th>
+      <th class="right" style="width:50px">Qty</th>
+      ${state.draftColumns.map(col => `<th class="right" style="width:90px">${esc(col.label)}${col.vatable ? '<br><span class="vat-tag-inline">+ 5% VAT</span>' : ''}</th>`).join('')}
+      <th class="right" style="width:90px">Line total</th>
+      <th class="row-actions"></th>
+    </tr>
+  `;
+
+  tbody.innerHTML = state.draftItems.map((it, idx) => `
+    <tr data-line="${idx}">
+      <td>
+        <input class="line-desc" placeholder="Service description..." value="${esc(it.desc)}"/>
+      </td>
+      <td class="right">
+        <input class="line-qty num-input right" type="number" min="0" step="1" value="${it.qty}"/>
+      </td>
+      ${state.draftColumns.map(col => `
+        <td class="right">
+          <input class="line-fee num-input right" data-col="${col.id}" type="number" min="0" step="0.01" value="${it.fees?.[col.id] || 0}"/>
+        </td>
+      `).join('')}
+      <td class="right num-input" style="padding-right:8px">${fmt(lineTotal(it, state.draftColumns))}</td>
+      <td class="row-actions">
+        <button class="remove-btn" data-remove="${idx}" title="Remove line">${SVG.x}</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderTotals() {
+  const calc = calcInvoice(state.draftItems, state.draftColumns);
+  const el = $('#totals-block');
+  if (!el) return;
+
+  const lines = [];
+  // Show govt passthrough separately so the user clearly sees their actual revenue vs the govt money
+  if (calc.govtTotal > 0) {
+    lines.push(`<div class="totals-row"><span>Government fees (passthrough)</span><span class="v">AED ${fmt(calc.govtTotal)}</span></div>`);
+  }
+  if (calc.serviceTotal > 0) {
+    lines.push(`<div class="totals-row"><span>Service fees${company.vatRegistered ? ' (taxable)' : ''}</span><span class="v">AED ${fmt(calc.serviceTotal)}</span></div>`);
+  }
+  if (calc.extraTaxable > 0) {
+    lines.push(`<div class="totals-row"><span>Other charges (taxable)</span><span class="v">AED ${fmt(calc.extraTaxable)}</span></div>`);
+  }
+  if (calc.extraNonTaxable > 0) {
+    lines.push(`<div class="totals-row"><span>Other charges (non-taxable)</span><span class="v">AED ${fmt(calc.extraNonTaxable)}</span></div>`);
+  }
+  if (company.vatRegistered && calc.vat > 0) {
+    lines.push(`<div class="totals-row"><span>VAT (5%) on taxable fees</span><span class="v">AED ${fmt(calc.vat)}</span></div>`);
+  }
+
+  el.innerHTML = `
+    ${lines.join('')}
+    <div class="totals-grand"><span class="label">Net total</span><span class="v">AED ${fmt(calc.total)}</span></div>
+  `;
+}
+
+function renderPreview() {
+  const el = $('#preview-doc');
+  if (!el) return;
+  const nextNo = nextInvoiceNumber().full;
+  const calc = calcInvoice(state.draftItems, state.draftColumns);
+  const c = state.draftCustomer;
+  const date = $('#f-inv-date') ? $('#f-inv-date').value : state.draftDate;
+  const notes = $('#f-notes') ? $('#f-notes').value : state.draftNotes;
+  const terms = $('#f-terms') ? $('#f-terms').value : state.draftTerms;
+  const isTaxInv = company.vatRegistered;
+  const docTitle = isTaxInv ? 'Tax Invoice' : 'Invoice';
+
+  // Filter to non-empty lines for preview
+  const previewItems = state.draftItems.filter(it => it.desc || Object.values(it.fees || {}).some(v => v > 0));
+
+  el.innerHTML = `
+    <div class="preview-eyebrow">PDF preview · what your customer will receive</div>
+    <div class="preview-head">
+      <div class="preview-company">
+        <h2>${esc(company.name)}</h2>
+        <p>${esc(company.tagline)}</p>
+        <p>${esc(company.address)}</p>
+        <p>${esc(company.phone)} · ${esc(company.email)}</p>
+        ${isTaxInv ? `<div class="trn">TRN ${esc(company.trn)}</div>` : ''}
+      </div>
+      <div class="preview-title">
+        <div class="tag">${docTitle}</div>
+        <h1>${docTitle}</h1>
+        <div class="meta-line"><span class="l">No.</span>${nextNo}</div>
+        <div class="meta-line"><span class="l">Date</span>${date}</div>
+      </div>
+    </div>
+    <div class="preview-billto">
+      <div class="col">
+        <div class="label">Bill to</div>
+        <div class="v">${esc(c ? c.name : '—')}</div>
+        <div class="v-sub">${esc(c && c.address ? c.address : '')}</div>
+        <div class="v-sub">${esc(c && c.contact ? c.contact + ' · ' + (c.phone || '') : (c && c.phone ? c.phone : ''))}</div>
+        ${c && c.trn ? `<div class="trn">TRN ${esc(c.trn)}</div>` : ''}
+      </div>
+      <div class="col" style="flex:0 0 130px">
+        <div class="label">Reference</div>
+        <div class="v-sub" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);line-height:1.5">
+          ISSUED-BY<br/>
+          ${esc(state.currentUser.name)}<br/>
+          ${state.currentUser.role.toUpperCase()}<br/><br/>
+          DOC-REF<br/>
+          DFT/${date.replace(/-/g,'/')}<br/>
+          ${nextNo}
+        </div>
+      </div>
+    </div>
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th style="width:24px">#</th>
+          <th>Description</th>
+          <th class="right" style="width:36px">Qty</th>
+          ${state.draftColumns.map(col => `<th class="right" style="width:70px">${esc(col.label)}</th>`).join('')}
+          <th class="right" style="width:70px">Line total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${previewItems.length === 0 ?
+          `<tr><td colspan="${4 + state.draftColumns.length}" style="text-align:center;color:var(--ink-3);padding:24px;font-style:italic">No line items yet</td></tr>` :
+          previewItems.map((it, i) => {
+            return `<tr>
+              <td>${i+1}</td>
+              <td>${esc(it.desc || '—')}</td>
+              <td class="right num-cell">${it.qty || 0}</td>
+              ${state.draftColumns.map(col => {
+                const amt = (it.qty||0) * (it.fees?.[col.id] || 0);
+                return `<td class="right num-cell">${amt > 0 ? fmt(amt) : '0.00'}</td>`;
+              }).join('')}
+              <td class="right num-cell">${fmt(lineTotal(it, state.draftColumns))}</td>
+            </tr>`;
+          }).join('')
+        }
+      </tbody>
+    </table>
+    <div class="preview-totals">
+      ${calc.govtTotal > 0 ? `<div class="tr"><span>Govt fees (passthrough)</span><span class="v">AED ${fmt(calc.govtTotal)}</span></div>` : ''}
+      ${calc.serviceTotal > 0 ? `<div class="tr"><span>Service fees${isTaxInv?' (before VAT)':''}</span><span class="v">AED ${fmt(calc.serviceTotal)}</span></div>` : ''}
+      ${calc.extraTaxable > 0 ? `<div class="tr"><span>Other taxable</span><span class="v">AED ${fmt(calc.extraTaxable)}</span></div>` : ''}
+      ${calc.extraNonTaxable > 0 ? `<div class="tr"><span>Other non-taxable</span><span class="v">AED ${fmt(calc.extraNonTaxable)}</span></div>` : ''}
+      ${isTaxInv && calc.vat > 0 ? `<div class="tr"><span>VAT 5%</span><span class="v">AED ${fmt(calc.vat)}</span></div>` : ''}
+      <div class="grand"><span>Net total</span><span class="v">AED ${fmt(calc.total)}</span></div>
+    </div>
+    ${notes || terms ? `<div style="display:flex;gap:24px;margin-top:18px;font-size:11px;color:var(--ink-2);line-height:1.55">
+      ${notes ? `<div style="flex:1"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px">Notes</div>${esc(notes)}</div>` : ''}
+      ${terms ? `<div style="flex:1"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px">Payment terms</div>${esc(terms)}</div>` : ''}
+    </div>` : ''}
+    <div class="preview-foot">
+      <div>BANK · ${esc(company.bank)}</div>
+      <div>${isTaxInv ? 'Computer-generated tax invoice. No signature required.' : 'Computer-generated invoice. No signature required.'}</div>
+    </div>
+  `;
+}
+
+/* ─── PAGE: CUSTOMERS ──────────────────────────────────── */
+function renderCustomers() {
+  const u = state.currentUser;
+  const regulars = customers.filter(c => c.type === 'regular');
+  const walkins = customers.filter(c => c.type === 'walkin');
+
+  return `
+    <p class="editorial-line">${customers.length} customers on record — <em>${regulars.length} regular business clients</em> and <em>${walkins.length} walk-ins</em>. Walk-in customers can be added quickly without full details; regular clients carry full TRN, contact, and address records.</p>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;gap:8px">
+      <input class="input" placeholder="Search customers..." style="width:260px;height:32px"/>
+      <button class="btn"><span class="btn-icon">${SVG.plus}</span>Quick add walk-in</button>
+      <button class="btn btn-primary"><span class="btn-icon">${SVG.plus}</span>Add regular client</button>
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin:18px 0 10px">
+      <h3 class="section-head" style="font-size:14px">Regular business clients</h3>
+      <span class="eyebrow">${regulars.length} on file</span>
+    </div>
+    <div class="grid-2">
+      ${regulars.map(c => `
+        <div class="record-card">
+          <div class="record-head">
+            <div>
+              <div class="record-name">${esc(c.name)}</div>
+              <div class="record-meta">TRN ${esc(c.trn)} · ${esc(c.contact || '—')}</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+            ${esc(c.address)}<br/>
+            ${esc(c.phone)}
+          </div>
+          <div class="record-stats">
+            <div>Invoices · <span class="stat-num">${c.invoices}</span></div>
+            <div>Service revenue · <span class="stat-num">AED ${fmtInt(c.totalBilled)}</span></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 10px">
+      <h3 class="section-head" style="font-size:14px">Walk-in customers</h3>
+      <span class="eyebrow">${walkins.length} on file</span>
+    </div>
+    <div class="grid-3">
+      ${walkins.map(c => `
+        <div class="record-card">
+          <div class="record-head">
+            <div>
+              <div class="record-name" style="font-size:12.5px">${esc(c.name)}</div>
+              <div class="record-meta">${esc(c.phone)}</div>
+            </div>
+          </div>
+          <div class="record-stats">
+            <div>Visits · <span class="stat-num">${c.invoices}</span></div>
+            <div>Total · <span class="stat-num">AED ${fmtInt(c.totalBilled)}</span></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ─── PAGE: SERVICES ───────────────────────────────────── */
+function renderServices() {
+  const u = state.currentUser;
+  return `
+    <p class="editorial-line">${services.length} services in your catalogue. Each service has a <em>government fee</em> (passthrough, no VAT) and a <em>service fee</em> (your revenue, taxable). Default values fill into new invoices automatically; staff can override on any line. Only the owner can change the catalogue defaults.</p>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      ${u.role === 'admin' ? `<button class="btn btn-primary"><span class="btn-icon">${SVG.plus}</span>Add service</button>` : `<button class="btn" disabled style="opacity:0.5;cursor:not-allowed">Owner-only · add service</button>`}
+    </div>
+
+    <div class="grid-2">
+      ${services.map(s => `
+        <div class="record-card">
+          <div class="record-head">
+            <div>
+              <div class="record-name">${esc(s.name)}</div>
+              <div class="record-meta">per ${esc(s.unit)} · ${s.govt > 0 ? 'govt + service' : 'typing only'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--hairline)">
+            <div style="flex:1">
+              <div class="kpi-label" style="margin-bottom:4px">Govt fee</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;color:${s.govt > 0 ? 'var(--ink)' : 'var(--ink-3)'};font-variant-numeric:tabular-nums">
+                ${s.govt > 0 ? `AED ${fmtInt(s.govt)}` : '<span style="font-size:12px;font-style:italic">none</span>'}
+              </div>
+            </div>
+            <div style="flex:1">
+              <div class="kpi-label" style="margin-bottom:4px">Service fee</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums">
+                AED ${fmtInt(s.service)}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* ─── PAGE: EMPLOYEES (admin) ──────────────────────────── */
+function renderEmployees() {
+  const u = state.currentUser;
+  if (u.role !== 'admin') return restrictBanner();
+
+  return `
+    <p class="editorial-line">${employees.length - 1} staff members and you, the owner. Each account is sealed with email + password, with optional 6-digit phone verification. Removing an employee revokes access immediately on all devices.</p>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary"><span class="btn-icon">${SVG.plus}</span>Add employee</button>
+    </div>
+
+    <div class="ledger-card">
+      <table class="ledger-table">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th class="right">Invoices issued</th>
+            <th class="right">Last seen</th>
+            <th class="right">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${employees.map((e, i) => {
+            const romans = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
+            return `<tr>
+              <td class="roman">${romans[i] || (i+1)}</td>
+              <td><span class="customer-name">${esc(e.name)}</span>${e.role === 'admin' ? ' <span class="role-tag role-admin">OWNER</span>' : ''}</td>
+              <td class="secondary mono" style="font-size:11.5px">${esc(e.email)}</td>
+              <td class="secondary"><span class="role-tag role-${e.role}">${e.role.toUpperCase()}</span></td>
+              <td class="right num">${e.invoices}</td>
+              <td class="right secondary mono" style="font-size:11.5px">${e.lastSeen}</td>
+              <td class="right secondary mono" style="font-size:11.5px">${e.joined}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ─── PAGE: AUDIT (admin) ──────────────────────────────── */
+function renderAudit() {
+  const u = state.currentUser;
+  if (u.role !== 'admin') return restrictBanner();
+
+  return `
+    <p class="editorial-line">Every action in the system is recorded — who logged in, who issued or modified an invoice, who changed a price. This log cannot be edited, only read. Records older than 12 months are archived but never deleted.</p>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--ink-2);font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">
+        <span style="color:var(--ink-3)">SHOWING</span> last 24 hours · ${auditLog.length} events
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm">Last 7 days</button>
+        <button class="btn btn-sm">Last 30 days</button>
+        <button class="btn btn-sm"><span class="btn-icon">${SVG.download}</span>Export CSV</button>
+      </div>
+    </div>
+
+    <div class="audit-list">
+      ${auditLog.map(a => {
+        const e = getEmployee(a.actor);
+        return `<div class="audit-row">
+          <div class="audit-time">${esc(a.time)}</div>
+          <div class="audit-actor">${esc(e.name)} <span class="role-tag role-${e.role}">${e.role.toUpperCase()}</span></div>
+          <div class="audit-action"><b>${esc(a.action)}</b> ${esc(a.target)}</div>
+          <div class="audit-meta">IP 39.42.${Math.floor(Math.random()*200)}.${Math.floor(Math.random()*200)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+/* ─── PAGE: SETTINGS (admin) ───────────────────────────── */
+function renderSettings() {
+  const u = state.currentUser;
+  if (u.role !== 'admin') return restrictBanner();
+
+  return `
+    <p class="editorial-line">These details appear on every invoice your team issues. Update them once and they apply to all future invoices — past invoices keep the details they were issued with.</p>
+
+    <div class="card-block">
+      <div class="card-block-head">
+        <h3>Company identity</h3>
+        <span class="eyebrow">Printed on every invoice</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-grid form-row-2">
+          <div class="field">
+            <label class="field-label">Legal name</label>
+            <input class="input" value="${esc(company.name)}"/>
+          </div>
+          <div class="field">
+            <label class="field-label">Tagline / description</label>
+            <input class="input" value="${esc(company.tagline)}"/>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Address</label>
+          <input class="input" value="${esc(company.address)}"/>
+        </div>
+        <div class="form-grid form-row-2">
+          <div class="field">
+            <label class="field-label">Phone</label>
+            <input class="input mono-input" value="${esc(company.phone)}"/>
+          </div>
+          <div class="field">
+            <label class="field-label">Email</label>
+            <input class="input mono-input" value="${esc(company.email)}"/>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Bank details (footer line)</label>
+          <input class="input mono-input" value="${esc(company.bank)}"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-block">
+      <div class="card-block-head">
+        <h3>VAT & TRN</h3>
+        <span class="eyebrow">Affects invoice title and tax columns</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--hairline)">
+        <div style="flex:1">
+          <div style="font-size:13px;color:var(--ink);font-weight:500">VAT status</div>
+          <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">When enabled, invoices print as "Tax Invoice" with VAT row and TRN. When disabled, plain "Invoice" with no VAT.</div>
+        </div>
+        <button class="btn btn-sm" id="vat-toggle" style="${company.vatRegistered ? 'background:var(--ink);color:var(--paper);border-color:var(--ink)' : ''}">
+          ${company.vatRegistered ? `${SVG.check} Registered` : 'Not registered'}
+        </button>
+      </div>
+      <div class="form-grid form-row-2" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label">TRN (tax registration number)</label>
+          <input class="input mono-input" value="${esc(company.trn)}" ${company.vatRegistered ? '' : 'disabled style="opacity:0.5"'}/>
+        </div>
+        <div class="field">
+          <label class="field-label">Default VAT rate</label>
+          <input class="input mono-input" value="5%" readonly/>
+        </div>
+      </div>
+      ${!company.vatRegistered ? '<p style="font-size:11.5px;color:var(--ink-3);margin:10px 0 0;font-style:italic">Add your TRN here once your registration completes — invoices will automatically switch back to Tax Invoice format.</p>' : ''}
+    </div>
+
+    <div class="card-block">
+      <div class="card-block-head">
+        <h3>Invoice numbering</h3>
+        <span class="eyebrow">Atomic · sequential · gapless</span>
+      </div>
+      <div class="form-grid form-row-3">
+        <div class="field">
+          <label class="field-label">Prefix</label>
+          <input class="input mono-input" value="INV"/>
+        </div>
+        <div class="field">
+          <label class="field-label">Format</label>
+          <select class="select">
+            <option selected>{PREFIX}-{NN}</option>
+            <option>{PREFIX}-{NNNN}</option>
+            <option>{PREFIX}/{YEAR}/{NNNN}</option>
+            <option>{NN}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Reset annually</label>
+          <select class="select">
+            <option selected>Yes — restart from 01 each January</option>
+            <option>No — continue forever</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">
+        NEXT INVOICE · INV-${String(state.invoiceCounter + 1).padStart(2, '0')}
+      </div>
+    </div>
+
+    <div class="card-block">
+      <div class="card-block-head">
+        <h3>Security & data</h3>
+        <span class="eyebrow">Account protection</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--hairline)">
+          <div>
+            <div style="font-size:13px;color:var(--ink);font-weight:500">Email + password login</div>
+            <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">Each employee has their own account with private password</div>
+          </div>
+          <div class="seal-tag seal-paid">${SVG.check} ENABLED</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--hairline)">
+          <div>
+            <div style="font-size:13px;color:var(--ink);font-weight:500">Two-step verification (optional)</div>
+            <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">6-digit code from phone app — can be turned on anytime later</div>
+          </div>
+          <button class="btn btn-sm">Turn on later</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--hairline)">
+          <div>
+            <div style="font-size:13px;color:var(--ink);font-weight:500">Auto-logout after inactivity</div>
+            <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">Sessions end after 30 minutes of no activity</div>
+          </div>
+          <div class="seal-tag seal-paid">${SVG.check} ENABLED</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+          <div>
+            <div style="font-size:13px;color:var(--ink);font-weight:500">Daily encrypted backup</div>
+            <div style="font-size:11.5px;color:var(--ink-3);margin-top:2px">Every invoice backed up nightly · kept for 5 years (FTA requirement)</div>
+          </div>
+          <div class="seal-tag seal-paid">${SVG.check} 02:00 UTC daily</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn">Cancel</button>
+      <button class="btn btn-primary">Save settings</button>
+    </div>
+  `;
+}
+
+function restrictBanner() {
+  return `
+    <div class="restrict-banner">
+      <div class="icon">${SVG.shield}</div>
+      <div class="text">
+        <b>Owner-only area.</b> This section is reserved for the company owner. Staff accounts can view invoices and create new ones, but cannot manage employees, audit logs, or company settings.
+      </div>
+    </div>
+
+    <p class="editorial-line">If you need access to this section, please ask your owner to grant it. You can continue working with invoices, customers, and the service catalogue.</p>
+  `;
+}
+
+/* ──────────────────────────────────────────────────────────
+   BINDING — per page interactivity
+   ────────────────────────────────────────────────────────── */
+function bindPage() {
+  const p = state.page;
+
+  // Common: quickfilter buttons
+  $$('.filter-chip[data-quickfilter]').forEach(btn => {
+    btn.onclick = () => {
+      const v = btn.dataset.quickfilter;
+      state.filter.status = v;
+      renderCurrentPage();
+    };
+  });
+
+  if (p === 'new-invoice') {
+    bindNewInvoice();
+  }
+
+  if (p === 'settings') {
+    const vatBtn = $('#vat-toggle');
+    if (vatBtn) vatBtn.onclick = () => {
+      company.vatRegistered = !company.vatRegistered;
+      toast(company.vatRegistered ? 'VAT enabled — invoices now print as Tax Invoice' : 'VAT disabled — invoices now print as plain Invoice');
+      renderCurrentPage();
+    };
+  }
+
+  if (p === 'invoices' || p === 'dashboard') {
+    // row click → load into new invoice as preview... but for now just feedback
+    $$('.ledger-table tbody tr').forEach(tr => {
+      tr.onclick = () => {
+        const id = tr.dataset.invoice;
+        const inv = invoices.find(i => i.id === id);
+        if (inv && inv.no) toast(`Opened ${inv.no}`, ` ${getCustomer(inv.customerId)?.name || ''}`);
+      };
+    });
+  }
+}
+
+function bindNewInvoice() {
+  renderColumnChips();
+  renderLineItems();
+  renderTotals();
+  renderPreview();
+  bindLineItemEvents();
+  bindCustomerSearch();
+  bindColumnEvents();
+
+  // date / notes / terms → preview live
+  ['f-inv-date', 'f-notes', 'f-terms'].forEach(id => {
+    const el = $('#' + id);
+    if (el) el.addEventListener('input', () => {
+      if (id === 'f-inv-date') state.draftDate = el.value;
+      if (id === 'f-notes') state.draftNotes = el.value;
+      if (id === 'f-terms') state.draftTerms = el.value;
+      renderPreview();
+    });
+  });
+
+  $('#add-line').onclick = () => {
+    state.draftItems.push(blankLineItem());
+    refreshLineItemsUI();
+  };
+
+  $('#add-from-catalog').onclick = () => {
+    // pick a govt-services type service by default — most common in this business
+    const s = services.find(sv => sv.govt > 0);
+    state.draftItems.push({
+      desc: s.name,
+      qty: 1,
+      fees: { govt: s.govt, service: s.service },
+      serviceId: s.id,
+    });
+    // Initialize any extra columns to 0 for this new line
+    state.draftColumns.forEach(col => {
+      if (col.id !== 'govt' && col.id !== 'service') {
+        state.draftItems[state.draftItems.length-1].fees[col.id] = 0;
+      }
+    });
+    refreshLineItemsUI();
+    toast('Added from catalogue', s.name);
+  };
+
+  $('#add-column').onclick = () => {
+    const label = prompt('Column name (e.g. Stamp Fee, Courier, Photocopy):');
+    if (!label || !label.trim()) return;
+    const vatable = confirm(`Should "${label.trim()}" be VAT-able (taxed at 5%)?\n\nOK = taxable (5% VAT)\nCancel = not taxable (0% VAT, like govt fees)`);
+    const colId = 'col_' + Date.now();
+    state.draftColumns.push({ id: colId, label: label.trim(), vatable, removable: true });
+    // ensure all existing lines have a 0 fee for this new column
+    state.draftItems.forEach(it => { if (!it.fees) it.fees = {}; it.fees[colId] = 0; });
+    refreshLineItemsUI();
+    toast(`Column added`, label.trim());
+  };
+
+  $('#customer-clear').onclick = () => {
+    state.draftCustomer = null;
+    ['f-customer','f-cust-trn','f-cust-phone','f-cust-address'].forEach(id => { const el = $('#' + id); if (el) el.value = ''; });
+    renderPreview();
+  };
+
+  $('#save-draft').onclick = () => { toast('Draft saved · auto-syncing to team'); };
+
+  $('#issue-invoice').onclick = () => {
+    if (!state.draftCustomer) {
+      toast('Pick a customer first', '');
+      $('#f-customer').focus();
+      return;
+    }
+    const validItems = state.draftItems.filter(it => it.desc && it.qty > 0 && Object.values(it.fees || {}).some(v => v > 0));
+    if (validItems.length === 0) {
+      toast('Add at least one line item with fees', '');
+      return;
+    }
+    issueInvoice(validItems);
+  };
+}
+
+function blankLineItem() {
+  const fees = {};
+  state.draftColumns.forEach(col => { fees[col.id] = 0; });
+  return { desc: '', qty: 1, fees, serviceId: '' };
+}
+
+function refreshLineItemsUI() {
+  renderColumnChips();
+  renderLineItems();
+  renderTotals();
+  renderPreview();
+  bindLineItemEvents();
+  bindColumnEvents();
+}
+
+function bindColumnEvents() {
+  $$('[data-remove-col]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const colId = btn.dataset.removeCol;
+      const col = state.draftColumns.find(c => c.id === colId);
+      if (!col || !col.removable) return;
+      if (!confirm(`Remove the "${col.label}" column from this invoice?`)) return;
+      state.draftColumns = state.draftColumns.filter(c => c.id !== colId);
+      state.draftItems.forEach(it => { if (it.fees) delete it.fees[colId]; });
+      refreshLineItemsUI();
+      toast(`Column removed`, col.label);
+    };
+  });
+}
+
+function bindLineItemEvents() {
+  $$('#line-items-body tr').forEach(tr => {
+    const idx = +tr.dataset.line;
+    const it = state.draftItems[idx];
+    if (!it) return;
+    if (!it.fees) it.fees = {};
+
+    tr.querySelector('.line-desc').oninput = e => { it.desc = e.target.value; renderTotals(); renderPreview(); recalcLine(tr, it); };
+    tr.querySelector('.line-qty').oninput = e => { it.qty = parseFloat(e.target.value) || 0; renderTotals(); renderPreview(); recalcLine(tr, it); };
+
+    tr.querySelectorAll('.line-fee').forEach(input => {
+      const colId = input.dataset.col;
+      input.oninput = e => {
+        it.fees[colId] = parseFloat(e.target.value) || 0;
+        renderTotals(); renderPreview(); recalcLine(tr, it);
+      };
+    });
+
+    tr.querySelector('.remove-btn[data-remove]').onclick = () => {
+      state.draftItems.splice(idx, 1);
+      if (state.draftItems.length === 0) state.draftItems = [blankLineItem()];
+      refreshLineItemsUI();
+    };
+  });
+}
+
+function recalcLine(tr, it) {
+  const totalCell = tr.querySelector('td:nth-last-child(2)');
+  if (totalCell) totalCell.textContent = fmt(lineTotal(it, state.draftColumns));
+}
+
+function bindCustomerSearch() {
+  const input = $('#f-customer');
+  const menu = $('#customer-dropdown');
+  if (!input || !menu) return;
+
+  const showDropdown = (q = '') => {
+    const matches = customers.filter(c => c.name.toLowerCase().includes(q.toLowerCase()));
+    menu.innerHTML = `
+      ${matches.map(c => `
+        <div class="dropdown-item" data-pick="${c.id}">
+          <span>${esc(c.name)}</span>
+          <span class="dropdown-sub">${esc(c.trn)}</span>
+        </div>
+      `).join('')}
+      ${q ? `<div class="dropdown-item add-new" data-pick="new"><span>${SVG.plus} Add "${esc(q)}" as new customer</span></div>` : ''}
+    `;
+    menu.classList.remove('hidden');
+    menu.querySelectorAll('[data-pick]').forEach(el => {
+      el.onclick = () => {
+        const pick = el.dataset.pick;
+        if (pick === 'new') {
+          input.value = q;
+          state.draftCustomer = { id: 'new', name: q, trn: '', phone: '', address: '', contact: '' };
+        } else {
+          const c = getCustomer(pick);
+          state.draftCustomer = c;
+          input.value = c.name;
+          if ($('#f-cust-trn')) $('#f-cust-trn').value = c.trn;
+          if ($('#f-cust-phone')) $('#f-cust-phone').value = c.phone;
+          if ($('#f-cust-address')) $('#f-cust-address').value = c.address;
+        }
+        menu.classList.add('hidden');
+        renderPreview();
+      };
+    });
+  };
+
+  input.addEventListener('focus', () => showDropdown(input.value));
+  input.addEventListener('input', () => showDropdown(input.value));
+  input.addEventListener('blur', () => setTimeout(() => menu.classList.add('hidden'), 180));
+}
+
+/* ─── ISSUE INVOICE (with simulated real-time push) ─── */
+function issueInvoice(items) {
+  state.invoiceCounter += 1;
+  const no = `INV-${String(state.invoiceCounter).padStart(2, '0')}`;
+  const newInv = {
+    id: 'i' + Date.now(),
+    no,
+    date: state.draftDate,
+    customerId: state.draftCustomer.id,
+    columns: state.draftColumns.map(c => ({ ...c })), // snapshot — past invoices keep their columns
+    items: items.map(it => ({ ...it, fees: { ...it.fees } })),
+    status: 'unpaid',
+    issuedBy: state.currentUser.id,
+    issuedAt: '2026-06-27 ' + new Date().toTimeString().slice(0, 5),
+    paid: 0,
+  };
+  invoices.unshift(newInv);
+
+  // add to audit log
+  auditLog.unshift({
+    time: '2026-06-27 ' + new Date().toTimeString().slice(0, 8),
+    actor: state.currentUser.id,
+    action: 'issued',
+    target: `${no} · ${fmt(invoiceTotal(newInv))} AED · ${state.draftCustomer.name}`
+  });
+
+  toast('Invoice issued and synced to team', no);
+
+  // reset draft — keep default columns, blank items
+  state.draftColumns = [
+    { id: 'govt', label: 'Govt Fee', vatable: false, removable: false },
+    { id: 'service', label: 'Service Fee', vatable: true, removable: false },
+  ];
+  state.draftItems = [blankLineItem()];
+  state.draftCustomer = null;
+
+  // jump to invoices list to show the new row
+  setTimeout(() => {
+    nav('invoices');
+    setTimeout(() => {
+      const row = document.querySelector(`tr[data-invoice="${newInv.id}"]`);
+      if (row) row.classList.add('new-row');
+    }, 50);
+  }, 600);
+}
+
+/* ──────────────────────────────────────────────────────────
+   GLOBAL BINDINGS
+   ────────────────────────────────────────────────────────── */
+function initBindings() {
+  // nav clicks
+  $$('.nav-item').forEach(el => {
+    el.onclick = () => nav(el.dataset.page);
+  });
+
+  // theme toggle
+  $('#theme-toggle').onclick = () => setTheme(state.theme === 'light' ? 'dark' : 'light');
+
+  // role chip menu
+  const chip = $('#role-chip');
+  const menu = $('#role-menu');
+  chip.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => menu.classList.remove('open'));
+  $$('.role-menu-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.stopPropagation();
+      setRole(item.dataset.roleSet);
+      menu.classList.remove('open');
+    });
+  });
+}
+
+/* ──────────────────────────────────────────────────────────
+   BOOT
+   ────────────────────────────────────────────────────────── */
+function boot() {
+  // load saved theme
+  let savedTheme = 'light';
+  try { savedTheme = localStorage.getItem('inv-theme') || 'light'; } catch(e) {}
+  setTheme(savedTheme);
+
+  initBindings();
+  applyRole(); // also renders current page
+
+  // Simulate a "live" event arriving from another employee 5 seconds in
+  setTimeout(() => {
+    if (state.page === 'dashboard' || state.page === 'invoices') {
+      const fakeBadge = document.createElement('div');
+      fakeBadge.className = 'toast';
+      fakeBadge.innerHTML = `<span style="width:14px;height:14px;color:var(--accent)">${SVG.bullet}</span><span>Noor Ghani opened draft · <span class="tnum">INV-${String(state.invoiceCounter + 2).padStart(2,'0')}</span></span>`;
+      $('#toast-host').appendChild(fakeBadge);
+      setTimeout(() => { fakeBadge.classList.add('toast-leave'); setTimeout(() => fakeBadge.remove(), 250); }, 3000);
+    }
+  }, 6000);
+}
+
+boot();
+</script>
+
+</body>
+</html>

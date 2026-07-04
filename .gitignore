@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment files — NEVER commit. A leaked credential in a financial
+# project is an incident, not a mistake. (CLAUDE.md §1)
+.env
+.env.*
+*.local
+
+# Vercel
+.vercel/
+
+# Supabase local dev
+supabase/.temp/
+
+# Logs & debug
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test / coverage output
+coverage/
+
+# TypeScript incremental state
+*.tsbuildinfo
+next-env.d.ts
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor state
+.vscode/
+.idea/
