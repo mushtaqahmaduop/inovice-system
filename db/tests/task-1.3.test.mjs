@@ -127,6 +127,7 @@ async function mkDraft() {
     values (${inv.id}, 1, 'Line', 1, 0, 1000)`;
   return inv.id;
 }
+await mkDraft(); // a plain draft — R2 expects both a draft and an issued invoice
 const issuedInv = await mkDraft();
 await sql`select issue_invoice(${issuedInv})`; // owner path: auth.uid() null → guard skips
 const [payment] = await sql`insert into payments (invoice_id, amount, method_id, received_on)
