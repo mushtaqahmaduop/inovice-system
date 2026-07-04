@@ -9,6 +9,7 @@ out/
 # project is an incident, not a mistake. (CLAUDE.md §1)
 .env
 .env.*
+!.env.example
 *.local
 
 # Vercel

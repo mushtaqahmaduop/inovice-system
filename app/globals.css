@@ -1,0 +1,180 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ────────────────────────────────────────────────────────────
+   STAMPED PAPER — design tokens (D-20/D-21/D-22)
+   Values ported EXACTLY from reference/invoice_system_v2.html.
+   Naming note: the prototype calls the FTA federal blue `--accent`;
+   shadcn already uses `--accent` for subtle hover surfaces, so the
+   blue is exposed here as `--accent-action` and mapped to shadcn's
+   `--primary`. Burnt orange `--warning` is for OVERDUE ONLY.
+   Components use tokens only — no hardcoded hex (CLAUDE.md §5).
+   ──────────────────────────────────────────────────────────── */
+
+:root {
+  /* Stamped Paper — light */
+  --paper: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #ecebe7;
+  --surface-3: #e3e1db;
+  --ink: #0f1419;
+  --ink-2: #4a4f57;
+  --ink-3: #8a8e94;
+  --ink-4: #b8bbbf;
+  --hairline: #e0ddd6;
+  --hairline-strong: #c7c4bb;
+  --accent-action: #003b5c;
+  --accent-action-hover: #00527d;
+  --accent-soft: #e5edf2;
+  --warning: #c2410c;
+  --warning-soft: #fef0e6;
+  --success: #15633c;
+  --success-soft: #e6f0ea;
+  --shadow-focus: 0 0 0 3px rgba(0, 59, 92, 0.15);
+
+  /* shadcn semantic mapping */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent-action);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: var(--hairline);
+  --input: var(--hairline-strong);
+  --ring: var(--accent-action);
+  --chart-1: var(--accent-action);
+  --chart-2: var(--ink-2);
+  --chart-3: var(--ink-3);
+  --chart-4: var(--success);
+  --chart-5: var(--warning);
+  --radius: 0.25rem;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink-2);
+  --sidebar-primary: var(--accent-action);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--accent-action);
+}
+
+.dark {
+  /* Stamped Paper — dark */
+  --paper: #0a0d12;
+  --surface: #11151c;
+  --surface-2: #181d26;
+  --surface-3: #20262f;
+  --ink: #e6e4dd;
+  --ink-2: #a8a59c;
+  --ink-3: #6b6963;
+  --ink-4: #45433e;
+  --hairline: #1f242d;
+  --hairline-strong: #2f353f;
+  --accent-action: #5b95c4;
+  --accent-action-hover: #7badd5;
+  --accent-soft: #122530;
+  --warning: #d97744;
+  --warning-soft: #2a1810;
+  --success: #4a9d72;
+  --success-soft: #122218;
+  --shadow-focus: 0 0 0 3px rgba(91, 149, 196, 0.2);
+
+  --primary-foreground: #0a0d12;
+  --sidebar-primary-foreground: #0a0d12;
+  --destructive: oklch(0.704 0.191 22.216);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-sans);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-accent-action: var(--accent-action);
+  --color-accent-action-hover: var(--accent-action-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "cv11" 1,
+      "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* D-21: JetBrains Mono for ALL numerics — amounts, invoice numbers, dates in tables */
+  .num,
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
