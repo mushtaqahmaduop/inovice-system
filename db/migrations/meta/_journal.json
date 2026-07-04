@@ -36,6 +36,13 @@
       "when": 1783189850616,
       "tag": "0004_trgm_and_auth_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783195019259,
+      "tag": "0005_issue_invoice_and_parent_lock",
+      "breakpoints": true
     }
   ]
 }
