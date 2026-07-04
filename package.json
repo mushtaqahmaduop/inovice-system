@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "test:db:1.2a": "node --env-file=.env.local db/tests/task-1.2a.test.mjs",
-    "test:db:1.2b": "node --env-file=.env.local db/tests/task-1.2b.test.mjs"
+    "test:db:1.2b": "node --env-file=.env.local db/tests/task-1.2b.test.mjs",
+    "test:db:1.3": "node --env-file=.env.local db/tests/task-1.3.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

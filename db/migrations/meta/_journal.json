@@ -50,6 +50,13 @@
       "when": 1783196852372,
       "tag": "0006_immutability_and_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783197558709,
+      "tag": "0007_rls_policies",
+      "breakpoints": true
     }
   ]
 }
