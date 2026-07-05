@@ -59,16 +59,31 @@
   - Sample numbering style observed: `INV-1001` (our format is Settings-configurable, D-12 — admin can match it)
   - **STILL OPEN:** exact legal name (emails imply "Prestige Land Typing" — confirm spelling), TRN (none on the sample — ties into Q-03), and the **logo file**: the sample's purple logo reads "James Sharp Photography" — clearly the invoice TEMPLATE's placeholder, not the business logo. Do NOT copy it. Need the real logo as a file before 6.1.
 - **Q-03** VAT deregistration status/date — launch in registered or deregistered mode? → blocks Settings defaults (not schema).
+  **✅ ANSWERED 2026-07-05 (client, 2nd batch): registered WITH a TRN, but deregistration applied and initially approved; per the authority's guidance they do NOT issue tax (TRN-based) invoices during the process.** → Launch in **deregistered mode**: `vat_registered=false` (0% VAT, no TRN printed — F-4b keeps the TRN stored once provided). The exact TRN value itself was still not supplied; not blocking since it isn't printed.
 - **Q-04** Which extra charge types recur (courier, stamp, photocopy…) and their default VAT-ability. → blocks extra-columns presets (feature itself is locked, D-11).
+  **✅ ANSWERED 2026-07-05 (client: "null"): no recurring extra charges** — no presets needed; the manual add-column path already built is the final shape.
 - **Q-05** Customer fields required for regulars (TRN? address? credit terms?). → blocks customer form finalization.
+  **✅ ANSWERED 2026-07-05: some clients are served on CREDIT.** The existing nullable field set suffices; credit is expressed through the due-date convention (Q-11: one week) and the outstanding-balance ledger/report — no schema change.
 - **Q-06** Employee list and who gets accounts at launch; who besides the owner is "admin," if anyone. → blocks user seeding only.
+  **✅ ANSWERED 2026-07-05: many employees on duty schedules; the owner needs the facility to create user+password per availability** — exactly what /admin/users (task 2.2) already provides. No names given; accounts get created at handover.
 - **Q-07** Receipt/print paper size in the shop (A4 vs A5 vs thermal). → blocks print CSS.
   **✅ ANSWERED 2026-07-05 (via Mushtaq): A4 AND A5 — NOT thermal.** D-26's conditional reopen of D-09 is NOT triggered (V-7 closes). Settings paper-size unlocks to A4|A5; task 6.1 print CSS must render honestly on both.
 - **Q-08** Language: English-only, or Arabic on the printed invoice? → potentially large; if Arabic required, print layout needs RTL treatment — flag to Mushtaq immediately on answer.
+  **⚠️ ANSWERED 2026-07-05: BOTH English AND Arabic — FLAGGED TO MUSHTAQ same day per the rule.** Scope impact lands on task 6.1 only (schema already Unicode; `company_name_ar` exists): bilingual labels on the print template, RTL text runs, and a self-hosted Arabic typeface (Inter Tight/JetBrains Mono carry no Arabic glyphs — add e.g. IBM Plex Sans Arabic/Noto Sans Arabic via next/font). Mushtaq must confirm this scope (and any price implication with the client) BEFORE 6.1 is built.
 - **Q-09** Any existing customer/invoice data to import from Excel, and its shape. → blocks migration/import task.
+  **◐ ANSWERED 2026-07-05: "will be provided"** — task 7.4 stays; waiting on the actual file to see its shape.
 - **Q-10** Preferred payment methods to record (cash, card, bank transfer, cheque) and whether reference numbers are needed. → blocks payments form detail.
   **✅ ANSWERED 2026-07-05 (via Mushtaq): "cash, bank, card etc."** — matches the seeded `payment_methods` (Cash, Card, Bank transfer, Cheque); admin can add more anytime (D-25). Reference-number need unspecified — the optional `reference` field already covers it.
 - **Q-11–Q-17** Remaining items from the WhatsApp brief (reporting expectations, email sending needs, invoice due-date conventions, discount handling, go-live date, training expectations, domain purchase). Reconcile this list against the actual brief text — the WhatsApp version is authoritative.
+  **✅ ANSWERED 2026-07-05 (client, 2nd batch):**
+  - **Due-date convention: ONE WEEK** → `settings.due_days_default = 7`; overdue rendering already keys off it.
+  - **Discounts: none shown on invoices** → no discount feature; if a price concession happens they simply charge less on the line.
+  - **Emailing: NOT needed — "printing is enough"** → per the BUILD_PHASES rule, **task 6.4 is DELETED and Resend drops out of the stack** (CLAUDE.md §2 email line becomes moot; no keys to wire).
+  - **Reports: "who still owes our money"** → outstanding balances is THE headline report: 7.1 dashboard must lead with it; the customer ledger (5.2) and CSV exports (6.2) already carry it.
+  - **Go-live: no deadline** ("not important").
+  - **Domain: not required** → production stays on the vercel.app URL (D-04 revisited: no client domain purchase).
+  - **Training: Mr Sahil** is the handover attendee (7.5 walkthrough).
+  **STILL OPEN after both batches: the logo file and the exact legal name (Q-02 remainder) — the only true blockers left, both for 6.1.**
 
 **Rule:** if the client's answers contradict a locked decision, stop and raise it with Mushtaq — do not silently change a D-item.
 

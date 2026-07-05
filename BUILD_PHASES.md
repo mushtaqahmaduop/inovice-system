@@ -44,16 +44,16 @@
 
 ## Phase 5 — Payments & ledger (~2–3 days)
 
-- **5.1** Record payment (method from `payment_methods`, reference, date), partial handling, derived status, reversal flow (`reverses_payment_id`). ~~⛔ Q-10~~ **Q-10 ANSWERED 2026-07-05 (cash/bank/card — seed matches)**, **⛔ Q-11** for due-date conventions [#25] — until answered, overdue = `settings.due_days_default` (configurable), so the demo isn't blocked. *Done = unpaid → partial → paid transitions purely from payments sum; overdue rendering in burnt orange.*
+- **5.1** Record payment (method from `payment_methods`, reference, date), partial handling, derived status, reversal flow (`reverses_payment_id`). ~~⛔ Q-10~~ **Q-10 ANSWERED 2026-07-05 (cash/bank/card — seed matches)**, ~~⛔ Q-11~~ **Q-11 answered 2026-07-05: one week → `due_days_default = 7`** (the configurable default was the right call). *Done = unpaid → partial → paid transitions purely from payments sum; overdue rendering in burnt orange.*
 - **5.2** Customer ledger view: invoices + payments per customer, balances.
 - **5.3** Invoice detail page: full event timeline from `invoice_events` (the audit story to show the client).
 
 ## Phase 6 — Print, export, realtime (~3 days)
 
-- **6.1 [FABLE-optional]** Print CSS (D-09): **build from scratch — the prototype contains no print CSS at all (REVIEW_REPORT B-2)** [#26]. Pixel-honest **A4 AND A5** (~~⛔ Q-07~~ **answered 2026-07-05: A4+A5, not thermal — D-26 reopen never fires**) matching the Stamped Paper invoice design — header from settings snapshot, two-fee + extra columns, VAT summary, TRN, "sealed" reference. **Self-hosted fonts preloaded on the invoice route with `font-display: block`** (ADJUDICATION R-8a). Full vs simplified tax-invoice conditional blocks per VERIFY V-2. Test in Chrome + Edge print-to-PDF. ⛔ Q-02 header details, ⛔ Q-08 Arabic (flag immediately if yes). **If Q-07's answer is thermal: STOP — D-26 reopens D-09 with Mushtaq.**
+- **6.1 [FABLE-optional]** Print CSS (D-09): **build from scratch — the prototype contains no print CSS at all (REVIEW_REPORT B-2)** [#26]. Pixel-honest **A4 AND A5** (~~⛔ Q-07~~ **answered 2026-07-05: A4+A5, not thermal — D-26 reopen never fires**) matching the Stamped Paper invoice design — header from settings snapshot, two-fee + extra columns, VAT summary, TRN, "sealed" reference. **Self-hosted fonts preloaded on the invoice route with `font-display: block`** (ADJUDICATION R-8a). Full vs simplified tax-invoice conditional blocks per VERIFY V-2. Test in Chrome + Edge print-to-PDF. ⛔ Q-02 header details (logo file + legal name — THE remaining blockers), **Q-08 answered 2026-07-05: BILINGUAL English+Arabic — flagged; needs an Arabic typeface via next/font and RTL text runs; Mushtaq confirms scope before this task starts.** **If Q-07's answer is thermal: STOP — D-26 reopens D-09 with Mushtaq.**
 - **6.2** CSV export (invoices, payments, per-period VAT report basis) (D-18). Fils → 2-decimal AED strings from integer math.
 - **6.3** Realtime invoice list: **Broadcast-refetch pattern, not `postgres_changes` on core tables** [#26] — server action (or trigger) emits a lightweight "invoices changed" broadcast; clients refetch through normal RLS-checked queries (ADJUDICATION R-5). **VERIFY current Supabase Realtime guidance when this task starts.**
-- **6.4** ⛔ Q-11–17: invoice emailing via Resend [#27] — **blocked until the client's answer defines the need.** Wire Resend keys only when this task unblocks. If the answer is "no emailing," delete this task and drop Resend from the stack.
+- ~~**6.4** invoice emailing via Resend~~ — **DELETED 2026-07-05: the client answered "printing is enough."** Resend drops from the stack; no keys ever wired (the rule in this very line, executed).
 
 ## Phase 7 — Hardening & delivery (~3 days)
 
