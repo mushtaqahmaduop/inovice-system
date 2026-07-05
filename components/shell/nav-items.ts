@@ -20,7 +20,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
       { label: "Invoices", href: "/invoices", icon: "invoices", task: "4.3" },
-      { label: "New invoice", href: "/invoices/new", icon: "plus", task: "4.1" },
+      { label: "New invoice", href: "/invoices/new", icon: "plus" },
     ],
   },
   {
