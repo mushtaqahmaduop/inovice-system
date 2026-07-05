@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { formatAed } from "@/lib/money";
+import { toRoman } from "@/lib/invoice-calc";
 
 // Dashboard (task 7.1). The client's one named report — "who still owes
 // our money" — leads the page. Everything derives from sealed columns +
@@ -66,35 +67,41 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <p className="mb-5 text-[13px] leading-relaxed text-ink-2">
-        Signed in as {ctx.fullName}
-        {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. Figures derive from sealed
-        invoices and recorded payments — nothing here is ever edited by hand.
-      </p>
+      <header className="mb-8">
+        <h1 className="text-[20px] font-semibold tracking-tight text-ink">Dashboard</h1>
+        <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
+          Signed in as {ctx.fullName}
+          {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. Figures derive from sealed
+          invoices and recorded payments — nothing here is ever edited by hand.
+        </p>
+      </header>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <Stat
           label="Outstanding — who owes us"
-          value={`AED ${formatAed(outstandingTotal)}`}
+          value={formatAed(outstandingTotal)}
           warn={outstandingTotal > 0}
         />
-        <Stat label="Invoiced this month" value={`AED ${formatAed(monthTotal)}`} sub={`${monthRows.length} sealed`} />
-        <Stat label="VAT collected this month" value={`AED ${formatAed(monthVat)}`} />
+        <Stat label="Invoiced this month" value={formatAed(monthTotal)} sub={`${monthRows.length} sealed`} />
+        <Stat label="VAT collected this month" value={formatAed(monthVat)} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <div>
-          <p className="mono mb-2 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
+          <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">
             Open balances by customer
           </p>
           <div className="divide-y divide-hairline border border-hairline bg-surface">
-            {debtorList.map((d) => (
+            {debtorList.map((d, i) => (
               <Link
                 key={d.id}
                 href={`/customers/${d.id}`}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-accent"
+                className="flex min-h-[42px] items-center gap-3 px-4 py-2 hover:bg-accent"
               >
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{d.name}</span>
+                <span className="mono w-7 shrink-0 text-[11px] text-ink-3">{toRoman(i + 1)}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">
+                  {d.name}
+                </span>
                 <span className="mono text-[10px] text-ink-3">
                   {d.count} invoice{d.count === 1 ? "" : "s"}
                 </span>
@@ -104,15 +111,23 @@ export default async function DashboardPage() {
               </Link>
             ))}
             {debtorList.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[12px] text-ink-3">
+              <p className="px-4 py-8 text-center text-[13px] text-ink-3">
                 Nobody owes anything — all sealed invoices are settled.
               </p>
+            ) : null}
+            {debtorList.length > 0 ? (
+              <Link
+                href="/customers"
+                className="block px-4 py-2.5 text-[12px] font-medium text-accent-action hover:bg-accent"
+              >
+                View all customers
+              </Link>
             ) : null}
           </div>
         </div>
 
         <div>
-          <p className="mono mb-2 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
+          <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">
             Recent activity
           </p>
           <div className="divide-y divide-hairline border border-hairline bg-surface">
@@ -120,7 +135,7 @@ export default async function DashboardPage() {
               <Link
                 key={e.id}
                 href={`/invoices/${e.invoice_id}`}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-accent"
+                className="flex min-h-[42px] items-center gap-3 px-4 py-2 hover:bg-accent"
               >
                 <span className="mono w-20 shrink-0 text-[11px] text-ink-2">
                   {eventNumbers.get(e.invoice_id) ?? "draft"}
@@ -137,7 +152,7 @@ export default async function DashboardPage() {
               </Link>
             ))}
             {(events ?? []).length === 0 ? (
-              <p className="px-3 py-6 text-center text-[12px] text-ink-3">No activity yet.</p>
+              <p className="px-4 py-8 text-center text-[13px] text-ink-3">No activity yet.</p>
             ) : null}
           </div>
         </div>
@@ -158,10 +173,13 @@ function Stat({
   warn?: boolean;
 }) {
   return (
-    <div className="border border-hairline bg-surface p-4">
-      <p className="mono mb-1 text-[9px] tracking-[0.14em] text-ink-3 uppercase">{label}</p>
-      <p className={`mono text-[18px] font-medium ${warn ? "text-warning" : "text-ink"}`}>{value}</p>
-      {sub ? <p className="mono mt-0.5 text-[10px] text-ink-3">{sub}</p> : null}
+    <div className="border border-hairline bg-surface p-5">
+      <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">{label}</p>
+      <p className={`num text-[26px] leading-none font-medium ${warn ? "text-warning" : "text-ink"}`}>
+        <span className="mr-1.5 align-middle text-[12px] font-normal text-ink-3">AED</span>
+        {value}
+      </p>
+      {sub ? <p className="mono mt-2 text-[10px] text-ink-3">{sub}</p> : null}
     </div>
   );
 }
