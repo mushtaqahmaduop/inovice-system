@@ -152,6 +152,9 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
           values ('Staging Test Co', true, 500, 'INV-{NN}')`;
+// Idempotency: this suite's method rows survive runs (payments were just
+// truncated, so no FK holds them).
+await sql`delete from payment_methods where label in ('Payment Link', 'Pay Link')`;
 
 const adminId = await ensureUser("sett-admin@staging.test");
 const staffId = await ensureUser("sett-staff@staging.test");
@@ -226,7 +229,12 @@ try {
     ok(
       (await post("/api/admin/settings", adminSession, { ...BASE_SETTINGS, paperSize: "thermal" }))
         .status === 400,
-      "paper size locked to A4 pending Q-07 → 400"
+      "thermal paper rejected (Q-07: the shop prints A4/A5 only)"
+    );
+    ok(
+      (await post("/api/admin/settings", adminSession, { ...BASE_SETTINGS, paperSize: "A5" }))
+        .status === 200,
+      "A5 accepted (Q-07 answered 2026-07-05)"
     );
   }
 

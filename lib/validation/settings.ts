@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 // Settings input (task 3.2). Structure per SCHEMA_DESIGN §2.1; the VALUES
-// stay client-variable (Q-02/Q-03/Q-07) so nothing business-specific is
-// hardcoded here. paper_size stays locked to A4 until Q-07 answers — a
-// "thermal" answer reopens D-09/D-26 with Mushtaq before any code changes.
+// stay client-variable (Q-02/Q-03) so nothing business-specific is
+// hardcoded here. Q-07 (2026-07-05): the shop prints A4 and A5 — thermal
+// was ruled out, so D-26's reopen condition can never fire.
 
 const optionalTrimmed = (max: number) =>
   z
@@ -33,7 +33,7 @@ export const settingsUpdateSchema = z.object({
     .min(1)
     .max(30)
     .refine((v) => v.includes("{NN}"), { message: "Format must contain {NN}" }), // D-12
-  paperSize: z.literal("A4"), // pending Q-07 / D-26
+  paperSize: z.enum(["A4", "A5"]), // Q-07 answered 2026-07-05: A4+A5, never thermal
   invoiceNotesDefault: optionalTrimmed(2000),
   invoiceTermsDefault: optionalTrimmed(2000),
   dueDaysDefault: z.number().int().min(0).max(365).nullable(),

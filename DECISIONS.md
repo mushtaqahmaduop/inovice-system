@@ -51,15 +51,23 @@
 > The authoritative brief text is on WhatsApp. When the client replies, record each answer here with a date, then unblock the corresponding tasks in BUILD_PHASES.md. Until answered, anything below must be built as configurable or deferred — never assumed.
 
 - **Q-01** Business type confirmation: is the two-column govt-fee + service-fee model correct for his business (Prestige Land–style typing centre), or single-fee? → blocks final invoice form & print layout.
+  **✅ ANSWERED 2026-07-05 (via Mushtaq): two columns CONFIRMED.** The client's own sample invoice (`invoice.jpg.jpeg`, relayed by Mushtaq) shows exactly the Unit Price (govt/passthrough) + Service Fee shape. Phase 4 form is valid as built.
 - **Q-02** Exact company details for the invoice header: legal name, TRN, address, logo file, contact lines. → blocks print CSS finalization.
+  **◐ PARTIALLY ANSWERED 2026-07-05 — from the client's sample invoice (details only; layout/design NOT to be copied):**
+  - Contacts: `+971 50 986 0956` / `+971 50 714 2037`; emails `pristigeland@gmail.com` / `Prestigelandtyping@gmail.com`
+  - Address: `Bawabat Al Sharq St., Civic Center Al Jimi, Al Ain, United Arab Emirates`
+  - Sample numbering style observed: `INV-1001` (our format is Settings-configurable, D-12 — admin can match it)
+  - **STILL OPEN:** exact legal name (emails imply "Prestige Land Typing" — confirm spelling), TRN (none on the sample — ties into Q-03), and the **logo file**: the sample's purple logo reads "James Sharp Photography" — clearly the invoice TEMPLATE's placeholder, not the business logo. Do NOT copy it. Need the real logo as a file before 6.1.
 - **Q-03** VAT deregistration status/date — launch in registered or deregistered mode? → blocks Settings defaults (not schema).
 - **Q-04** Which extra charge types recur (courier, stamp, photocopy…) and their default VAT-ability. → blocks extra-columns presets (feature itself is locked, D-11).
 - **Q-05** Customer fields required for regulars (TRN? address? credit terms?). → blocks customer form finalization.
 - **Q-06** Employee list and who gets accounts at launch; who besides the owner is "admin," if anyone. → blocks user seeding only.
 - **Q-07** Receipt/print paper size in the shop (A4 vs A5 vs thermal). → blocks print CSS.
+  **✅ ANSWERED 2026-07-05 (via Mushtaq): A4 AND A5 — NOT thermal.** D-26's conditional reopen of D-09 is NOT triggered (V-7 closes). Settings paper-size unlocks to A4|A5; task 6.1 print CSS must render honestly on both.
 - **Q-08** Language: English-only, or Arabic on the printed invoice? → potentially large; if Arabic required, print layout needs RTL treatment — flag to Mushtaq immediately on answer.
 - **Q-09** Any existing customer/invoice data to import from Excel, and its shape. → blocks migration/import task.
 - **Q-10** Preferred payment methods to record (cash, card, bank transfer, cheque) and whether reference numbers are needed. → blocks payments form detail.
+  **✅ ANSWERED 2026-07-05 (via Mushtaq): "cash, bank, card etc."** — matches the seeded `payment_methods` (Cash, Card, Bank transfer, Cheque); admin can add more anytime (D-25). Reference-number need unspecified — the optional `reference` field already covers it.
 - **Q-11–Q-17** Remaining items from the WhatsApp brief (reporting expectations, email sending needs, invoice due-date conventions, discount handling, go-live date, training expectations, domain purchase). Reconcile this list against the actual brief text — the WhatsApp version is authoritative.
 
 **Rule:** if the client's answers contradict a locked decision, stop and raise it with Mushtaq — do not silently change a D-item.
@@ -76,4 +84,4 @@
 - **V-4 (F-5)** The exact FTA VAT-rounding provision (nearest fils, line-item basis assumed in SCHEMA_DESIGN §3.1) — record the citation in SCHEMA_DESIGN once confirmed.
 - **V-5 (F-3)** Current Supabase Pro backup-retention terms — confirms the D-06 reword and sizes the monthly-export duty.
 - **V-6 (F-4a)** Post-deregistration correction path: how to correct/void-and-replace a VAT-era invoice after deregistration (replacement cannot charge VAT).
-- **V-7 (R-8/D-26)** *Awaiting Mushtaq, not the accountant:* explicit confirmation of the D-09 conditional-reopen rule (thermal printer answer to Q-07 ⇒ the PDF discussion reopens).
+- **V-7 (R-8/D-26)** *Awaiting Mushtaq, not the accountant:* explicit confirmation of the D-09 conditional-reopen rule (thermal printer answer to Q-07 ⇒ the PDF discussion reopens). **✅ RESOLVED 2026-07-05: Q-07 answered A4+A5, not thermal — the reopen condition can never fire. D-09 stands as decided.**
