@@ -99,7 +99,7 @@ async function mkSealed(customerId, serviceFils) {
 //   INV-2: 105000 fils, unpaid
 //   one open draft, one voided (must NOT count in balances)
 const inv1 = await mkSealed(cust.id, 100000);
-const inv2 = await mkSealed(cust.id, 100000);
+await mkSealed(cust.id, 100000); // INV-2, stays unpaid
 await sql`insert into invoices (customer_id) values (${cust.id})`; // draft
 const voided = await mkSealed(cust.id, 100000);
 await sql`update invoices set status='voided', voided_at=now(), void_reason='t' where id = ${voided.id}`;
