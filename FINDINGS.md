@@ -11,6 +11,28 @@ Not fixed inline; each entry needs its own decision/task.
   default. Options: add `endOfLine` to `.prettierrc` + a one-shot `pnpm format` commit,
   and/or ignore `db/migrations/meta/` (generated). Worth a small `chore/` branch;
   build and eslint are unaffected.
+## 2026-07-05 — GitHub Copilot performance audit (external, reviewed & dispositioned)
+
+Copilot flagged 10 potential performance issues. Disposition after checking the code:
+
+- **FIXED (this chore):** `db/index.ts` created the postgres client at module scope
+  with no reuse guard — dev hot-reload / serverless cold-start connection churn.
+  Now cached on `globalThis` with `max: 5` (transaction pooler multiplexes behind it).
+- **Already handled:** "missing indexes" — `db/schema.ts` already indexes
+  `invoices(status|customer_id|issue_date)`, `payments(invoice_id)`,
+  `invoice_events(invoice_id)`, `invoice_lines(invoice_id)`, `customers(type)`.
+- **Not a defect:** `prepare: false` is mandatory on the Supabase transaction pooler.
+- **Rejected as over-engineering at ~300 invoices/month:** payment-sum summary
+  table / materialized views / Redis caching (Redis forbidden by CLAUDE.md §2) /
+  `invoice_events` partitioning+archival. Revisit only if EXPLAIN ANALYZE ever
+  shows a problem. Note: 4.3 already plans reads through the `invoice_list` view
+  (single query with derived payment status — no N+1 by design).
+- **Deferred to the phases that build the surfaces:** pagination + field-trimmed
+  list payloads and join-not-loop query shape are acceptance criteria for the
+  Phase 3–5 list UIs (3.1, 4.3, 5.2, 5.3), not current bugs — those UIs don't
+  exist yet. Carry composite indexes (e.g. `invoice_events(invoice_id, created_at)`,
+  `status+issue_date`) into those tasks if query plans want them.
+
 ## 2026-07-05 — task 2.2
 
 - **ACTION FOR MUSHTAQ — shorten the access-token TTL (#24, task 2.2).** The
