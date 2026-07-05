@@ -145,10 +145,16 @@ try {
   {
     const anon = await probe(`/customers/${cust.id}`, null);
     ok([301, 302, 303, 307, 308].includes(anon.status), "anon → redirect to login");
-    ok((await probe(`/customers/not-a-uuid`, staffSession)).status === 404, "malformed id → 404");
+    // With the (shell) loading.tsx boundary, notFound() can stream inside a
+    // 200 instead of a raw HTTP 404 — accept either form.
+    const isNotFound = async (res) =>
+      res.status === 404 || /could not be found|404/i.test(await res.text());
+    ok(await isNotFound(await probe(`/customers/not-a-uuid`, staffSession)), "malformed id → not-found");
     ok(
-      (await probe(`/customers/00000000-0000-4000-8000-000000000000`, staffSession)).status === 404,
-      "unknown customer → 404"
+      await isNotFound(
+        await probe(`/customers/00000000-0000-4000-8000-000000000000`, staffSession)
+      ),
+      "unknown customer → not-found"
     );
   }
 

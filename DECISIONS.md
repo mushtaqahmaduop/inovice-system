@@ -84,6 +84,7 @@
   - **Domain: not required** → production stays on the vercel.app URL (D-04 revisited: no client domain purchase).
   - **Training: Mr Sahil** is the handover attendee (7.5 walkthrough).
   **STILL OPEN after both batches: the logo file and the exact legal name (Q-02 remainder) — the only true blockers left, both for 6.1.**
+  **UPDATE 2026-07-05 (Mushtaq, 3rd instruction): legal/display name = "Prestige Land Typing Center"; invoices must show NO 5% VAT (deregistered launch mode already does this); and the printed invoice must use the CLIENT'S SAMPLE LAYOUT EXACTLY — this supersedes the earlier "details only, not layout" note. The invoice document component now replicates that layout (logo block placeholder until the real file arrives). Remaining open item: the logo file only.**
 
 **Rule:** if the client's answers contradict a locked decision, stop and raise it with Mushtaq — do not silently change a D-item.
 
