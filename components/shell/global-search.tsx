@@ -13,7 +13,7 @@ const EMPTY: SearchResults = { customers: [], invoices: [] };
 // Global search (task 2.3 scaffold, wired in 4.3, D-18): Ctrl/⌘-K palette
 // over the trigram indexes through the RLS-scoped /api/search route.
 // Invoice rows open the sealed detail view; customer rows open the
-// customers list (no per-customer page until the 5.2 ledger).
+// per-customer ledger (5.2).
 export function GlobalSearch() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -143,7 +143,7 @@ export function GlobalSearch() {
                       type="button"
                       onClick={() => {
                         setOpen(false);
-                        router.push("/customers");
+                        router.push(`/customers/${c.id}`);
                       }}
                       className="flex w-full items-center gap-3 px-2 py-1.5 text-left text-[13px] hover:bg-accent"
                     >
