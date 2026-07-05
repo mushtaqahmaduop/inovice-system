@@ -3,6 +3,7 @@ import { requireUserApi } from "@/lib/auth/api-guards";
 import { createClient } from "@/lib/supabase/server";
 import { draftInvoiceSchema } from "@/lib/validation/invoice";
 import { insertChildren } from "@/lib/invoices/draft-children";
+import { broadcastInvoicesChanged } from "@/lib/realtime";
 
 // Create a DRAFT invoice (task 4.1b). Staff and admin (RLS §5). Drafts are
 // plain multi-row inserts — the one transition that must be a single
@@ -54,5 +55,6 @@ export async function POST(request: Request) {
     payload: { lines: parsed.data.lines.length, columns: parsed.data.columns.length },
   });
 
+  await broadcastInvoicesChanged();
   return NextResponse.json({ id: invoice.id }, { status: 201 });
 }

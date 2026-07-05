@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { InvoicesTable } from "./invoices-table";
+import { InvoicesLive } from "@/components/shell/invoices-live";
 
 export type InvoiceListRow = {
   id: string;
@@ -54,6 +55,7 @@ export default async function InvoicesPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
+      <InvoicesLive />
       <InvoicesTable rows={list} dueDaysDefault={settings?.due_days_default ?? null} />
     </div>
   );
