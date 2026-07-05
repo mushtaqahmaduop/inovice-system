@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUserApi } from "@/lib/auth/api-guards";
+import { requireUserApi, requireAdminApi } from "@/lib/auth/api-guards";
 import { createClient } from "@/lib/supabase/server";
 import { draftInvoiceSchema } from "@/lib/validation/invoice";
 import { insertChildren } from "@/lib/invoices/draft-children";
@@ -18,6 +18,11 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update_draft"), data: draftInvoiceSchema }),
   z.object({ action: z.literal("issue") }),
   z.object({ action: z.literal("log_print") }),
+  z.object({
+    action: z.literal("void"),
+    reason: z.string().trim().min(1, "Reason required").max(500),
+    createReplacement: z.boolean().default(false),
+  }),
 ]);
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -38,6 +43,104 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const supabase = await createClient();
+
+  if (parsed.data.action === "void") {
+    // Task 4.4 — ADMIN aal2 only (CLAUDE.md §4); the DB function re-checks
+    // the admin role so a direct PostgREST RPC cannot bypass this guard.
+    const admin = await requireAdminApi();
+    if (admin.error) return admin.error;
+
+    const { data: voided, error } = await supabase.rpc("void_invoice", {
+      p_invoice_id: id,
+      p_reason: parsed.data.reason,
+    });
+    if (error) {
+      if (/not found/.test(error.message)) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      if (/is a draft/.test(error.message)) {
+        return NextResponse.json(
+          { error: "Drafts are edited, not voided." },
+          { status: 422 }
+        );
+      }
+      if (/already voided/.test(error.message)) {
+        return NextResponse.json({ error: "Already voided." }, { status: 409 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    const voidedRow = (Array.isArray(voided) ? voided[0] : voided) as {
+      customer_id: string;
+      notes: string | null;
+      terms: string | null;
+      invoice_number: string | null;
+    };
+
+    if (!parsed.data.createReplacement) return NextResponse.json({ ok: true });
+
+    // Replacement = a NEW ordinary draft carrying replaces_invoice_id;
+    // financials of the voided original stay frozen (corrections are new
+    // documents, CLAUDE.md §3.1). Children are copied as fresh draft rows.
+    const { data: replacement, error: repErr } = await supabase
+      .from("invoices")
+      .insert({
+        customer_id: voidedRow.customer_id,
+        notes: voidedRow.notes,
+        terms: voidedRow.terms,
+        replaces_invoice_id: id,
+        created_by: admin.ctx.userId,
+      })
+      .select("id")
+      .single();
+    if (repErr || !replacement) {
+      return NextResponse.json(
+        { ok: true, replacementError: repErr?.message ?? "replacement failed" },
+        { status: 200 } // the void itself succeeded — report that honestly
+      );
+    }
+
+    const [{ data: cols }, { data: lines }] = await Promise.all([
+      supabase
+        .from("invoice_extra_columns")
+        .select("id, label, vatable, position")
+        .eq("invoice_id", id)
+        .order("position"),
+      supabase
+        .from("invoice_lines")
+        .select("id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)")
+        .eq("invoice_id", id)
+        .order("position"),
+    ]);
+    const colIndexById = new Map((cols ?? []).map((c, i) => [c.id, i]));
+    const childErr = await insertChildren(supabase, replacement.id, {
+      customerId: voidedRow.customer_id,
+      columns: (cols ?? []).map((c) => ({ label: c.label, vatable: c.vatable })),
+      lines: (lines ?? []).map((l) => ({
+        description: l.description,
+        qty: l.qty,
+        govtFee: l.govt_fee,
+        serviceFee: l.service_fee,
+        extraFees: Object.fromEntries(
+          ((l.invoice_line_fees as { column_id: string; amount: number }[]) ?? [])
+            .filter((f) => colIndexById.has(f.column_id))
+            .map((f) => [String(colIndexById.get(f.column_id)), f.amount])
+        ),
+      })),
+    });
+    if (childErr) {
+      await supabase.from("invoices").delete().eq("id", replacement.id);
+      return NextResponse.json({ ok: true, replacementError: childErr }, { status: 200 });
+    }
+
+    await supabase.from("invoice_events").insert({
+      invoice_id: replacement.id,
+      event_type: "created",
+      actor_id: admin.ctx.userId,
+      payload: { replaces: voidedRow.invoice_number },
+    });
+
+    return NextResponse.json({ ok: true, replacementId: replacement.id });
+  }
 
   if (parsed.data.action === "issue") {
     // Task 4.2: the ONLY path from draft to issued — a single RPC statement

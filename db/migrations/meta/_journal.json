@@ -71,6 +71,13 @@
       "when": 1783240173850,
       "tag": "0009_invoice_list_view",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783240771281,
+      "tag": "0010_void_invoice",
+      "breakpoints": true
     }
   ]
 }
