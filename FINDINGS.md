@@ -11,6 +11,21 @@ Not fixed inline; each entry needs its own decision/task.
   default. Options: add `endOfLine` to `.prettierrc` + a one-shot `pnpm format` commit,
   and/or ignore `db/migrations/meta/` (generated). Worth a small `chore/` branch;
   build and eslint are unaffected.
+## 2026-07-05 — task 2.2
+
+- **ACTION FOR MUSHTAQ — shorten the access-token TTL (#24, task 2.2).** The
+  ~10-minute JWT expiry must be set in the Supabase dashboard (Authentication →
+  Sessions / JWT expiry; default 3600s → 600s) on **staging and production** —
+  there is no API path with this machine's credentials. Middleware-mediated
+  requests already lock out revoked/deactivated users on the next request
+  (proven in tests); the short TTL narrows the window for a stolen JWT used
+  **directly against PostgREST**, where only expiry + RLS apply.
+- GoTrue on this project has **no admin session-revocation endpoint** (404) —
+  revocation deletes `auth.sessions` rows via the server DB connection instead;
+  documented in `lib/auth/admin-api.ts`. Re-check when Supabase upgrades GoTrue.
+
+## 2026-07-05 — task 1.2a
+
 - **Global `pnpm` on this machine broke again** (upgraded past Node 20 compatibility;
   `ERR_UNKNOWN_BUILTIN_MODULE`). Workaround used: `corepack pnpm …`, which honors the
   repo's pinned `packageManager: pnpm@9.15.9`. Permanent fix: re-pin the global pnpm
