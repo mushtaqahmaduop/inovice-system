@@ -246,10 +246,14 @@ try {
 
     const draftId2 = await createDraft();
     const draftView = await probe(`/invoices/${draftId2}`, staffSession);
+    // With the (shell) loading.tsx boundary, server redirects stream inside
+    // a 200 instead of arriving as HTTP 3xx — accept either form.
+    const dvBody = await draftView.text();
     ok(
-      [301, 302, 303, 307, 308].includes(draftView.status) &&
-        draftView.headers.get("location")?.includes(`/invoices/${draftId2}/edit`),
-      "draft detail redirects to the editor"
+      ([301, 302, 303, 307, 308].includes(draftView.status) &&
+        (draftView.headers.get("location") ?? "").includes(`/invoices/${draftId2}/edit`)) ||
+        dvBody.includes(`/invoices/${draftId2}/edit`),
+      "draft detail routes to the editor (HTTP or streamed redirect)"
     );
     ok(
       (await post(`/api/invoices/${draftId2}`, staffSession, { action: "log_print" })).status === 409,

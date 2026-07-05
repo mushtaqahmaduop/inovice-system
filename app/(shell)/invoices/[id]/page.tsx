@@ -210,6 +210,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         terms={invoice.terms}
         issuedByName={(issuer as { full_name: string } | null)?.full_name ?? null}
         issuedAt={invoice.issued_at}
+        paymentStatus={listRow?.payment_status ?? null}
         voidReason={invoice.void_reason}
       />
 
