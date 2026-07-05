@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { InvoiceDoc, type DocLine } from "@/components/invoice/invoice-doc";
 import { PrintButton } from "./print-button";
 import { VoidControls } from "./void-controls";
+import { PaymentsPanel, type PaymentRow, type MethodOption } from "./payments-panel";
 
 // Sealed invoice view (task 4.2). Every number on this page comes from the
 // SEALED columns and frozen children — nothing is recomputed from current
@@ -44,8 +45,15 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       .maybeSingle(),
   ]);
 
-  const [{ data: settings }, { data: cols }, { data: lines }, { data: issuer }] =
-    await Promise.all([
+  const [
+    { data: settings },
+    { data: cols },
+    { data: lines },
+    { data: issuer },
+    { data: listRow },
+    { data: paymentRows },
+    { data: methods },
+  ] = await Promise.all([
       supabase
         .from("settings")
         .select("company_name, tagline, trn, address, phone, email, bank_details")
@@ -64,6 +72,20 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       invoice.issued_by
         ? supabase.from("profiles").select("full_name").eq("id", invoice.issued_by).maybeSingle()
         : Promise.resolve({ data: null }),
+      supabase
+        .from("invoice_list")
+        .select("paid_total, payment_status")
+        .eq("id", id)
+        .maybeSingle(),
+      supabase
+        .from("payments")
+        .select("id, amount, received_on, reference, reverses_payment_id, method_id, created_at")
+        .eq("invoice_id", id)
+        .order("created_at"),
+      supabase
+        .from("payment_methods")
+        .select("id, label, is_active")
+        .order("position"),
     ]);
 
   const columnList = cols ?? [];
@@ -181,6 +203,38 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         issuedAt={invoice.issued_at}
         voidReason={invoice.void_reason}
       />
+
+      {invoice.status === "issued" ? (
+        <PaymentsPanel
+          invoiceId={invoice.id}
+          payments={((paymentRows ?? []) as {
+            id: string;
+            amount: number;
+            received_on: string;
+            reference: string | null;
+            reverses_payment_id: string | null;
+            method_id: string;
+          }[]).map(
+            (p): PaymentRow => ({
+              id: p.id,
+              amount: p.amount,
+              received_on: p.received_on,
+              reference: p.reference,
+              reverses_payment_id: p.reverses_payment_id,
+              method_label:
+                (methods ?? []).find((m) => m.id === p.method_id)?.label ?? "—",
+              reversed: (paymentRows ?? []).some((r) => r.reverses_payment_id === p.id),
+            })
+          )}
+          methods={((methods ?? []).filter((m) => m.is_active) as MethodOption[]).map((m) => ({
+            id: m.id,
+            label: m.label,
+          }))}
+          paidTotal={listRow?.paid_total ?? 0}
+          grandTotal={invoice.grand_total ?? 0}
+          paymentStatus={listRow?.payment_status ?? null}
+        />
+      ) : null}
     </div>
   );
 }
