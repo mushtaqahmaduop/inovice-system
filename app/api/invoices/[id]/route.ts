@@ -16,6 +16,8 @@ import { insertChildren } from "@/lib/invoices/draft-children";
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update_draft"), data: draftInvoiceSchema }),
+  z.object({ action: z.literal("issue") }),
+  z.object({ action: z.literal("log_print") }),
 ]);
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -36,12 +38,69 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const supabase = await createClient();
+
+  if (parsed.data.action === "issue") {
+    // Task 4.2: the ONLY path from draft to issued — a single RPC statement
+    // calling the SECURITY DEFINER issue_invoice() (CLAUDE.md §3.1). No
+    // BEGIN from the app, no math in application memory feeding the seal.
+    const { data: sealed, error } = await supabase.rpc("issue_invoice", {
+      p_invoice_id: id,
+    });
+    if (!error) {
+      const row = Array.isArray(sealed) ? sealed[0] : sealed;
+      return NextResponse.json({ id, invoiceNumber: row?.invoice_number ?? null });
+    }
+    if (/is not a draft/.test(error.message)) {
+      // R-6: a double-submit or a race with another user. If it ended up
+      // issued, that IS success — the client shows the issued invoice.
+      const { data: current } = await supabase
+        .from("invoices")
+        .select("id, status, invoice_number")
+        .eq("id", id)
+        .maybeSingle();
+      if (current?.status === "issued") {
+        return NextResponse.json({
+          id,
+          invoiceNumber: current.invoice_number,
+          alreadyIssued: true,
+        });
+      }
+      return NextResponse.json({ error: "Invoice is voided." }, { status: 409 });
+    }
+    if (/not found/.test(error.message)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (/has no lines|has no customer/.test(error.message)) {
+      return NextResponse.json(
+        { error: "An invoice needs a customer and at least one line before it can be issued." },
+        { status: 422 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
   const { data: invoice } = await supabase
     .from("invoices")
     .select("id, status")
     .eq("id", id)
     .maybeSingle();
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (parsed.data.action === "log_print") {
+    // Best-effort by design: 'printed' means print REQUESTED — the browser
+    // cannot confirm completion (SCHEMA_DESIGN §2.11); never a guarantee.
+    if (invoice.status === "draft") {
+      return NextResponse.json({ error: "Drafts are not printed." }, { status: 409 });
+    }
+    await supabase.from("invoice_events").insert({
+      invoice_id: id,
+      event_type: "printed",
+      actor_id: guard.ctx.userId,
+      payload: {},
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (invoice.status !== "draft") {
     return NextResponse.json(
       { error: "Invoice is sealed — corrections happen via a new document." },

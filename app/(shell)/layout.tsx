@@ -30,7 +30,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-paper">
       <Sidebar role={ctx.role} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper px-6">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper px-6 print:hidden">
           <div className="flex min-w-0 items-baseline gap-3">
             <PageTitle />
             <span className="mono hidden text-[10px] tracking-[0.08em] text-ink-3 sm:inline">
