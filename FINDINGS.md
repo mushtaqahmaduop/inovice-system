@@ -11,6 +11,14 @@ Not fixed inline; each entry needs its own decision/task.
   default. Options: add `endOfLine` to `.prettierrc` + a one-shot `pnpm format` commit,
   and/or ignore `db/migrations/meta/` (generated). Worth a small `chore/` branch;
   build and eslint are unaffected.
+## 2026-07-05 — task 4.1a
+
+- **Q-01 still unanswered; Mushtaq authorized proceeding with Phase 4** on the
+  two-fee model already embodied in the approved prototype (calculation verified
+  against a real client invoice) and the merged Phase 1 schema. If the client's
+  Q-01 answer ever contradicts the two-fee model, that reopens Phase 1 decisions,
+  not just the form — escalate immediately rather than patching the UI.
+
 ## 2026-07-05 — task 3.2
 
 - **Logo upload deferred to task 6.1 (print).** `settings.logo_path` exists in the
