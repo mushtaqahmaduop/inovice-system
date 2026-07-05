@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createColumnHelper,
@@ -47,9 +48,12 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
         header: "Name",
         cell: (c) => (
           <div className="min-w-0">
-            <p className={`truncate text-[13px] ${c.row.original.deleted_at ? "text-ink-3 line-through" : "text-ink"}`}>
+            <Link
+              href={`/customers/${c.row.original.id}`}
+              className={`block truncate text-[13px] underline-offset-2 hover:underline ${c.row.original.deleted_at ? "text-ink-3 line-through" : "text-ink"}`}
+            >
               {c.getValue()}
-            </p>
+            </Link>
             {c.row.original.address ? (
               <p className="truncate text-[11px] text-ink-3">{c.row.original.address}</p>
             ) : null}
