@@ -8,6 +8,7 @@ import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldLabel, FieldError } from "@/components/ui/field";
 import type { CustomerRow } from "./page";
 
 export type DialogMode =
@@ -109,24 +110,22 @@ export function CustomerFormDialog({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
           {visibleFields.map((f) => (
             <div key={f.name}>
-              <label className="mb-1 block text-[11px] text-ink-3" htmlFor={`cf-${f.name}`}>
+              <FieldLabel htmlFor={`cf-${f.name}`}>
                 {f.label}
                 {f.name === "name" ? " *" : ""}
-              </label>
+              </FieldLabel>
               <Input
                 id={`cf-${f.name}`}
                 {...form.register(f.name)}
-                className="h-8 text-[13px]"
+                className={`text-[13px] ${form.formState.errors[f.name] ? "border-warning" : ""}`}
                 autoFocus={f.name === "name"}
               />
               {form.formState.errors[f.name] ? (
-                <p className="mt-1 text-[11px] text-destructive">
-                  {form.formState.errors[f.name]?.message}
-                </p>
+                <FieldError>{form.formState.errors[f.name]?.message}</FieldError>
               ) : null}
             </div>
           ))}
-          {serverError ? <p className="text-[11px] text-destructive">{serverError}</p> : null}
+          {serverError ? <FieldError>{serverError}</FieldError> : null}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
