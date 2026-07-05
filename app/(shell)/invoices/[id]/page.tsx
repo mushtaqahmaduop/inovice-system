@@ -6,6 +6,7 @@ import { InvoiceDoc, type DocLine } from "@/components/invoice/invoice-doc";
 import { PrintButton } from "./print-button";
 import { VoidControls } from "./void-controls";
 import { PaymentsPanel, type PaymentRow, type MethodOption } from "./payments-panel";
+import { EventTimeline, type EventRow } from "./event-timeline";
 
 // Sealed invoice view (task 4.2). Every number on this page comes from the
 // SEALED columns and frozen children — nothing is recomputed from current
@@ -53,6 +54,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     { data: listRow },
     { data: paymentRows },
     { data: methods },
+    { data: eventRows },
+    { data: profiles },
   ] = await Promise.all([
       supabase
         .from("settings")
@@ -86,6 +89,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         .from("payment_methods")
         .select("id, label, is_active")
         .order("position"),
+      supabase
+        .from("invoice_events")
+        .select("id, event_type, created_at, actor_id, payload")
+        .eq("invoice_id", id)
+        .order("created_at"),
+      supabase.from("profiles").select("id, full_name"),
     ]);
 
   const columnList = cols ?? [];
@@ -235,6 +244,25 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           paymentStatus={listRow?.payment_status ?? null}
         />
       ) : null}
+
+      <EventTimeline
+        events={((eventRows ?? []) as {
+          id: string;
+          event_type: string;
+          created_at: string;
+          actor_id: string | null;
+          payload: Record<string, unknown>;
+        }[]).map(
+          (e): EventRow => ({
+            id: e.id,
+            event_type: e.event_type,
+            created_at: e.created_at,
+            actor_name:
+              (profiles ?? []).find((p) => p.id === e.actor_id)?.full_name ?? null,
+            payload: e.payload ?? {},
+          })
+        )}
+      />
     </div>
   );
 }
