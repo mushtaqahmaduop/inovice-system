@@ -19,7 +19,8 @@
     "test:db:2.2": "node --env-file=.env.local db/tests/task-2.2.test.mjs",
     "test:db:2.3": "node --env-file=.env.local db/tests/task-2.3.test.mjs",
     "test:db:3.1": "node --env-file=.env.local db/tests/task-3.1.test.mjs",
-    "test:db:3.2": "node --env-file=.env.local db/tests/task-3.2.test.mjs"
+    "test:db:3.2": "node --env-file=.env.local db/tests/task-3.2.test.mjs",
+    "test:db:3.3": "node --env-file=.env.local db/tests/task-3.3.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
