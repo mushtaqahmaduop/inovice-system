@@ -10,6 +10,12 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Supabase pooler (transaction mode) requires prepare: false.
-const client = postgres(process.env.DATABASE_URL, { prepare: false });
+// The client is cached on globalThis so dev hot-reloads and warm serverless
+// invocations reuse one connection instead of opening a new one per reload.
+const globalForDb = globalThis as unknown as { __pgClient?: ReturnType<typeof postgres> };
+
+const client =
+  globalForDb.__pgClient ?? postgres(process.env.DATABASE_URL, { prepare: false, max: 5 });
+globalForDb.__pgClient = client;
 
 export const db = drizzle(client, { schema });
