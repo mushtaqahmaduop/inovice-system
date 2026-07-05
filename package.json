@@ -17,12 +17,15 @@
     "test:db:1.3": "node --env-file=.env.local db/tests/task-1.3.test.mjs",
     "test:db:2.1": "node --env-file=.env.local db/tests/task-2.1.test.mjs",
     "test:db:2.2": "node --env-file=.env.local db/tests/task-2.2.test.mjs",
-    "test:db:2.3": "node --env-file=.env.local db/tests/task-2.3.test.mjs"
+    "test:db:2.3": "node --env-file=.env.local db/tests/task-2.3.test.mjs",
+    "test:db:3.1": "node --env-file=.env.local db/tests/task-3.1.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.0",
+    "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
@@ -31,6 +34,7 @@
     "postgres": "^3.4.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hook-form": "^7.80.0",
     "shadcn": "^4.13.0",
     "tailwind-merge": "^3.6.0",
     "tw-animate-css": "^1.4.0",
