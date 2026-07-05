@@ -22,6 +22,7 @@ type FormValues = {
   vatRegistered: boolean;
   vatRatePct: string; // UI in %, wire in basis points
   invoiceNumberFormat: string;
+  paperSize: "A4" | "A5";
   invoiceNotesDefault: string;
   invoiceTermsDefault: string;
   dueDaysDefault: string;
@@ -56,6 +57,7 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
       vatRegistered: settings.vat_registered,
       vatRatePct: (settings.vat_rate_bp / 100).toString(),
       invoiceNumberFormat: settings.invoice_number_format,
+      paperSize: settings.paper_size === "A5" ? "A5" : "A4",
       invoiceNotesDefault: settings.invoice_notes_default ?? "",
       invoiceTermsDefault: settings.invoice_terms_default ?? "",
       dueDaysDefault: settings.due_days_default?.toString() ?? "",
@@ -92,7 +94,7 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
         vatRegistered: v.vatRegistered,
         vatRateBp,
         invoiceNumberFormat: v.invoiceNumberFormat,
-        paperSize: "A4", // locked pending Q-07 (a thermal answer reopens D-09)
+        paperSize: v.paperSize, // Q-07: A4 or A5, never thermal
         invoiceNotesDefault: v.invoiceNotesDefault,
         invoiceTermsDefault: v.invoiceTermsDefault,
         dueDaysDefault: dueDays,
@@ -166,8 +168,15 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
             <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-paper">
               Paper size
             </label>
-            <Input id="s-paper" value="A4" disabled className="mono h-8 text-[13px]" />
-            <p className="mt-0.5 text-[10px] text-ink-4">locked pending Q-07</p>
+            <select
+              id="s-paper"
+              {...form.register("paperSize")}
+              className="mono h-8 w-full rounded border border-hairline-strong bg-surface px-2 text-[13px] text-ink"
+            >
+              <option value="A4">A4</option>
+              <option value="A5">A5</option>
+            </select>
+            <p className="mt-0.5 text-[10px] text-ink-4">per Q-07 — the shop prints A4/A5</p>
           </div>
           <div>
             <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-due">
