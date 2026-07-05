@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldLabel, FieldHint } from "@/components/ui/field";
+import { StatusChip } from "@/components/ui/status-chip";
 
 type Profile = {
   id: string;
@@ -54,39 +56,40 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
       {error && <p className="text-sm text-warning">{error}</p>}
       {notice && <p className="text-sm text-success">{notice}</p>}
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-hairline-strong text-left">
-            <th className="mono py-2 pr-4 text-[10px] font-medium tracking-[0.12em] text-ink-3 uppercase">
-              Name
-            </th>
-            <th className="mono py-2 pr-4 text-[10px] font-medium tracking-[0.12em] text-ink-3 uppercase">
-              Role
-            </th>
-            <th className="mono py-2 pr-4 text-[10px] font-medium tracking-[0.12em] text-ink-3 uppercase">
-              Status
-            </th>
-            <th className="py-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {profiles.map((p) => (
-            <tr key={p.id} className="border-b border-hairline">
-              <td className="py-2.5 pr-4 text-ink">
-                {p.full_name}
-                {p.id === selfId && <span className="ml-2 text-[11px] text-ink-3">(you)</span>}
-              </td>
-              <td className="mono py-2.5 pr-4 text-[11px] tracking-wide text-ink-2 uppercase">
-                {p.role}
-              </td>
-              <td className="py-2.5 pr-4">
-                {p.is_active ? (
-                  <span className="text-success">active</span>
-                ) : (
-                  <span className="text-ink-3">deactivated</span>
-                )}
-              </td>
-              <td className="py-2.5 text-right">
+      <div className="overflow-x-auto border border-hairline bg-surface">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-hairline bg-surface-2 text-left">
+              <th className="mono px-3 py-2.5 text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase">
+                Name
+              </th>
+              <th className="mono px-3 py-2.5 text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase">
+                Role
+              </th>
+              <th className="mono px-3 py-2.5 text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase">
+                Status
+              </th>
+              <th className="px-3 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {profiles.map((p) => (
+              <tr key={p.id} className="h-[42px] border-b border-hairline last:border-b-0">
+                <td className={`px-3 py-2.5 ${p.is_active ? "text-ink" : "text-ink-3"}`}>
+                  {p.full_name}
+                  {p.id === selfId && <span className="ml-2 text-[11px] text-ink-3">(you)</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  <StatusChip variant={p.role === "admin" ? "ink" : "neutral"}>{p.role}</StatusChip>
+                </td>
+                <td className="px-3 py-2.5">
+                  {p.is_active ? (
+                    <StatusChip variant="ink">active</StatusChip>
+                  ) : (
+                    <StatusChip variant="neutral">deactivated</StatusChip>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-right">
                 <div className="inline-flex gap-2">
                   <Button
                     variant="outline"
@@ -121,47 +124,62 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
                       </Button>
                     ))}
                 </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <form onSubmit={createUser} className="max-w-sm space-y-3 border-t border-hairline pt-6">
-        <p className="mono text-[10px] tracking-[0.14em] text-ink-3 uppercase">New account</p>
-        <Input
-          aria-label="Full name"
-          placeholder="Full name"
-          required
-          value={form.fullName}
-          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-        />
-        <Input
-          aria-label="Email"
-          type="email"
-          placeholder="Email"
-          required
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
-        <Input
-          aria-label="Initial password"
-          type="text"
-          placeholder="Initial password (share in person; min 10 chars)"
-          required
-          minLength={10}
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-        />
-        <select
-          aria-label="Role"
-          className="h-9 w-full border border-input bg-surface px-2.5 text-sm text-ink"
-          value={form.role}
-          onChange={(e) => setForm({ ...form, role: e.target.value })}
-        >
-          <option value="staff">Staff</option>
-          <option value="admin">Admin (requires TOTP at first sign-in)</option>
-        </select>
+      <form
+        onSubmit={createUser}
+        className="max-w-md space-y-4 border border-hairline bg-surface p-6"
+      >
+        <p className="mono text-[10px] tracking-[0.15em] text-ink-3 uppercase">New account</p>
+        <div>
+          <FieldLabel htmlFor="u-name">Full name</FieldLabel>
+          <Input
+            id="u-name"
+            required
+            value={form.fullName}
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+          />
+        </div>
+        <div>
+          <FieldLabel htmlFor="u-email">Email</FieldLabel>
+          <Input
+            id="u-email"
+            type="email"
+            required
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </div>
+        <div>
+          <FieldLabel htmlFor="u-password">Initial password</FieldLabel>
+          <Input
+            id="u-password"
+            type="text"
+            required
+            minLength={10}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+          <FieldHint>Share in person; minimum 10 characters.</FieldHint>
+        </div>
+        <div>
+          <FieldLabel htmlFor="u-role">Role</FieldLabel>
+          <select
+            id="u-role"
+            className="h-9 w-full border border-input bg-surface px-2.5 text-sm text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+          >
+            <option value="staff">Staff</option>
+            <option value="admin">Admin (requires TOTP at first sign-in)</option>
+          </select>
+          <FieldHint>Admins must enroll TOTP on first sign-in.</FieldHint>
+        </div>
         <Button type="submit" disabled={busy}>
           {busy ? "Working…" : "Create account"}
         </Button>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { FieldLabel, FieldHint } from "@/components/ui/field";
 
 const KINDS = [
   { kind: "invoices", label: "Invoices", hint: "one row per sealed/voided document" },
@@ -23,20 +24,16 @@ export function ExportForms() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-2 border border-hairline bg-surface p-4">
+      <div className="flex flex-wrap items-end gap-3 border border-hairline bg-surface p-5">
         <div>
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="exp-from">
-            From (issue / received date)
-          </label>
-          <Input id="exp-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mono h-8 w-40 text-[11.5px]" />
+          <FieldLabel htmlFor="exp-from">From (issue / received date)</FieldLabel>
+          <Input id="exp-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mono w-40 text-[12px]" />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="exp-to">
-            To
-          </label>
-          <Input id="exp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mono h-8 w-40 text-[11.5px]" />
+          <FieldLabel htmlFor="exp-to">To</FieldLabel>
+          <Input id="exp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mono w-40 text-[12px]" />
         </div>
-        <p className="text-[10px] text-ink-4">Leave empty for everything.</p>
+        <FieldHint>Leave empty for everything.</FieldHint>
       </div>
 
       <div className="divide-y divide-hairline border border-hairline bg-surface">

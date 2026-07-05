@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldLabel, FieldHint } from "@/components/ui/field";
 import type { SettingsRow } from "./page";
 
 // Form state is plain strings; the API's zod schema does the real
@@ -113,23 +114,21 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-      <section className="border border-hairline bg-surface p-5">
-        <p className="mono mb-4 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Company</p>
-        <div className="grid gap-3 sm:grid-cols-2">
+      <section className="border border-hairline bg-surface p-6">
+        <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">Company</p>
+        <div className="grid gap-4 sm:grid-cols-2">
           {TEXT_FIELDS.map((f) => (
             <div key={f.name} className={f.name === "address" || f.name === "bankDetails" ? "sm:col-span-2" : ""}>
-              <label className="mb-1 block text-[11px] text-ink-3" htmlFor={`s-${f.name}`}>
-                {f.label}
-              </label>
-              <Input id={`s-${f.name}`} {...form.register(f.name as "companyName")} className="h-8 text-[13px]" />
-              {f.hint ? <p className="mt-0.5 text-[10px] text-ink-4">{f.hint}</p> : null}
+              <FieldLabel htmlFor={`s-${f.name}`}>{f.label}</FieldLabel>
+              <Input id={`s-${f.name}`} {...form.register(f.name as "companyName")} className="text-[13px]" />
+              {f.hint ? <FieldHint>{f.hint}</FieldHint> : null}
             </div>
           ))}
         </div>
       </section>
 
-      <section className="border border-hairline bg-surface p-5">
-        <p className="mono mb-4 text-[9px] tracking-[0.16em] text-ink-3 uppercase">VAT</p>
+      <section className="border border-hairline bg-surface p-6">
+        <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">VAT</p>
         <label className="flex items-start gap-2.5">
           <input type="checkbox" {...form.register("vatRegistered")} className="mt-0.5" />
           <span>
@@ -140,82 +139,75 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
             </span>
           </span>
         </label>
-        <div className="mt-3 w-40">
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-vatRatePct">
-            VAT rate (%)
-          </label>
+        <div className="mt-4 w-40">
+          <FieldLabel htmlFor="s-vatRatePct">VAT rate (%)</FieldLabel>
           <Input
             id="s-vatRatePct"
             {...form.register("vatRatePct")}
             disabled={!vatOn}
             inputMode="decimal"
-            className="mono h-8 text-[13px]"
+            className="mono text-right text-[13px]"
           />
         </div>
       </section>
 
-      <section className="border border-hairline bg-surface p-5">
-        <p className="mono mb-4 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Invoicing</p>
-        <div className="grid gap-3 sm:grid-cols-3">
+      <section className="border border-hairline bg-surface p-6">
+        <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">Invoicing</p>
+        <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-format">
-              Number format
-            </label>
-            <Input id="s-format" {...form.register("invoiceNumberFormat")} className="mono h-8 text-[13px]" />
-            <p className="mt-0.5 text-[10px] text-ink-4">{"must contain {NN} (D-12)"}</p>
+            <FieldLabel htmlFor="s-format">Number format</FieldLabel>
+            <Input id="s-format" {...form.register("invoiceNumberFormat")} className="mono text-[13px]" />
+            <FieldHint>{"must contain {NN} (D-12)"}</FieldHint>
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-paper">
-              Paper size
-            </label>
+            <FieldLabel htmlFor="s-paper">Paper size</FieldLabel>
             <select
               id="s-paper"
               {...form.register("paperSize")}
-              className="mono h-8 w-full rounded border border-hairline-strong bg-surface px-2 text-[13px] text-ink"
+              className="mono h-9 w-full rounded border border-hairline-strong bg-surface px-2 text-[13px] text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
             >
               <option value="A4">A4</option>
               <option value="A5">A5</option>
             </select>
-            <p className="mt-0.5 text-[10px] text-ink-4">per Q-07 — the shop prints A4/A5</p>
+            <FieldHint>per Q-07 — the shop prints A4/A5</FieldHint>
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-due">
-              Default due days
-            </label>
-            <Input id="s-due" {...form.register("dueDaysDefault")} inputMode="numeric" className="mono h-8 text-[13px]" />
-            <p className="mt-0.5 text-[10px] text-ink-4">overdue convention until Q-11</p>
+            <FieldLabel htmlFor="s-due">Default due days</FieldLabel>
+            <Input id="s-due" {...form.register("dueDaysDefault")} inputMode="numeric" className="mono text-right text-[13px]" />
+            <FieldHint>overdue convention (Q-11: 7 days)</FieldHint>
           </div>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-notes">
-              Default invoice notes
-            </label>
+            <FieldLabel htmlFor="s-notes">Default invoice notes</FieldLabel>
             <textarea
               id="s-notes"
               {...form.register("invoiceNotesDefault")}
               rows={3}
-              className="w-full rounded border border-hairline-strong bg-transparent p-2 text-[13px] text-ink outline-none focus:border-ink-3"
+              className="w-full rounded border border-hairline-strong bg-transparent p-2.5 text-[13px] text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
             />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="s-terms">
-              Default terms
-            </label>
+            <FieldLabel htmlFor="s-terms">Default terms</FieldLabel>
             <textarea
               id="s-terms"
               {...form.register("invoiceTermsDefault")}
               rows={3}
-              className="w-full rounded border border-hairline-strong bg-transparent p-2 text-[13px] text-ink outline-none focus:border-ink-3"
+              className="w-full rounded border border-hairline-strong bg-transparent p-2.5 text-[13px] text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
             />
           </div>
         </div>
-        <p className="mt-3 text-[10px] text-ink-4">Logo upload lands with the print work (task 6.1).</p>
+        <FieldHint>Logo upload lands with the print work (task 6.1).</FieldHint>
       </section>
 
-      <div className="flex items-center justify-end gap-3">
+      <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-hairline bg-paper px-1 py-3">
+        {form.formState.isDirty && status === "idle" ? (
+          <span className="mono text-[10px] tracking-[0.1em] text-ink-3 uppercase">
+            unsaved changes
+          </span>
+        ) : null}
         {status === "saved" ? <span className="text-[11px] text-success">Saved.</span> : null}
-        {serverError ? <span className="text-[11px] text-destructive">{serverError}</span> : null}
+        {serverError ? <span className="text-[11px] text-warning">{serverError}</span> : null}
         <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Saving…" : "Save settings"}
         </Button>
