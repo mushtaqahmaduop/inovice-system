@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
 import {
   calcInvoiceTotals,
@@ -73,6 +75,7 @@ export function InvoiceEditor({
   defaultNotes,
   defaultTerms,
   existing,
+  company,
 }: {
   vatRegistered: boolean;
   vatRateBp: number;
@@ -81,6 +84,7 @@ export function InvoiceEditor({
   defaultNotes: string;
   defaultTerms: string;
   existing: ExistingDraft | null;
+  company: DocCompany;
 }) {
   const router = useRouter();
 
@@ -122,6 +126,12 @@ export function InvoiceEditor({
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Issue flow (task 4.2): once the first save-on-issue creates the draft,
+  // draftId keeps later saves/issues pointed at the same row.
+  const [draftId, setDraftId] = useState<string | null>(existing?.id ?? null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false); // one-way until error (R-6/[#23b])
+  const [issueError, setIssueError] = useState<string | null>(null);
 
   const ratePct = (vatRateBp / 100).toString();
 
@@ -232,16 +242,20 @@ export function InvoiceEditor({
     };
   }
 
-  async function saveDraft() {
-    setError(null);
-    if (!customer) return setError("Pick a customer first — every invoice has one.");
+  function validateForSave(): string | null {
+    if (!customer) return "Pick a customer first — every invoice has one.";
     const invalid = lines.some((l) =>
       (["govt", "service", ...columns.map((c) => c.id)] as CellKey[]).some((c) => cellInvalid(l, c))
     );
-    if (invalid) return setError("Fix the highlighted amounts (AED, max 2 decimals).");
-    setSaving(true);
-    const res = existing
-      ? await fetch(`/api/invoices/${existing.id}`, {
+    if (invalid) return "Fix the highlighted amounts (AED, max 2 decimals).";
+    return null;
+  }
+
+  // Persist the current state (create once, then update). Returns the
+  // draft id or null after surfacing the error.
+  async function persistDraft(): Promise<string | null> {
+    const res = draftId
+      ? await fetch(`/api/invoices/${draftId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "update_draft", data: payload() }),
@@ -251,18 +265,69 @@ export function InvoiceEditor({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload()),
         });
-    setSaving(false);
     if (!res.ok) {
       setError((await res.json().catch(() => null))?.error ?? "Save failed");
-      return;
+      return null;
     }
-    if (existing) {
+    if (draftId) return draftId;
+    const { id } = await res.json();
+    setDraftId(id);
+    return id;
+  }
+
+  async function saveDraft() {
+    setError(null);
+    const problem = validateForSave();
+    if (problem) return setError(problem);
+    setSaving(true);
+    const wasNew = !draftId;
+    const id = await persistDraft();
+    setSaving(false);
+    if (!id) return;
+    if (wasNew) {
+      router.push(`/invoices/${id}/edit?saved=1`);
+    } else {
       setSavedAt(new Date().toLocaleTimeString());
       router.refresh();
-    } else {
-      const { id } = await res.json();
-      router.push(`/invoices/${id}/edit?saved=1`);
     }
+  }
+
+  // Issue = save the exact current state, then the MANDATORY preview
+  // (D-23); sealing only happens from the sheet's Confirm button.
+  async function startIssue() {
+    setError(null);
+    setIssueError(null);
+    const problem = validateForSave();
+    if (problem) return setError(problem);
+    const meaningful = lines.some(
+      (l) => l.description.trim() !== "" || lineTotal(l) > 0
+    );
+    if (!meaningful) return setError("Add at least one line with a description or amount.");
+    setSaving(true);
+    const id = await persistDraft();
+    setSaving(false);
+    if (!id) return;
+    setConfirming(false);
+    setPreviewOpen(true);
+  }
+
+  async function confirmIssue() {
+    if (confirming || !draftId) return; // [#23b] — no double-fire
+    setConfirming(true);
+    setIssueError(null);
+    const res = await fetch(`/api/invoices/${draftId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "issue" }),
+    });
+    const body = await res.json().catch(() => null);
+    if (res.ok) {
+      // R-6: alreadyIssued is SUCCESS — show the issued invoice either way.
+      router.push(`/invoices/${draftId}`);
+      return; // stay disabled while navigating
+    }
+    setIssueError(body?.error ?? "Issue failed — the draft is unchanged.");
+    setConfirming(false);
   }
 
   const lineTotal = (l: EditorLine) => {
@@ -651,12 +716,70 @@ export function InvoiceEditor({
       {error ? <p className="mt-3 text-right text-[11px] text-destructive">{error}</p> : null}
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving}>
-          {saving ? "Saving…" : existing ? "Save draft" : "Save as draft"}
+          {saving ? "Saving…" : draftId ? "Save draft" : "Save as draft"}
         </Button>
-        <Button size="sm" disabled title="Issue flow arrives with task 4.2">
-          Issue invoice · 4.2
+        <Button size="sm" onClick={startIssue} disabled={saving}>
+          Issue invoice…
         </Button>
       </div>
+
+      {/* Mandatory pre-issue preview (D-23): slide-over, ~48% width,
+          Esc/outside-click closes. Sealing happens ONLY from here. */}
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto p-5 sm:w-[48%] sm:max-w-[48%]"
+        >
+          <SheetTitle className="mono mb-3 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
+            Preview · confirm to seal
+          </SheetTitle>
+          <InvoiceDoc
+            company={company}
+            vatRegistered={vatRegistered}
+            ratePct={ratePct}
+            number={null}
+            status="draft"
+            issueDate={issueDate || null}
+            billTo={{
+              name: customer?.name ?? "—",
+              trn: customer?.trn,
+              phone: customer?.phone,
+              address: customer?.address,
+            }}
+            columns={columns.map((c) => ({ label: c.label, vatable: c.vatable }))}
+            lines={lines.map((l) => ({
+              description: l.description,
+              qty: Math.max(1, Math.floor(Number(l.qty) || 1)),
+              govtFee: cellFils(l, "govt"),
+              serviceFee: cellFils(l, "service"),
+              extraFees: columns.map((c) => cellFils(l, c.id)),
+            }))}
+            totals={{
+              subtotalGovt: totals.subtotalGovt,
+              subtotalService: totals.subtotalService,
+              subtotalExtras: totals.subtotalExtras,
+              vatAmount: totals.vatAmount,
+              grandTotal: totals.grandTotal,
+            }}
+            notes={notes || null}
+            terms={terms || null}
+          />
+          <p className="mt-3 text-[11px] leading-relaxed text-ink-3">
+            Issuing allocates the next invoice number and seals this document permanently —
+            totals are recomputed server-side at that moment. Corrections afterwards happen
+            via a new document, never by editing.
+          </p>
+          {issueError ? <p className="mt-2 text-[11px] text-destructive">{issueError}</p> : null}
+          <div className="mt-4 flex justify-end gap-2 pb-2">
+            <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} disabled={confirming}>
+              Back to editing
+            </Button>
+            <Button size="sm" onClick={confirmIssue} disabled={confirming}>
+              {confirming ? "Issuing…" : "Confirm & Issue"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

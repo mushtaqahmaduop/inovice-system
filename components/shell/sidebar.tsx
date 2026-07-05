@@ -58,7 +58,7 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-52 shrink-0 flex-col border-r border-hairline bg-surface md:flex">
+    <aside className="sticky top-0 hidden h-screen w-52 shrink-0 flex-col border-r border-hairline bg-surface md:flex print:!hidden">
       <div className="border-b border-hairline px-4 py-4">
         <div className="flex items-center gap-2.5">
           <span className="mono inline-flex h-7 w-7 shrink-0 items-center justify-center border border-ink text-[10px] font-medium text-ink">

@@ -178,3 +178,21 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* ── Minimal readable A4 print (task 4.2 / [#23a]) ──────────────────────
+   Demo insurance only — pixel-honest print CSS is task 6.1. The shell
+   chrome carries Tailwind print:hidden; these rules make the document
+   itself print clean on white A4. */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000;
+  }
+  .print-doc {
+    box-shadow: none !important;
+  }
+}
