@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StatusChip } from "@/components/ui/status-chip";
 import { formatAed } from "@/lib/money";
 import { toRoman } from "@/lib/invoice-calc";
 import type { InvoiceListRow } from "./page";
@@ -97,25 +98,23 @@ export function InvoicesTable({
       }),
       col.accessor("grand_total", {
         header: "Total",
-        cell: (c) => (
-          <span className="mono text-[12.5px] text-ink">
-            {c.getValue() !== null ? `AED ${formatAed(c.getValue()!)}` : "—"}
-          </span>
-        ),
+        cell: (c) =>
+          c.getValue() !== null ? (
+            <span className="mono block text-right text-[12.5px] text-ink">
+              <span className="mr-1 text-[10px] text-ink-3">AED</span>
+              {formatAed(c.getValue()!)}
+            </span>
+          ) : (
+            <span className="block text-right text-[11px] text-ink-4">—</span>
+          ),
       }),
       col.accessor("status", {
         header: "Status",
         cell: (c) => {
           const s = c.getValue();
-          return (
-            <span
-              className={`mono text-[9px] tracking-[0.1em] uppercase ${
-                s === "issued" ? "text-ink-2" : s === "voided" ? "text-warning" : "text-ink-3"
-              }`}
-            >
-              {s === "issued" ? "· sealed ·" : s}
-            </span>
-          );
+          if (s === "issued") return <StatusChip variant="ink">· sealed ·</StatusChip>;
+          if (s === "voided") return <StatusChip variant="warning">voided</StatusChip>;
+          return <StatusChip variant="neutral">draft</StatusChip>;
         },
       }),
       col.display({
@@ -125,24 +124,18 @@ export function InvoicesTable({
           const r = c.row.original;
           if (r.status !== "issued") return <span className="text-[11px] text-ink-4">—</span>;
           if (isOverdue(r)) {
-            return (
-              <span className="mono border border-warning px-1.5 py-0.5 text-[9px] tracking-[0.1em] text-warning uppercase">
-                overdue
-              </span>
-            );
+            return <StatusChip variant="warning-filled">overdue</StatusChip>;
           }
           const overpaid =
             r.payment_status === "paid" && r.grand_total !== null && r.paid_total > r.grand_total;
           return (
-            <span
-              className={`mono text-[9px] tracking-[0.1em] uppercase ${
-                r.payment_status === "paid" ? "text-success" : "text-ink-3"
-              }`}
+            <StatusChip
+              variant={r.payment_status === "paid" ? "success" : "neutral"}
               title={overpaid ? `Overpaid: AED ${formatAed(r.paid_total)} received` : undefined}
             >
               {r.payment_status}
               {overpaid ? " ⚑" : ""}
-            </span>
+            </StatusChip>
           );
         },
       }),
@@ -235,18 +228,18 @@ export function InvoicesTable({
         />
       </div>
 
-      <div className="overflow-x-auto border border-hairline bg-surface">
+      <div className="max-h-[70vh] overflow-auto border border-hairline bg-surface">
         <table className="w-full border-collapse text-left">
-          <thead>
+          <thead className="sticky top-0 z-[1]">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-hairline">
+              <tr key={hg.id} className="border-b border-hairline bg-surface-2">
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
                     onClick={h.column.getToggleSortingHandler()}
-                    className={`mono px-3 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase ${
+                    className={`mono px-3 py-2.5 text-[10px] tracking-[0.14em] text-ink-3 uppercase ${
                       h.column.getCanSort() ? "cursor-pointer select-none" : ""
-                    }`}
+                    } ${h.column.id === "grand_total" ? "text-right" : ""}`}
                   >
                     {flexRender(h.column.columnDef.header, h.getContext())}
                     {{ asc: " ↑", desc: " ↓" }[h.column.getIsSorted() as string] ?? ""}
@@ -264,7 +257,7 @@ export function InvoicesTable({
                   onClick={() =>
                     router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`)
                   }
-                  className="cursor-pointer border-b border-hairline last:border-b-0 hover:bg-accent/50"
+                  className="h-[42px] cursor-pointer border-b border-hairline last:border-b-0 hover:bg-accent/50"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-3 py-2 align-middle">
@@ -276,8 +269,8 @@ export function InvoicesTable({
             })}
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-8 text-center text-[12px] text-ink-3">
-                  No invoices match.
+                <td colSpan={columns.length} className="px-3 py-10 text-center text-[13px] text-ink-3">
+                  No invoices match — adjust the filters or create the first one.
                 </td>
               </tr>
             ) : null}

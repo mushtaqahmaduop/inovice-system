@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StatusChip } from "@/components/ui/status-chip";
 import { CustomerFormDialog, type DialogMode } from "./customer-form";
 import type { CustomerRow } from "./page";
 
@@ -63,9 +64,9 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
       col.accessor("type", {
         header: "Type",
         cell: (c) => (
-          <span className="mono text-[9px] tracking-[0.08em] text-ink-3 uppercase">
+          <StatusChip variant={c.getValue() === "walk_in" ? "neutral" : "ink"}>
             {c.getValue() === "walk_in" ? "walk-in" : "regular"}
-          </span>
+          </StatusChip>
         ),
       }),
       col.accessor("trn", {
@@ -195,16 +196,16 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
         </div>
       </div>
 
-      <div className="overflow-x-auto border border-hairline bg-surface">
+      <div className="max-h-[70vh] overflow-auto border border-hairline bg-surface">
         <table className="w-full border-collapse text-left">
-          <thead>
+          <thead className="sticky top-0 z-[1]">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-hairline">
+              <tr key={hg.id} className="border-b border-hairline bg-surface-2">
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
                     onClick={h.column.getToggleSortingHandler()}
-                    className={`mono px-3 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase ${
+                    className={`mono px-3 py-2.5 text-[10px] tracking-[0.14em] text-ink-3 uppercase ${
                       h.column.getCanSort() ? "cursor-pointer select-none" : ""
                     }`}
                   >
@@ -217,7 +218,10 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-b border-hairline last:border-b-0 hover:bg-accent/50">
+              <tr
+                key={row.id}
+                className="h-[42px] border-b border-hairline last:border-b-0 hover:bg-accent/50"
+              >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-3 py-2 align-middle">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -227,8 +231,8 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
             ))}
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-8 text-center text-[12px] text-ink-3">
-                  No customers match.
+                <td colSpan={columns.length} className="px-3 py-10 text-center text-[13px] text-ink-3">
+                  No customers match — adjust the search or add the first one.
                 </td>
               </tr>
             ) : null}
