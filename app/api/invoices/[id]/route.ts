@@ -4,6 +4,7 @@ import { requireUserApi, requireAdminApi } from "@/lib/auth/api-guards";
 import { createClient } from "@/lib/supabase/server";
 import { draftInvoiceSchema } from "@/lib/validation/invoice";
 import { insertChildren } from "@/lib/invoices/draft-children";
+import { broadcastInvoicesChanged } from "@/lib/realtime";
 
 // Draft invoice mutations (task 4.1b): update_draft replaces the invoice's
 // editable fields and ALL children wholesale (delete + reinsert — simplest
@@ -76,6 +77,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       invoice_number: string | null;
     };
 
+    await broadcastInvoicesChanged();
     if (!parsed.data.createReplacement) return NextResponse.json({ ok: true });
 
     // Replacement = a NEW ordinary draft carrying replaces_invoice_id;
@@ -151,6 +153,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
     if (!error) {
       const row = Array.isArray(sealed) ? sealed[0] : sealed;
+      await broadcastInvoicesChanged();
       return NextResponse.json({ id, invoiceNumber: row?.invoice_number ?? null });
     }
     if (/is not a draft/.test(error.message)) {
@@ -245,5 +248,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     payload: { lines: d.lines.length, columns: d.columns.length },
   });
 
+  await broadcastInvoicesChanged();
   return NextResponse.json({ ok: true });
 }

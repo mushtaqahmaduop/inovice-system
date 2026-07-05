@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUserApi } from "@/lib/auth/api-guards";
 import { createClient } from "@/lib/supabase/server";
 import { paymentActionSchema } from "@/lib/validation/payment";
+import { broadcastInvoicesChanged } from "@/lib/realtime";
 
 // Payments on an invoice (task 5.1). Staff and admin both record and
 // reverse (RLS §5: payments are INSERT for both; reversals ARE inserts).
@@ -67,6 +68,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       actor_id: guard.ctx.userId,
       payload: { payment_id: payment.id, amount: parsed.data.amount },
     });
+    await broadcastInvoicesChanged();
     return NextResponse.json({ id: payment.id }, { status: 201 });
   }
 
@@ -111,5 +113,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     actor_id: guard.ctx.userId,
     payload: { payment_id: original.id, reversal_id: reversal.id, amount: -original.amount },
   });
+  await broadcastInvoicesChanged();
   return NextResponse.json({ id: reversal.id }, { status: 201 });
 }
