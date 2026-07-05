@@ -4,7 +4,7 @@ import Link from "next/link";
 // /admin requires admin role + MFA (middleware + layout guard).
 export default function AdminPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper">
+    <div className="flex h-full min-h-[60vh] items-center justify-center p-6">
       <div className="max-w-md border border-hairline bg-surface p-8 text-center">
         <p className="mono mb-2 text-[10px] tracking-[0.14em] text-ink-3 uppercase">Admin</p>
         <Link href="/admin/users" className="text-sm text-primary underline-offset-2 hover:underline">
