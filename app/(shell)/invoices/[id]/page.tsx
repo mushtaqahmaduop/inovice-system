@@ -4,13 +4,14 @@ import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceDoc, type DocLine } from "@/components/invoice/invoice-doc";
 import { PrintButton } from "./print-button";
+import { VoidControls } from "./void-controls";
 
 // Sealed invoice view (task 4.2). Every number on this page comes from the
 // SEALED columns and frozen children — nothing is recomputed from current
 // Settings (CLAUDE.md §3.3). Drafts redirect to their editor. Ctrl+P (or
 // the Print button) produces the minimal readable A4 page ([#23a]).
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const ctx = await requireUser();
   const { id } = await params;
   const supabase = await createClient();
 
@@ -20,12 +21,28 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       `id, status, invoice_number, issue_date, customer_snapshot,
        vat_registered_snapshot, vat_rate_bp_snapshot,
        subtotal_govt, subtotal_service, subtotal_extras, vat_amount, grand_total,
-       notes, terms, issued_at, void_reason, issued_by`
+       notes, terms, issued_at, void_reason, issued_by, replaces_invoice_id`
     )
     .eq("id", id)
     .maybeSingle();
   if (!invoice) notFound();
   if (invoice.status === "draft") redirect(`/invoices/${id}/edit`);
+
+  // Task 4.4 lineage: what this replaces, and what replaced this.
+  const [{ data: replacesTarget }, { data: replacedBy }] = await Promise.all([
+    invoice.replaces_invoice_id
+      ? supabase
+          .from("invoices")
+          .select("id, invoice_number")
+          .eq("id", invoice.replaces_invoice_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("invoices")
+      .select("id, invoice_number, status")
+      .eq("replaces_invoice_id", id)
+      .maybeSingle(),
+  ]);
 
   const [{ data: settings }, { data: cols }, { data: lines }, { data: issuer }] =
     await Promise.all([
@@ -90,6 +107,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           ) : null}
         </div>
         <div className="flex gap-2">
+          {ctx.role === "admin" && invoice.status === "issued" ? (
+            <VoidControls invoiceId={invoice.id} />
+          ) : null}
           <PrintButton invoiceId={invoice.id} />
           <Link
             href="/invoices/new"
@@ -99,6 +119,31 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
       </div>
+
+      {replacesTarget || replacedBy ? (
+        <div className="mb-4 flex flex-wrap gap-4 print:hidden">
+          {replacesTarget ? (
+            <Link
+              href={`/invoices/${replacesTarget.id}`}
+              className="mono text-[11px] text-primary underline-offset-2 hover:underline"
+            >
+              ← replaces {replacesTarget.invoice_number ?? "voided invoice"}
+            </Link>
+          ) : null}
+          {replacedBy ? (
+            <Link
+              href={
+                replacedBy.status === "draft"
+                  ? `/invoices/${replacedBy.id}/edit`
+                  : `/invoices/${replacedBy.id}`
+              }
+              className="mono text-[11px] text-primary underline-offset-2 hover:underline"
+            >
+              replaced by {replacedBy.invoice_number ?? "a draft"} →
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       <InvoiceDoc
         company={{
