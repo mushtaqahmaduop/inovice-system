@@ -11,6 +11,13 @@ Not fixed inline; each entry needs its own decision/task.
   default. Options: add `endOfLine` to `.prettierrc` + a one-shot `pnpm format` commit,
   and/or ignore `db/migrations/meta/` (generated). Worth a small `chore/` branch;
   build and eslint are unaffected.
+## 2026-07-05 — task 3.2
+
+- **Logo upload deferred to task 6.1 (print).** `settings.logo_path` exists in the
+  schema but the Settings page ships without an upload control — Supabase Storage
+  wiring belongs with the print template that actually renders the logo. The page
+  says so inline.
+
 ## 2026-07-05 — GitHub Copilot performance audit (external, reviewed & dispositioned)
 
 Copilot flagged 10 potential performance issues. Disposition after checking the code:

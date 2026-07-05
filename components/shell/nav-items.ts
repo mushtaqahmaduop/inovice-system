@@ -35,7 +35,7 @@ export const NAV_SECTIONS: NavSection[] = [
     adminOnly: true,
     items: [
       { label: "Users", href: "/admin/users", icon: "users", adminOnly: true },
-      { label: "Settings", href: "/admin/settings", icon: "settings", adminOnly: true, task: "3.2" },
+      { label: "Settings", href: "/admin/settings", icon: "settings", adminOnly: true },
     ],
   },
 ];
