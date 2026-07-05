@@ -55,6 +55,7 @@ export default async function InvoicesPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
+      <h1 className="mb-1 text-[20px] font-semibold tracking-tight text-ink">Invoices</h1>
       <InvoicesLive />
       <InvoicesTable rows={list} dueDaysDefault={settings?.due_days_default ?? null} />
     </div>

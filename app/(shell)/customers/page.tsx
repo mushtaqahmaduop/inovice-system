@@ -32,6 +32,7 @@ export default async function CustomersPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
+      <h1 className="mb-1 text-[20px] font-semibold tracking-tight text-ink">Customers</h1>
       <CustomersView rows={visible} isAdmin={ctx.role === "admin"} />
     </div>
   );
