@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type SearchResults = {
   customers: { id: string; name: string; type: "regular" | "walk_in" }[];
@@ -9,12 +10,12 @@ type SearchResults = {
 
 const EMPTY: SearchResults = { customers: [], invoices: [] };
 
-// Global search scaffold (task 2.3, D-18): Ctrl/⌘-K palette over the trigram
-// indexes (customers.name, invoices.invoice_number + snapshot name) through
-// the RLS-scoped /api/search route. Result rows are display-only for now —
-// they link nowhere until the detail pages exist (customers 3.1, invoices
-// 4.3/5.3); wire navigation there.
+// Global search (task 2.3 scaffold, wired in 4.3, D-18): Ctrl/⌘-K palette
+// over the trigram indexes through the RLS-scoped /api/search route.
+// Invoice rows open the sealed detail view; customer rows open the
+// customers list (no per-customer page until the 5.2 ledger).
 export function GlobalSearch() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchResults>(EMPTY);
@@ -113,13 +114,21 @@ export function GlobalSearch() {
                     Invoices
                   </p>
                   {results.invoices.map((inv) => (
-                    <div key={inv.id} className="flex items-center gap-3 px-2 py-1.5 text-[13px]">
+                    <button
+                      key={inv.id}
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        router.push(`/invoices/${inv.id}`);
+                      }}
+                      className="flex w-full items-center gap-3 px-2 py-1.5 text-left text-[13px] hover:bg-accent"
+                    >
                       <span className="mono text-ink">{inv.invoice_number ?? "—"}</span>
                       <span className="min-w-0 flex-1 truncate text-ink-2">{inv.customer_name}</span>
                       <span className="mono text-[9px] tracking-[0.08em] text-ink-3 uppercase">
                         {inv.status}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : null}
@@ -129,12 +138,20 @@ export function GlobalSearch() {
                     Customers
                   </p>
                   {results.customers.map((c) => (
-                    <div key={c.id} className="flex items-center gap-3 px-2 py-1.5 text-[13px]">
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        router.push("/customers");
+                      }}
+                      className="flex w-full items-center gap-3 px-2 py-1.5 text-left text-[13px] hover:bg-accent"
+                    >
                       <span className="min-w-0 flex-1 truncate text-ink">{c.name}</span>
                       <span className="mono text-[9px] tracking-[0.08em] text-ink-3 uppercase">
                         {c.type === "walk_in" ? "walk-in" : "regular"}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : null}

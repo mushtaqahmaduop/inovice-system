@@ -64,6 +64,13 @@
       "when": 1783198821895,
       "tag": "0008_mfa_recovery_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783240173850,
+      "tag": "0009_invoice_list_view",
+      "breakpoints": true
     }
   ]
 }
