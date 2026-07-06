@@ -108,7 +108,7 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
           Add method
         </Button>
       </div>
-      {error ? <p className="mt-2 text-[11px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-[11px] text-warning">{error}</p> : null}
     </section>
   );
 }

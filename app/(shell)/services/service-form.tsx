@@ -100,7 +100,7 @@ export function ServiceFormDialog({
               <Input id="sv-svc" {...form.register("serviceFeeAed")} inputMode="decimal" className="mono h-8 text-[13px]" />
             </div>
           </div>
-          {serverError ? <p className="text-[11px] text-destructive">{serverError}</p> : null}
+          {serverError ? <p className="text-[11px] text-warning">{serverError}</p> : null}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
