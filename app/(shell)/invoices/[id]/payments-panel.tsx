@@ -202,11 +202,16 @@ export function PaymentsPanel({
             className="h-8 text-[12px]"
           />
         </div>
-        <Button size="sm" onClick={record} disabled={busy || !methodId}>
+        <Button
+          size="sm"
+          onClick={record}
+          disabled={busy || !methodId}
+          className="w-full sm:w-auto"
+        >
           {busy ? "Saving…" : "Record payment"}
         </Button>
       </div>
-      {error ? <p className="mt-2 text-[11px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-[11px] text-warning">{error}</p> : null}
     </div>
   );
 }

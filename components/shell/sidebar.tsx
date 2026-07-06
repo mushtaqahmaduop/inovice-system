@@ -129,13 +129,15 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const counts = useNavCounts(pathname);
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-52 shrink-0 flex-col border-r border-hairline bg-surface md:flex print:!hidden">
-      <div className="border-b border-hairline px-4 py-4">
-        <div className="flex items-center gap-3">
+    // DESIGN_BRIEF §3 #9: full 208px sidebar at md+, collapsed 64px icon
+    // rail below — small screens keep navigation instead of losing it.
+    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col border-r border-hairline bg-surface md:w-52 print:!hidden">
+      <div className="border-b border-hairline px-2 py-4 md:px-4">
+        <div className="flex items-center justify-center gap-3 md:justify-start">
           <span className="mono inline-flex h-8 w-8 shrink-0 items-center justify-center border border-ink text-[10px] font-bold text-ink outline outline-offset-2 outline-ink/40">
             IL
           </span>
-          <div className="min-w-0">
+          <div className="hidden min-w-0 md:block">
             <span className="block text-[14px] font-semibold tracking-tight text-ink">
               Invoice Ledger
             </span>
@@ -149,7 +151,7 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         {NAV_SECTIONS.filter((s) => !s.adminOnly || role === "admin").map((section) => (
           <div key={section.label} className="mb-4">
-            <p className="mono px-2 pb-1.5 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
+            <p className="mono hidden px-2 pb-1.5 text-[9px] tracking-[0.16em] text-ink-3 uppercase md:block">
               {section.label}
             </p>
             {section.items
@@ -163,13 +165,15 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                   return (
                     <span
                       key={item.href}
-                      className="flex cursor-default items-center gap-2.5 px-2 py-1.5 text-[13px] text-ink-4"
+                      className="flex cursor-default items-center justify-center gap-2.5 px-2 py-1.5 text-[13px] text-ink-4 md:justify-start"
                       aria-disabled="true"
-                      title={`Arrives with task ${item.task}`}
+                      title={`${item.label} — arrives with task ${item.task}`}
                     >
                       <NavIcon icon={item.icon} />
-                      <span className="flex-1">{item.label}</span>
-                      <span className="mono text-[9px] tracking-[0.08em] text-ink-4">{item.task}</span>
+                      <span className="hidden flex-1 md:block">{item.label}</span>
+                      <span className="mono hidden text-[9px] tracking-[0.08em] text-ink-4 md:inline">
+                        {item.task}
+                      </span>
                     </span>
                   );
                 }
@@ -177,20 +181,27 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    title={item.label}
                     aria-current={active ? "page" : undefined}
                     className={
                       active
-                        ? "flex items-center gap-2.5 border-l-2 border-primary bg-accent px-2 py-1.5 text-[13px] font-medium text-ink"
-                        : "flex items-center gap-2.5 border-l-2 border-transparent px-2 py-1.5 text-[13px] text-ink-2 transition-colors hover:bg-accent hover:text-ink"
+                        ? "relative flex items-center justify-center gap-2.5 border-l-2 border-primary bg-accent px-2 py-1.5 text-[13px] font-medium text-ink md:justify-start"
+                        : "relative flex items-center justify-center gap-2.5 border-l-2 border-transparent px-2 py-1.5 text-[13px] text-ink-2 transition-colors hover:bg-accent hover:text-ink md:justify-start"
                     }
                   >
                     <NavIcon icon={item.icon} />
-                    <span className="flex-1">{item.label}</span>
+                    <span className="hidden flex-1 md:block">{item.label}</span>
                     {item.countKey ? (
-                      <CountBadge kind={item.countKey} value={counts[item.countKey]} />
+                      // In the rail the badge rides the icon's corner; at
+                      // md+ it sits in flow at the row's right edge.
+                      <span className="absolute top-0 right-0.5 md:static">
+                        <CountBadge kind={item.countKey} value={counts[item.countKey]} />
+                      </span>
                     ) : null}
                     {item.adminOnly ? (
-                      <span className="mono text-[9px] tracking-[0.08em] text-primary">ADM</span>
+                      <span className="mono hidden text-[9px] tracking-[0.08em] text-primary md:inline">
+                        ADM
+                      </span>
                     ) : null}
                   </Link>
                 );
@@ -199,7 +210,7 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
         ))}
       </nav>
 
-      <div className="border-t border-hairline px-4 py-3">
+      <div className="hidden border-t border-hairline px-4 py-3 md:block">
         <p className="mono text-[9px] tracking-[0.14em] text-ink-4 uppercase">Stamped Paper</p>
       </div>
     </aside>
