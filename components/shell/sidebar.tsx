@@ -60,15 +60,19 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-52 shrink-0 flex-col border-r border-hairline bg-surface md:flex print:!hidden">
       <div className="border-b border-hairline px-4 py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="mono inline-flex h-7 w-7 shrink-0 items-center justify-center border border-ink text-[10px] font-medium text-ink">
+        <div className="flex items-center gap-3">
+          <span className="mono inline-flex h-8 w-8 shrink-0 items-center justify-center border border-ink text-[10px] font-bold text-ink outline outline-offset-2 outline-ink/40">
             IL
           </span>
-          <span className="text-[14px] font-medium tracking-tight text-ink">Invoice Ledger</span>
+          <div className="min-w-0">
+            <span className="block text-[14px] font-semibold tracking-tight text-ink">
+              Invoice Ledger
+            </span>
+            <span className="mono block text-[8px] tracking-[0.2em] text-ink-3 uppercase">
+              Official Registry
+            </span>
+          </div>
         </div>
-        <p className="mono mt-2 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
-          Business · Govt · Typing
-        </p>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
@@ -122,7 +126,7 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
       </nav>
 
       <div className="border-t border-hairline px-4 py-3">
-        <p className="mono text-[9px] tracking-[0.14em] text-ink-3 uppercase">Phase 2 · Shell</p>
+        <p className="mono text-[9px] tracking-[0.14em] text-ink-4 uppercase">Stamped Paper</p>
       </div>
     </aside>
   );

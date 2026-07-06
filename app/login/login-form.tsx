@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldLabel } from "@/components/ui/field";
 
 type Step = "password" | "totp" | "recovery";
 
@@ -101,10 +102,8 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
     return (
       <form onSubmit={submitPassword} className="space-y-4">
         {error && <p className="text-sm text-warning">{error}</p>}
-        <div className="space-y-1.5">
-          <label htmlFor="email" className="text-xs font-medium tracking-wide text-ink-2">
-            Email
-          </label>
+        <div>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input
             id="email"
             type="email"
@@ -114,10 +113,8 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="password" className="text-xs font-medium tracking-wide text-ink-2">
-            Password
-          </label>
+        <div>
+          <FieldLabel htmlFor="password">Password</FieldLabel>
           <Input
             id="password"
             type="password"
@@ -143,17 +140,25 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
           : "Enter the 6-digit code from your authenticator app."}
       </p>
       {error && <p className="text-sm text-warning">{error}</p>}
-      <Input
-        aria-label={isRecovery ? "Recovery code" : "Authenticator code"}
-        className="mono tracking-[0.2em]"
-        inputMode={isRecovery ? "text" : "numeric"}
-        autoComplete="one-time-code"
-        placeholder={isRecovery ? "XXXX-XXXX-XX" : "000000"}
-        required
-        autoFocus
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-      />
+      <div>
+        <FieldLabel htmlFor="otp-code">{isRecovery ? "Recovery code" : "Authenticator code"}</FieldLabel>
+        <Input
+          id="otp-code"
+          className={
+            isRecovery
+              ? "mono tracking-[0.2em]"
+              : "mono h-11 text-center text-[20px] tracking-[0.45em]"
+          }
+          inputMode={isRecovery ? "text" : "numeric"}
+          autoComplete="one-time-code"
+          maxLength={isRecovery ? 20 : 6}
+          placeholder={isRecovery ? "XXXX-XXXX-XX" : "000000"}
+          required
+          autoFocus
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
+      </div>
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Verifying…" : isRecovery ? "Use recovery code" : "Verify"}
       </Button>

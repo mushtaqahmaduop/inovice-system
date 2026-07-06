@@ -105,6 +105,18 @@ export function InvoiceDoc({
 
   return (
     <div className="print-doc relative border border-hairline bg-white p-8 text-[#111] print:border-0 print:p-0">
+      {/* Screen-only seal — the printed document stays the client's exact
+          sample layout; on screen the stamp makes immutability physical. */}
+      {status === "issued" ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-10 right-10 rotate-[-1.5deg] border border-[#111]/60 px-3 py-1.5 outline outline-offset-3 outline-[#111]/60 select-none print:hidden"
+        >
+          <p className="mono text-[11px] font-bold tracking-[0.22em] text-[#111]/70 uppercase">
+            · Sealed ·
+          </p>
+        </div>
+      ) : null}
       {status === "voided" ? (
         <div className="mb-4 border-2 border-[#c2410c] px-3 py-2">
           <p className="mono text-[11px] font-semibold tracking-[0.14em] text-[#c2410c] uppercase">
