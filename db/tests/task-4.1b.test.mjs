@@ -134,7 +134,13 @@ const DRAFT = {
     { label: "Stamp", vatable: false },
   ],
   lines: [
-    { description: "Attestation", qty: 2, govtFee: 20000, serviceFee: 10000, extraFees: { 0: 500 } },
+    {
+      description: "Attestation",
+      qty: 2,
+      govtFee: 20000,
+      serviceFee: 10000,
+      extraFees: { 0: 500 },
+    },
     { description: "Typing", qty: 1, govtFee: 0, serviceFee: 5000, extraFees: { 1: 1500 } },
   ],
 };
@@ -150,26 +156,32 @@ try {
       "no lines → 400"
     );
     ok(
-      (await post("/api/invoices", staffSession, {
-        ...DRAFT,
-        customerId: custA.id,
-        lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 100, extraFees: { 7: 100 } }],
-      })).status === 400,
+      (
+        await post("/api/invoices", staffSession, {
+          ...DRAFT,
+          customerId: custA.id,
+          lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 100, extraFees: { 7: 100 } }],
+        })
+      ).status === 400,
       "extra fee referencing unknown column index → 400"
     );
     ok(
-      (await post("/api/invoices", staffSession, {
-        ...DRAFT,
-        customerId: custA.id,
-        lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 100.5, extraFees: {} }],
-      })).status === 400,
+      (
+        await post("/api/invoices", staffSession, {
+          ...DRAFT,
+          customerId: custA.id,
+          lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 100.5, extraFees: {} }],
+        })
+      ).status === 400,
       "fractional fils → 400"
     );
     ok(
-      (await post("/api/invoices", staffSession, {
-        ...DRAFT,
-        customerId: "00000000-0000-4000-8000-000000000000",
-      })).status === 400,
+      (
+        await post("/api/invoices", staffSession, {
+          ...DRAFT,
+          customerId: "00000000-0000-4000-8000-000000000000",
+        })
+      ).status === 400,
       "unknown customer id → 400 (FK)"
     );
   }
@@ -183,11 +195,18 @@ try {
     ok(res.status === 201 && !!draftId, "staff creates a draft → 201");
     const [inv] = await sql`select * from invoices where id = ${draftId}`;
     ok(inv.status === "draft" && inv.invoice_number === null, "draft, NO number allocated");
-    ok(inv.created_by === staffId && inv.notes === "Test notes", "created_by from session; fields stored");
+    ok(
+      inv.created_by === staffId && inv.notes === "Test notes",
+      "created_by from session; fields stored"
+    );
     const cols = await sql`select label, vatable, position from invoice_extra_columns
       where invoice_id = ${draftId} order by position`;
-    ok(cols.length === 2 && cols[0].label === "Courier" && cols[0].vatable === true, "columns stored in order");
-    const lines = await sql`select * from invoice_lines where invoice_id = ${draftId} order by position`;
+    ok(
+      cols.length === 2 && cols[0].label === "Courier" && cols[0].vatable === true,
+      "columns stored in order"
+    );
+    const lines =
+      await sql`select * from invoice_lines where invoice_id = ${draftId} order by position`;
     ok(lines.length === 2 && Number(lines[0].govt_fee) === 20000, "lines stored");
     const fees = await sql`select f.amount, c.label from invoice_line_fees f
       join invoice_extra_columns c on c.id = f.column_id
@@ -197,10 +216,16 @@ try {
       fees.length === 2 && Number(fees[0].amount) === 500 && fees[0].label === "Courier",
       "junction fees mapped to the right columns (zeros omitted)"
     );
-    const events = await sql`select event_type, actor_id from invoice_events where invoice_id = ${draftId}`;
-    ok(events.length === 1 && events[0].event_type === "created" && events[0].actor_id === staffId,
-      "'created' event with session actor");
-    ok((await probe(`/invoices/${draftId}/edit`, staffSession)).status === 200, "resume page renders");
+    const events =
+      await sql`select event_type, actor_id from invoice_events where invoice_id = ${draftId}`;
+    ok(
+      events.length === 1 && events[0].event_type === "created" && events[0].actor_id === staffId,
+      "'created' event with session actor"
+    );
+    ok(
+      (await probe(`/invoices/${draftId}/edit`, staffSession)).status === 200,
+      "resume page renders"
+    );
   }
 
   /* ═══ D3 — update_draft replaces children wholesale ════════════════════ */
@@ -215,21 +240,33 @@ try {
         terms: null,
         columns: [{ label: "Photocopy", vatable: true }],
         lines: [
-          { description: "Only line now", qty: 3, govtFee: 100, serviceFee: 200, extraFees: { 0: 50 } },
+          {
+            description: "Only line now",
+            qty: 3,
+            govtFee: 100,
+            serviceFee: 200,
+            extraFees: { 0: 50 },
+          },
         ],
       },
     });
     ok(res.status === 200, "update_draft → 200");
-    const [inv] = await sql`select customer_id, notes, terms, issue_date from invoices where id = ${draftId}`;
-    ok(inv.customer_id === custB.id && inv.notes === "Edited" && inv.terms === null, "invoice fields replaced");
+    const [inv] =
+      await sql`select customer_id, notes, terms, issue_date from invoices where id = ${draftId}`;
+    ok(
+      inv.customer_id === custB.id && inv.notes === "Edited" && inv.terms === null,
+      "invoice fields replaced"
+    );
     const cols = await sql`select label from invoice_extra_columns where invoice_id = ${draftId}`;
-    const lines = await sql`select description, qty from invoice_lines where invoice_id = ${draftId}`;
+    const lines =
+      await sql`select description, qty from invoice_lines where invoice_id = ${draftId}`;
     const fees = await sql`select f.amount from invoice_line_fees f
       join invoice_lines l on l.id = f.line_id where l.invoice_id = ${draftId}`;
     ok(cols.length === 1 && cols[0].label === "Photocopy", "old columns gone, new in place");
     ok(lines.length === 1 && lines[0].qty === 3, "old lines gone, new in place");
     ok(fees.length === 1 && Number(fees[0].amount) === 50, "junction fees rebuilt");
-    const events = await sql`select event_type from invoice_events where invoice_id = ${draftId} order by created_at`;
+    const events =
+      await sql`select event_type from invoice_events where invoice_id = ${draftId} order by created_at`;
     ok(
       events.length === 2 && events[1].event_type === "draft_updated",
       "'draft_updated' appended (audit trail grows, never rewrites)"
@@ -253,14 +290,16 @@ try {
     const html = await page.text();
     ok(page.status === 200 && html.includes("sealed"), "resume page shows the sealed lock notice");
     ok(
-      (await post(`/api/invoices/00000000-0000-4000-8000-000000000000`, staffSession, {
-        action: "update_draft",
-        data: {
-          customerId: custB.id,
-          columns: [],
-          lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 1, extraFees: {} }],
-        },
-      })).status === 404,
+      (
+        await post(`/api/invoices/00000000-0000-4000-8000-000000000000`, staffSession, {
+          action: "update_draft",
+          data: {
+            customerId: custB.id,
+            columns: [],
+            lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 1, extraFees: {} }],
+          },
+        })
+      ).status === 404,
       "unknown invoice → 404"
     );
   }

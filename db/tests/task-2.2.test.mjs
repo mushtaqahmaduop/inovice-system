@@ -281,8 +281,10 @@ try {
   console.log("U5 — /admin/users route");
   {
     const staffSession = await signIn("mgmt-staff@staging.test");
-    ok(location(await probe("/admin/users", staffSession)) === "/dashboard",
-      "staff GET /admin/users → /dashboard");
+    ok(
+      location(await probe("/admin/users", staffSession)) === "/dashboard",
+      "staff GET /admin/users → /dashboard"
+    );
     ok((await probe("/admin/users", adminSession)).status === 200, "aal2 admin renders the page");
   }
 } finally {

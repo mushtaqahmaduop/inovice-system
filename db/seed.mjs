@@ -29,14 +29,18 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL;
 const DEMO = process.argv.includes("--demo");
 
 if (!url || !AUTH_URL.startsWith("http") || !SERVICE_KEY) {
-  console.error("Missing DATABASE_URL_MIGRATIONS / NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.");
+  console.error(
+    "Missing DATABASE_URL_MIGRATIONS / NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY."
+  );
   process.exit(1);
 }
 if (!ADMIN_EMAIL) {
   console.error("SEED_ADMIN_EMAIL is required (the operator/admin account).");
   process.exit(1);
 }
-console.log(`Seeding ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host}${DEMO ? " (with demo customers)" : ""}`);
+console.log(
+  `Seeding ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host}${DEMO ? " (with demo customers)" : ""}`
+);
 
 const sql = postgres(url, { max: 1, onnotice: () => {} });
 
@@ -75,7 +79,9 @@ if (settingsCount === 0) {
       password: process.env.SEED_ADMIN_PASSWORD ?? randomBytes(24).toString("base64url"),
       email_confirm: true,
     });
-    console.log(`admin user: created ${ADMIN_EMAIL}${process.env.SEED_ADMIN_PASSWORD ? "" : " (random password — use reset, or re-run with SEED_ADMIN_PASSWORD)"}`);
+    console.log(
+      `admin user: created ${ADMIN_EMAIL}${process.env.SEED_ADMIN_PASSWORD ? "" : " (random password — use reset, or re-run with SEED_ADMIN_PASSWORD)"}`
+    );
   } else {
     console.log(`admin user: exists ${ADMIN_EMAIL}, untouched`);
   }
@@ -119,13 +125,25 @@ for (const s of SERVICES) {
     where not exists (select 1 from services where name = ${s.name})`;
   created += r.count;
 }
-console.log(`services: ${created} created, ${SERVICES.length - created} already present (unit fees in fils)`);
+console.log(
+  `services: ${created} created, ${SERVICES.length - created} already present (unit fees in fils)`
+);
 
 /* ── demo customers (--demo only; names invented, not from the prototype) ── */
 if (DEMO) {
   const CUSTOMERS = [
-    { type: "regular", name: "Al Noor Trading LLC", phone: "+971-4-3300000", trn: "100234567800003" },
-    { type: "regular", name: "Gulf Star Contracting", phone: "+971-4-2210000", trn: "100765432100003" },
+    {
+      type: "regular",
+      name: "Al Noor Trading LLC",
+      phone: "+971-4-3300000",
+      trn: "100234567800003",
+    },
+    {
+      type: "regular",
+      name: "Gulf Star Contracting",
+      phone: "+971-4-2210000",
+      trn: "100765432100003",
+    },
     { type: "regular", name: "Desert Rose Cafeteria", phone: "+971-50-7654321", trn: null },
     { type: "walk_in", name: "Imran S.", phone: null, trn: null },
     { type: "walk_in", name: "Fatima A.", phone: null, trn: null },

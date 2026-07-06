@@ -98,7 +98,10 @@ export function InvoiceDoc({
         : paymentStatus === "partial"
           ? "Partially Paid"
           : "Not Paid";
-  const addressLines = (company.address ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const addressLines = (company.address ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const th = "border border-[#333] px-2 py-1.5 text-left text-[12px] font-semibold";
   const td = "border border-[#333] px-2 py-1.5 text-[12px]";
@@ -227,9 +230,7 @@ export function InvoiceDoc({
                   {(l.extraFees[i] ?? 0) > 0 ? formatAed(l.qty * (l.extraFees[i] ?? 0)) : ""}
                 </td>
               ))}
-              <td className={`${td} mono text-right font-semibold`}>
-                {formatAed(lineAmount(l))}
-              </td>
+              <td className={`${td} mono text-right font-semibold`}>{formatAed(lineAmount(l))}</td>
             </tr>
           ))}
         </tbody>

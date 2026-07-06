@@ -100,7 +100,8 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
           values ('Pay Test Co', true, 500, 'INV-{NN}')`;
-const [cust] = await sql`insert into customers (type, name) values ('regular', 'Pay Client') returning id`;
+const [cust] =
+  await sql`insert into customers (type, name) values ('regular', 'Pay Client') returning id`;
 let [method] = await sql`select id from payment_methods where is_active limit 1`;
 if (!method) [method] = await sql`insert into payment_methods (label) values ('Cash') returning id`;
 
@@ -110,7 +111,8 @@ await sql`insert into invoice_lines (invoice_id, position, description, qty, gov
   values (${draftShell.id}, 1, 'Service', 1, 0, 100000)`;
 const [sealed] = await sql`select * from issue_invoice(${draftShell.id})`;
 
-const [voidedShell] = await sql`insert into invoices (customer_id) values (${cust.id}) returning id`;
+const [voidedShell] =
+  await sql`insert into invoices (customer_id) values (${cust.id}) returning id`;
 await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
   values (${voidedShell.id}, 1, 'Voided svc', 1, 0, 1000)`;
 await sql`select * from issue_invoice(${voidedShell.id})`;
@@ -155,7 +157,8 @@ const record = (amount) => ({
   reference: "test",
 });
 const listStatus = async () => {
-  const [r] = await sql`select payment_status, paid_total from invoice_list where id = ${sealed.id}`;
+  const [r] =
+    await sql`select payment_status, paid_total from invoice_list where id = ${sealed.id}`;
   return r;
 };
 
@@ -164,10 +167,14 @@ try {
   console.log("P1 — gating");
   {
     ok((await post(payUrl(sealed.id), null, record(1000))).status === 401, "anon → 401");
-    ok((await post(payUrl(openDraft.id), staffSession, record(1000))).status === 409,
-      "payment on a DRAFT → 409");
-    ok((await post(payUrl(voidedShell.id), staffSession, record(1000))).status === 409,
-      "payment on a VOIDED invoice → 409");
+    ok(
+      (await post(payUrl(openDraft.id), staffSession, record(1000))).status === 409,
+      "payment on a DRAFT → 409"
+    );
+    ok(
+      (await post(payUrl(voidedShell.id), staffSession, record(1000))).status === 409,
+      "payment on a VOIDED invoice → 409"
+    );
     ok(
       (await post(payUrl("00000000-0000-4000-8000-000000000000"), staffSession, record(1000)))
         .status === 404,
@@ -179,15 +186,21 @@ try {
   console.log("P2 — validation");
   {
     ok((await post(payUrl(sealed.id), staffSession, record(0))).status === 400, "zero → 400");
-    ok((await post(payUrl(sealed.id), staffSession, record(-500))).status === 400,
-      "negative via 'record' → 400 (reversals are the only negative path)");
-    ok((await post(payUrl(sealed.id), staffSession, record(10.5))).status === 400,
-      "fractional fils → 400");
     ok(
-      (await post(payUrl(sealed.id), staffSession, {
-        ...record(1000),
-        methodId: "00000000-0000-4000-8000-000000000000",
-      })).status === 400,
+      (await post(payUrl(sealed.id), staffSession, record(-500))).status === 400,
+      "negative via 'record' → 400 (reversals are the only negative path)"
+    );
+    ok(
+      (await post(payUrl(sealed.id), staffSession, record(10.5))).status === 400,
+      "fractional fils → 400"
+    );
+    ok(
+      (
+        await post(payUrl(sealed.id), staffSession, {
+          ...record(1000),
+          methodId: "00000000-0000-4000-8000-000000000000",
+        })
+      ).status === 400,
       "unknown payment method → 400 (FK)"
     );
   }
@@ -221,11 +234,16 @@ try {
     });
     const reversalId = (await res.json()).id;
     ok(res.status === 201 && !!reversalId, "reversal → 201");
-    const [rev] = await sql`select amount, reverses_payment_id from payments where id = ${reversalId}`;
-    ok(Number(rev.amount) === -40000 && rev.reverses_payment_id === firstPaymentId,
-      "negative row PAIRED with the original");
-    ok((await listStatus()).payment_status === "partial",
-      "status drops back to partial — purely from the new sum");
+    const [rev] =
+      await sql`select amount, reverses_payment_id from payments where id = ${reversalId}`;
+    ok(
+      Number(rev.amount) === -40000 && rev.reverses_payment_id === firstPaymentId,
+      "negative row PAIRED with the original"
+    );
+    ok(
+      (await listStatus()).payment_status === "partial",
+      "status drops back to partial — purely from the new sum"
+    );
     ok(
       (await post(payUrl(sealed.id), staffSession, { type: "reverse", paymentId: firstPaymentId }))
         .status === 409,

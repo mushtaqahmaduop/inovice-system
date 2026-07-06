@@ -90,40 +90,41 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
                   )}
                 </td>
                 <td className="px-3 py-2.5 text-right">
-                <div className="inline-flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={busy || !p.is_active}
-                    onClick={() =>
-                      call(`/api/admin/users/${p.id}`, { action: "revoke_sessions" }).then(
-                        (ok) => ok && setNotice(`All sessions for ${p.full_name} were signed out.`)
-                      )
-                    }
-                  >
-                    Sign out everywhere
-                  </Button>
-                  {p.id !== selfId &&
-                    (p.is_active ? (
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        disabled={busy}
-                        onClick={() => call(`/api/admin/users/${p.id}`, { action: "deactivate" })}
-                      >
-                        Deactivate
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        disabled={busy}
-                        onClick={() => call(`/api/admin/users/${p.id}`, { action: "reactivate" })}
-                      >
-                        Reactivate
-                      </Button>
-                    ))}
-                </div>
+                  <div className="inline-flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      disabled={busy || !p.is_active}
+                      onClick={() =>
+                        call(`/api/admin/users/${p.id}`, { action: "revoke_sessions" }).then(
+                          (ok) =>
+                            ok && setNotice(`All sessions for ${p.full_name} were signed out.`)
+                        )
+                      }
+                    >
+                      Sign out everywhere
+                    </Button>
+                    {p.id !== selfId &&
+                      (p.is_active ? (
+                        <Button
+                          variant="destructive"
+                          size="xs"
+                          disabled={busy}
+                          onClick={() => call(`/api/admin/users/${p.id}`, { action: "deactivate" })}
+                        >
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          disabled={busy}
+                          onClick={() => call(`/api/admin/users/${p.id}`, { action: "reactivate" })}
+                        >
+                          Reactivate
+                        </Button>
+                      ))}
+                  </div>
                 </td>
               </tr>
             ))}

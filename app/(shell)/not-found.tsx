@@ -10,9 +10,7 @@ export default function ShellNotFound() {
         <p className="mono mb-2 text-[10px] tracking-[0.16em] text-ink-3 uppercase">
           Not on the register
         </p>
-        <h1 className="mb-2 text-[16px] font-semibold tracking-tight text-ink">
-          No such record.
-        </h1>
+        <h1 className="mb-2 text-[16px] font-semibold tracking-tight text-ink">No such record.</h1>
         <p className="mb-4 text-[13px] leading-relaxed text-ink-2">
           Nothing exists at this address — the id may be mistyped, or the link is stale. Sealed
           documents are never deleted, so a once-valid invoice link always keeps working.

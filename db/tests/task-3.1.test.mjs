@@ -170,8 +170,10 @@ try {
   /* ═══ C1 — auth gating ═════════════════════════════════════════════════ */
   console.log("C1 — authorization");
   {
-    ok((await post("/api/customers", null, { type: "regular", name: "X" })).status === 401,
-      "anon create → 401");
+    ok(
+      (await post("/api/customers", null, { type: "regular", name: "X" })).status === 401,
+      "anon create → 401"
+    );
     const page = await probe("/customers", null);
     ok([301, 302, 303, 307, 308].includes(page.status), "anon /customers → redirect to login");
     ok((await probe("/customers", staffSession)).status === 200, "staff renders /customers");
@@ -180,10 +182,14 @@ try {
   /* ═══ C2 — zod validation ══════════════════════════════════════════════ */
   console.log("C2 — validation");
   {
-    ok((await post("/api/customers", staffSession, { type: "regular" })).status === 400,
-      "missing name → 400");
-    ok((await post("/api/customers", staffSession, { type: "vip", name: "X" })).status === 400,
-      "unknown type → 400");
+    ok(
+      (await post("/api/customers", staffSession, { type: "regular" })).status === 400,
+      "missing name → 400"
+    );
+    ok(
+      (await post("/api/customers", staffSession, { type: "vip", name: "X" })).status === 400,
+      "unknown type → 400"
+    );
     ok(
       (await post("/api/customers", staffSession, { type: "regular", name: "X", email: "nope" }))
         .status === 400,
@@ -207,7 +213,7 @@ try {
     regularId = (await reg.json()).id;
     ok(reg.status === 201 && !!regularId, "staff creates regular client → 201");
     const [regRow] = await sql`select * from customers where id = ${regularId}`;
-    ok(regRow?.notes === null, 'empty-string fields normalize to NULL');
+    ok(regRow?.notes === null, "empty-string fields normalize to NULL");
 
     const walk = await post("/api/customers", staffSession, {
       type: "walk_in",
@@ -245,8 +251,8 @@ try {
   console.log("C5 — soft delete / restore");
   {
     ok(
-      (await post(`/api/customers/${walkinId}`, staffSession, { action: "soft_delete" }))
-        .status === 403,
+      (await post(`/api/customers/${walkinId}`, staffSession, { action: "soft_delete" })).status ===
+        403,
       "staff soft-delete → 403"
     );
     ok(

@@ -4,11 +4,7 @@ import { z } from "zod";
 // (CLAUDE.md §3.3) — the client converts AED strings via lib/money.ts before
 // sending; the server never parses decimals.
 
-const filsField = z
-  .number()
-  .int("Fees must be integer fils")
-  .min(0)
-  .max(1_000_000_000); // 10M AED — sanity bound, not a business rule
+const filsField = z.number().int("Fees must be integer fils").min(0).max(1_000_000_000); // 10M AED — sanity bound, not a business rule
 
 export const serviceCreateSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),

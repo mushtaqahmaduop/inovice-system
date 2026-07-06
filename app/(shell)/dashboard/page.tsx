@@ -71,8 +71,8 @@ export default async function DashboardPage() {
         <h1 className="text-[20px] font-semibold tracking-tight text-ink">Dashboard</h1>
         <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
           Signed in as {ctx.fullName}
-          {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. Figures derive from sealed
-          invoices and recorded payments — nothing here is ever edited by hand.
+          {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. Figures derive from sealed invoices
+          and recorded payments — nothing here is ever edited by hand.
         </p>
       </header>
 
@@ -82,7 +82,11 @@ export default async function DashboardPage() {
           value={formatAed(outstandingTotal)}
           warn={outstandingTotal > 0}
         />
-        <Stat label="Invoiced this month" value={formatAed(monthTotal)} sub={`${monthRows.length} sealed`} />
+        <Stat
+          label="Invoiced this month"
+          value={formatAed(monthTotal)}
+          sub={`${monthRows.length} sealed`}
+        />
         <Stat label="VAT collected this month" value={formatAed(monthVat)} />
       </div>
 
@@ -175,7 +179,9 @@ function Stat({
   return (
     <div className="border border-hairline bg-surface p-5">
       <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">{label}</p>
-      <p className={`num text-[26px] leading-none font-medium ${warn ? "text-warning" : "text-ink"}`}>
+      <p
+        className={`num text-[26px] leading-none font-medium ${warn ? "text-warning" : "text-ink"}`}
+      >
         <span className="mr-1.5 align-middle text-[12px] font-normal text-ink-3">AED</span>
         {value}
       </p>

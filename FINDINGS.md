@@ -32,6 +32,10 @@ Not fixed inline; each entry needs its own decision/task.
   default. Options: add `endOfLine` to `.prettierrc` + a one-shot `pnpm format` commit,
   and/or ignore `db/migrations/meta/` (generated). Worth a small `chore/` branch;
   build and eslint are unaffected.
+  **RESOLVED 2026-07-07 (chore/prettier-crlf-fix):** `endOfLine: "auto"` added to
+  `.prettierrc`, `db/migrations/meta/` added to `.prettierignore`, one-shot
+  `pnpm format` over 64 files. `pnpm format:check` passes repo-wide; build + eslint
+  re-verified after the reformat.
 ## 2026-07-05 — task 4.1a
 
 - **Q-01 still unanswered; Mushtaq authorized proceeding with Phase 4** on the

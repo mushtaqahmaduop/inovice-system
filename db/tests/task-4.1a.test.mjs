@@ -110,12 +110,15 @@ const sql = postgres(dbUrl, { max: 1, onnotice: () => {} });
   await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
             values ('Calc Xcheck Co', true, 500, 'INV-{NN}')`;
 
-  const [cust] = await sql`insert into customers (type, name) values ('walk_in', 'Xcheck') returning id`;
+  const [cust] =
+    await sql`insert into customers (type, name) values ('walk_in', 'Xcheck') returning id`;
   const [inv] = await sql`insert into invoices (customer_id) values (${cust.id}) returning id`;
   // Awkward numbers on purpose: qty 3 × 110 exercises the half-up kernel.
-  const [l1] = await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
+  const [l1] =
+    await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
     values (${inv.id}, 1, 'Attestation', 3, 12345, 110) returning id`;
-  const [l2] = await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
+  const [l2] =
+    await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
     values (${inv.id}, 2, 'Typing', 1, 0, 10105) returning id`;
   const [colV] = await sql`insert into invoice_extra_columns (invoice_id, label, vatable, position)
     values (${inv.id}, 'Courier', true, 1) returning id`;
@@ -128,7 +131,13 @@ const sql = postgres(dbUrl, { max: 1, onnotice: () => {} });
 
   const mirror = calcInvoiceTotals(
     [
-      { description: "Attestation", qty: 3, govtFee: 12345, serviceFee: 110, extraFees: { v: 210 } },
+      {
+        description: "Attestation",
+        qty: 3,
+        govtFee: 12345,
+        serviceFee: 110,
+        extraFees: { v: 210 },
+      },
       { description: "Typing", qty: 1, govtFee: 0, serviceFee: 10105, extraFees: { n: 7500 } },
     ],
     [

@@ -57,45 +57,40 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     { data: eventRows },
     { data: profiles },
   ] = await Promise.all([
-      supabase
-        .from("settings")
-        .select("company_name, tagline, trn, address, phone, email, bank_details")
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("invoice_extra_columns")
-        .select("id, label, vatable, position")
-        .eq("invoice_id", id)
-        .order("position"),
-      supabase
-        .from("invoice_lines")
-        .select("position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)")
-        .eq("invoice_id", id)
-        .order("position"),
-      invoice.issued_by
-        ? supabase.from("profiles").select("full_name").eq("id", invoice.issued_by).maybeSingle()
-        : Promise.resolve({ data: null }),
-      supabase
-        .from("invoice_list")
-        .select("paid_total, payment_status")
-        .eq("id", id)
-        .maybeSingle(),
-      supabase
-        .from("payments")
-        .select("id, amount, received_on, reference, reverses_payment_id, method_id, created_at")
-        .eq("invoice_id", id)
-        .order("created_at"),
-      supabase
-        .from("payment_methods")
-        .select("id, label, is_active")
-        .order("position"),
-      supabase
-        .from("invoice_events")
-        .select("id, event_type, created_at, actor_id, payload")
-        .eq("invoice_id", id)
-        .order("created_at"),
-      supabase.from("profiles").select("id, full_name"),
-    ]);
+    supabase
+      .from("settings")
+      .select("company_name, tagline, trn, address, phone, email, bank_details")
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("invoice_extra_columns")
+      .select("id, label, vatable, position")
+      .eq("invoice_id", id)
+      .order("position"),
+    supabase
+      .from("invoice_lines")
+      .select(
+        "position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)"
+      )
+      .eq("invoice_id", id)
+      .order("position"),
+    invoice.issued_by
+      ? supabase.from("profiles").select("full_name").eq("id", invoice.issued_by).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("invoice_list").select("paid_total, payment_status").eq("id", id).maybeSingle(),
+    supabase
+      .from("payments")
+      .select("id, amount, received_on, reference, reverses_payment_id, method_id, created_at")
+      .eq("invoice_id", id)
+      .order("created_at"),
+    supabase.from("payment_methods").select("id, label, is_active").order("position"),
+    supabase
+      .from("invoice_events")
+      .select("id, event_type, created_at, actor_id, payload")
+      .eq("invoice_id", id)
+      .order("created_at"),
+    supabase.from("profiles").select("id, full_name"),
+  ]);
 
   const columnList = cols ?? [];
   const colIndexById = new Map(columnList.map((c, i) => [c.id, i]));
@@ -128,8 +123,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       <div className="mb-4 flex items-center justify-between print:hidden">
         <div className="flex items-baseline gap-3">
           <p className="mono text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-            {invoice.invoice_number} ·{" "}
-            {invoice.status === "issued" ? "sealed" : invoice.status}
+            {invoice.invoice_number} · {invoice.status === "issued" ? "sealed" : invoice.status}
           </p>
           {invoice.status === "issued" ? (
             <span className="mono border border-hairline-strong px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-ink-2 uppercase">
@@ -217,25 +211,24 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       {invoice.status === "issued" ? (
         <PaymentsPanel
           invoiceId={invoice.id}
-          payments={((paymentRows ?? []) as {
-            id: string;
-            amount: number;
-            received_on: string;
-            reference: string | null;
-            reverses_payment_id: string | null;
-            method_id: string;
-          }[]).map(
-            (p): PaymentRow => ({
-              id: p.id,
-              amount: p.amount,
-              received_on: p.received_on,
-              reference: p.reference,
-              reverses_payment_id: p.reverses_payment_id,
-              method_label:
-                (methods ?? []).find((m) => m.id === p.method_id)?.label ?? "—",
-              reversed: (paymentRows ?? []).some((r) => r.reverses_payment_id === p.id),
-            })
-          )}
+          payments={(
+            (paymentRows ?? []) as {
+              id: string;
+              amount: number;
+              received_on: string;
+              reference: string | null;
+              reverses_payment_id: string | null;
+              method_id: string;
+            }[]
+          ).map((p): PaymentRow => ({
+            id: p.id,
+            amount: p.amount,
+            received_on: p.received_on,
+            reference: p.reference,
+            reverses_payment_id: p.reverses_payment_id,
+            method_label: (methods ?? []).find((m) => m.id === p.method_id)?.label ?? "—",
+            reversed: (paymentRows ?? []).some((r) => r.reverses_payment_id === p.id),
+          }))}
           methods={((methods ?? []).filter((m) => m.is_active) as MethodOption[]).map((m) => ({
             id: m.id,
             label: m.label,
@@ -247,22 +240,21 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       ) : null}
 
       <EventTimeline
-        events={((eventRows ?? []) as {
-          id: string;
-          event_type: string;
-          created_at: string;
-          actor_id: string | null;
-          payload: Record<string, unknown>;
-        }[]).map(
-          (e): EventRow => ({
-            id: e.id,
-            event_type: e.event_type,
-            created_at: e.created_at,
-            actor_name:
-              (profiles ?? []).find((p) => p.id === e.actor_id)?.full_name ?? null,
-            payload: e.payload ?? {},
-          })
-        )}
+        events={(
+          (eventRows ?? []) as {
+            id: string;
+            event_type: string;
+            created_at: string;
+            actor_id: string | null;
+            payload: Record<string, unknown>;
+          }[]
+        ).map((e): EventRow => ({
+          id: e.id,
+          event_type: e.event_type,
+          created_at: e.created_at,
+          actor_name: (profiles ?? []).find((p) => p.id === e.actor_id)?.full_name ?? null,
+          payload: e.payload ?? {},
+        }))}
       />
     </div>
   );

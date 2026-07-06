@@ -101,8 +101,7 @@ function totp(secret) {
   buf.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
   const h = createHmac("sha1", base32decode(secret)).update(buf).digest();
   const o = h[h.length - 1] & 0xf;
-  const code =
-    (((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1_000_000;
+  const code = (((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1_000_000;
   return String(code).padStart(6, "0");
 }
 
@@ -128,7 +127,8 @@ async function probe(path, session, init = {}) {
     },
   });
 }
-const location = (res) => new URL(res.headers.get("location"), APP).pathname +
+const location = (res) =>
+  new URL(res.headers.get("location"), APP).pathname +
   new URL(res.headers.get("location"), APP).search;
 
 /* ── boot the production server ─────────────────────────────────────────── */
@@ -172,8 +172,10 @@ try {
   console.log("G1 — anonymous requests");
   {
     const dash = await probe("/dashboard");
-    ok([301, 302, 303, 307, 308].includes(dash.status) && location(dash) === "/login",
-      "anon /dashboard → /login");
+    ok(
+      [301, 302, 303, 307, 308].includes(dash.status) && location(dash) === "/login",
+      "anon /dashboard → /login"
+    );
     const admin = await probe("/admin");
     ok(location(admin) === "/login", "anon /admin → /login");
     const login = await probe("/login");
@@ -197,10 +199,14 @@ try {
   console.log("G3 — fresh admin before TOTP enrollment");
   {
     const session = await signIn("guard-admin-fresh@staging.test");
-    ok(location(await probe("/admin", session)) === "/mfa-setup",
-      "fresh admin /admin → /mfa-setup");
-    ok(location(await probe("/dashboard", session)) === "/mfa-setup",
-      "fresh admin /dashboard → /mfa-setup (no roaming before enrollment)");
+    ok(
+      location(await probe("/admin", session)) === "/mfa-setup",
+      "fresh admin /admin → /mfa-setup"
+    );
+    ok(
+      location(await probe("/dashboard", session)) === "/mfa-setup",
+      "fresh admin /dashboard → /mfa-setup (no roaming before enrollment)"
+    );
     ok((await probe("/mfa-setup", session)).status === 200, "fresh admin /mfa-setup renders");
   }
 
@@ -210,22 +216,41 @@ try {
   let recoveryCodes;
   {
     const aal1 = await signIn("guard-admin-enrolled@staging.test");
-    const factor = await gotrue("POST", "/factors",
-      { factor_type: "totp", friendly_name: "test" }, aal1.access_token);
-    const challenge = await gotrue("POST", `/factors/${factor.id}/challenge`, {}, aal1.access_token);
-    aal2Session = await gotrue("POST", `/factors/${factor.id}/verify`,
-      { challenge_id: challenge.id, code: totp(factor.totp.secret) }, aal1.access_token);
+    const factor = await gotrue(
+      "POST",
+      "/factors",
+      { factor_type: "totp", friendly_name: "test" },
+      aal1.access_token
+    );
+    const challenge = await gotrue(
+      "POST",
+      `/factors/${factor.id}/challenge`,
+      {},
+      aal1.access_token
+    );
+    aal2Session = await gotrue(
+      "POST",
+      `/factors/${factor.id}/verify`,
+      { challenge_id: challenge.id, code: totp(factor.totp.secret) },
+      aal1.access_token
+    );
     ok(!!aal2Session?.access_token, "TOTP enroll+challenge+verify via REST (Node-computed code)");
 
     ok((await probe("/admin", aal2Session)).status === 200, "aal2 admin /admin 200");
-    ok(location(await probe("/login", aal2Session)) === "/dashboard",
-      "aal2 admin bounced off /login");
+    ok(
+      location(await probe("/login", aal2Session)) === "/dashboard",
+      "aal2 admin bounced off /login"
+    );
 
     const aal1Again = await signIn("guard-admin-enrolled@staging.test");
-    ok(location(await probe("/admin", aal1Again)) === "/login?mfa=1",
-      "enrolled admin at aal1 → /login?mfa=1 (challenge, not setup)");
-    ok(location(await probe("/dashboard", aal1Again)) === "/login?mfa=1",
-      "aal1 admin cannot roam the app either");
+    ok(
+      location(await probe("/admin", aal1Again)) === "/login?mfa=1",
+      "enrolled admin at aal1 → /login?mfa=1 (challenge, not setup)"
+    );
+    ok(
+      location(await probe("/dashboard", aal1Again)) === "/login?mfa=1",
+      "aal1 admin cannot roam the app either"
+    );
   }
 
   /* ═══ G5 — recovery codes [#24] ══════════════════════════════════════ */
@@ -253,19 +278,27 @@ try {
     });
     ok(good.status === 200, "valid recovery code accepted");
     const factors = await gotrue("GET", `/admin/users/${enrolledAdminId}`);
-    ok(!(factors.factors ?? []).some((f) => f.status === "verified"),
-      "TOTP factor unenrolled by recovery");
+    ok(
+      !(factors.factors ?? []).some((f) => f.status === "verified"),
+      "TOTP factor unenrolled by recovery"
+    );
 
-    const reuse = await probe("/api/auth/recover-mfa", await signIn("guard-admin-enrolled@staging.test"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: recoveryCodes[0] }),
-    });
+    const reuse = await probe(
+      "/api/auth/recover-mfa",
+      await signIn("guard-admin-enrolled@staging.test"),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: recoveryCodes[0] }),
+      }
+    );
     ok(reuse.status === 400 || reuse.status === 403, "recovery code is single-use");
 
     const back = await signIn("guard-admin-enrolled@staging.test");
-    ok(location(await probe("/dashboard", back)) === "/mfa-setup",
-      "recovered admin is routed back through /mfa-setup");
+    ok(
+      location(await probe("/dashboard", back)) === "/mfa-setup",
+      "recovered admin is routed back through /mfa-setup"
+    );
   }
 
   /* ═══ G6 — deactivated user with a live session ══════════════════════ */
@@ -276,8 +309,10 @@ try {
     const session = await signIn("guard-inactive@staging.test");
     await sql`update profiles set is_active = false where id = ${inactiveId}`;
     const res = await probe("/dashboard", session);
-    ok(location(res) === "/login?reason=inactive",
-      "deactivated mid-session → signed out on next request");
+    ok(
+      location(res) === "/login?reason=inactive",
+      "deactivated mid-session → signed out on next request"
+    );
   }
 } finally {
   server.kill();

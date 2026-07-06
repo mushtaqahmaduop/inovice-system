@@ -29,14 +29,11 @@ export default function ShellError({
           This page could not be prepared.
         </h1>
         <p className="mb-4 text-[13px] leading-relaxed text-ink-2">
-          Nothing was written — the ledger only changes through confirmed actions, so it is safe
-          to try again. If this keeps happening, note the reference below and tell the
-          administrator.
+          Nothing was written — the ledger only changes through confirmed actions, so it is safe to
+          try again. If this keeps happening, note the reference below and tell the administrator.
         </p>
         {error.digest ? (
-          <p className="mono mb-4 text-[10px] tracking-[0.08em] text-ink-3">
-            REF {error.digest}
-          </p>
+          <p className="mono mb-4 text-[10px] tracking-[0.08em] text-ink-3">REF {error.digest}</p>
         ) : null}
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => reset()}>

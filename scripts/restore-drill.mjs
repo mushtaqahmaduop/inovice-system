@@ -71,9 +71,15 @@ try {
   r = run(
     "pg_ctl",
     [
-      "-D", dataDir, "-w", "-t", "60",
-      "-o", `-p ${PORT} -c listen_addresses=127.0.0.1`,
-      "-l", join(dataDir, "server.log"),
+      "-D",
+      dataDir,
+      "-w",
+      "-t",
+      "60",
+      "-o",
+      `-p ${PORT} -c listen_addresses=127.0.0.1`,
+      "-l",
+      join(dataDir, "server.log"),
       "start",
     ],
     { stdio: "ignore" }
@@ -82,11 +88,27 @@ try {
   serverStarted = true;
 
   const psql = (sqlText, db = "postgres") =>
-    run("psql", ["-h", "127.0.0.1", "-p", PORT, "-U", "postgres", "-d", db, "-v", "ON_ERROR_STOP=1", "-c", sqlText]);
+    run("psql", [
+      "-h",
+      "127.0.0.1",
+      "-p",
+      PORT,
+      "-U",
+      "postgres",
+      "-d",
+      db,
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      sqlText,
+    ]);
 
   psql("CREATE DATABASE drill");
   // Stubs for what the public-schema dump references but Supabase owns.
-  psql("CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN", "drill");
+  psql(
+    "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN",
+    "drill"
+  );
   psql(
     "CREATE SCHEMA auth; " +
       "CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS 'SELECT NULL::uuid'; " +
@@ -98,17 +120,38 @@ try {
   /* ── restore ────────────────────────────────────────────────────────── */
   console.log("restore — pg_restore into scratch db 'drill'");
   r = run("pg_restore", [
-    "-h", "127.0.0.1", "-p", PORT, "-U", "postgres", "-d", "drill",
-    "--no-owner", "--no-privileges", DUMP,
+    "-h",
+    "127.0.0.1",
+    "-p",
+    PORT,
+    "-U",
+    "postgres",
+    "-d",
+    "drill",
+    "--no-owner",
+    "--no-privileges",
+    DUMP,
   ]);
   const restoreErrors = (r.stderr.match(/pg_restore: error:/g) ?? []).length;
   const authRelated = (r.stderr.match(/auth\.(users|uid|jwt)|does not exist/g) ?? []).length;
-  console.log(`  pg_restore finished — ${restoreErrors} error(s), auth-schema-related mentions: ${authRelated}`);
-  if (restoreErrors > 0) console.log(r.stderr.split("\n").filter((l) => l.includes("error:")).slice(0, 10).join("\n"));
+  console.log(
+    `  pg_restore finished — ${restoreErrors} error(s), auth-schema-related mentions: ${authRelated}`
+  );
+  if (restoreErrors > 0)
+    console.log(
+      r.stderr
+        .split("\n")
+        .filter((l) => l.includes("error:"))
+        .slice(0, 10)
+        .join("\n")
+    );
 
   /* ── verify ─────────────────────────────────────────────────────────── */
   console.log("verify — every sealed invoice, restored vs recomputed vs live");
-  const drill = postgres(`postgres://postgres@127.0.0.1:${PORT}/drill`, { max: 1, onnotice: () => {} });
+  const drill = postgres(`postgres://postgres@127.0.0.1:${PORT}/drill`, {
+    max: 1,
+    onnotice: () => {},
+  });
   const live = postgres(liveUrl, { max: 1, onnotice: () => {} });
 
   const VERIFY_SQL = (sql) => sql`
@@ -139,7 +182,10 @@ try {
     }
   }
   ok(restored.length > 0, `restored copy contains sealed invoices (${restored.length})`);
-  ok(restored.length === source.length, `sealed invoice count matches live (${restored.length} = ${source.length})`);
+  ok(
+    restored.length === source.length,
+    `sealed invoice count matches live (${restored.length} = ${source.length})`
+  );
 
   let internalBad = 0;
   for (const inv of restored) {
@@ -152,7 +198,10 @@ try {
       console.error(`    mismatch (internal): ${inv.invoice_number}`);
     }
   }
-  ok(internalBad === 0, `sealed subtotals + VAT recompute exactly from restored lines (${restored.length} invoices)`);
+  ok(
+    internalBad === 0,
+    `sealed subtotals + VAT recompute exactly from restored lines (${restored.length} invoices)`
+  );
 
   const byId = new Map(source.map((r0) => [r0.id, r0]));
   let crossBad = 0;
@@ -160,9 +209,15 @@ try {
     const src = byId.get(inv.id);
     const same =
       src &&
-      ["subtotal_govt", "subtotal_service", "subtotal_extras", "vat_amount", "grand_total", "line_count", "pay_count"].every(
-        (k) => String(inv[k]) === String(src[k])
-      ) &&
+      [
+        "subtotal_govt",
+        "subtotal_service",
+        "subtotal_extras",
+        "vat_amount",
+        "grand_total",
+        "line_count",
+        "pay_count",
+      ].every((k) => String(inv[k]) === String(src[k])) &&
       BigInt(inv.pay_sum) === BigInt(src.pay_sum);
     if (!same) {
       crossBad++;
@@ -173,7 +228,10 @@ try {
 
   const [{ n: eventCountDrill }] = await drill`select count(*)::int as n from invoice_events`;
   const [{ n: eventCountLive }] = await live`select count(*)::int as n from invoice_events`;
-  ok(eventCountDrill === eventCountLive, `append-only event log fully present (${eventCountDrill} = ${eventCountLive})`);
+  ok(
+    eventCountDrill === eventCountLive,
+    `append-only event log fully present (${eventCountDrill} = ${eventCountLive})`
+  );
 
   await drill.end();
   await live.end();

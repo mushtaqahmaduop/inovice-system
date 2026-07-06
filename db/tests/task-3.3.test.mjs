@@ -189,7 +189,10 @@ try {
         .status === 400,
       "negative fee → 400"
     );
-    ok((await post("/api/services", adminSession, { name: "" })).status === 400, "empty name → 400");
+    ok(
+      (await post("/api/services", adminSession, { name: "" })).status === 400,
+      "empty name → 400"
+    );
   }
 
   /* ═══ V3 — create + large-fils round-trip (§7) ═════════════════════════ */
@@ -213,24 +216,29 @@ try {
   console.log("V4 — lifecycle");
   {
     ok(
-      (await post(`/api/services/${svcId}`, adminSession, {
-        action: "update",
-        data: { serviceFee: 3000, unit: "person" },
-      })).status === 200,
+      (
+        await post(`/api/services/${svcId}`, adminSession, {
+          action: "update",
+          data: { serviceFee: 3000, unit: "person" },
+        })
+      ).status === 200,
       "admin updates fees + unit"
     );
     const [row] = await sql`select service_fee, unit from services where id = ${svcId}`;
     ok(Number(row.service_fee) === 3000 && row.unit === "person", "update landed");
 
     ok(
-      (await post(`/api/services/${svcId}`, adminSession, {
-        action: "update",
-        data: { isActive: false },
-      })).status === 200,
+      (
+        await post(`/api/services/${svcId}`, adminSession, {
+          action: "update",
+          data: { isActive: false },
+        })
+      ).status === 200,
       "deactivate (hidden from 4.1b picker, still in catalogue)"
     );
     ok(
-      (await post(`/api/services/${svcId}`, adminSession, { action: "soft_delete" })).status === 200,
+      (await post(`/api/services/${svcId}`, adminSession, { action: "soft_delete" })).status ===
+        200,
       "soft delete"
     );
     const [del] = await sql`select deleted_at from services where id = ${svcId}`;
@@ -249,9 +257,11 @@ try {
       "empty update → 400"
     );
     ok(
-      (await post(`/api/services/00000000-0000-4000-8000-000000000000`, adminSession, {
-        action: "soft_delete",
-      })).status === 404,
+      (
+        await post(`/api/services/00000000-0000-4000-8000-000000000000`, adminSession, {
+          action: "soft_delete",
+        })
+      ).status === 404,
       "unknown id → 404"
     );
   }

@@ -79,7 +79,8 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
           values ('Rt Test Co', true, 500, 'INV-{NN}')`;
-const [cust] = await sql`insert into customers (type, name) values ('walk_in', 'Rt Client') returning id`;
+const [cust] =
+  await sql`insert into customers (type, name) values ('walk_in', 'Rt Client') returning id`;
 
 const staffId = await ensureUser("rt-staff@staging.test");
 await sql`delete from profiles where id = ${staffId}`;
@@ -93,15 +94,13 @@ const supabase = createClient(SUPA_URL, ANON_KEY, {
 });
 let received = [];
 let resolveNext = null;
-const channel = supabase
-  .channel("invoices")
-  .on("broadcast", { event: "changed" }, (msg) => {
-    received.push(msg);
-    if (resolveNext) {
-      resolveNext(msg);
-      resolveNext = null;
-    }
-  });
+const channel = supabase.channel("invoices").on("broadcast", { event: "changed" }, (msg) => {
+  received.push(msg);
+  if (resolveNext) {
+    resolveNext(msg);
+    resolveNext = null;
+  }
+});
 const subscribed = await new Promise((resolve) => {
   channel.subscribe((status) => {
     if (status === "SUBSCRIBED") resolve(true);
@@ -162,8 +161,10 @@ try {
     ok(res.status >= 200 && res.status < 300, `REST endpoint accepts the message (${res.status})`);
     const msg = await waiter;
     ok(msg !== null, "subscriber RECEIVED the broadcast over the socket");
-    ok(msg && Object.keys(msg.payload ?? {}).length === 0,
-      "payload is empty — data only flows through RLS refetches (R-5)");
+    ok(
+      msg && Object.keys(msg.payload ?? {}).length === 0,
+      "payload is empty — data only flows through RLS refetches (R-5)"
+    );
   }
 
   /* ═══ R2 — mutation routes emit the signal ═════════════════════════════ */

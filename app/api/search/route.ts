@@ -15,7 +15,10 @@ const querySchema = z.object({ q: z.string().trim().min(2).max(64) });
 // PostgREST .or() parses commas/parens as syntax and % _ * as wildcards —
 // strip them rather than juggling escapes; trigram search doesn't need them.
 function sanitize(q: string): string {
-  return q.replace(/[%_*,()\\"]/g, " ").replace(/\s+/g, " ").trim();
+  return q
+    .replace(/[%_*,()\\"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export async function GET(request: Request) {
@@ -53,8 +56,7 @@ export async function GET(request: Request) {
       id: inv.id,
       invoice_number: inv.invoice_number,
       status: inv.status,
-      customer_name:
-        (inv.customer_snapshot as { name?: string } | null)?.name ?? null,
+      customer_name: (inv.customer_snapshot as { name?: string } | null)?.name ?? null,
     })),
   });
 }

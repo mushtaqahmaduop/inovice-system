@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import {
-  InvoiceEditor,
-  type PickerCustomer,
-  type PickerService,
-} from "../invoice-editor";
+import { InvoiceEditor, type PickerCustomer, type PickerService } from "../invoice-editor";
 
 // New invoice (tasks 4.1a/4.1b). One render, four RLS-scoped reads:
 // settings (VAT context + defaults), pickers, and the recent-drafts strip —
@@ -65,9 +61,7 @@ export default async function NewInvoicePage() {
 
       {(drafts ?? []).length > 0 ? (
         <div className="mt-10 border-t border-hairline pt-5">
-          <p className="mono mb-2 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
-            Open drafts
-          </p>
+          <p className="mono mb-2 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Open drafts</p>
           <div className="divide-y divide-hairline border border-hairline bg-surface">
             {(drafts ?? []).map((d) => (
               <Link

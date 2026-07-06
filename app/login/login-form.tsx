@@ -141,7 +141,9 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
       </p>
       {error && <p className="text-sm text-warning">{error}</p>}
       <div>
-        <FieldLabel htmlFor="otp-code">{isRecovery ? "Recovery code" : "Authenticator code"}</FieldLabel>
+        <FieldLabel htmlFor="otp-code">
+          {isRecovery ? "Recovery code" : "Authenticator code"}
+        </FieldLabel>
         <Input
           id="otp-code"
           className={

@@ -246,12 +246,16 @@ console.log("M4 — payments & invoice_events append-only");
     has_table_privilege('authenticated', 'public.invoice_events', 'DELETE') as ed,
     has_table_privilege('anon', 'public.payments', 'UPDATE') as apu,
     has_table_privilege('anon', 'public.invoice_events', 'DELETE') as aed`;
-  ok(!priv.pu && !priv.pd && !priv.eu && !priv.ed && !priv.apu && !priv.aed,
-    "layer 1: UPDATE/DELETE revoked from anon + authenticated");
+  ok(
+    !priv.pu && !priv.pd && !priv.eu && !priv.ed && !priv.apu && !priv.aed,
+    "layer 1: UPDATE/DELETE revoked from anon + authenticated"
+  );
   const rls = await sql`select relname, relrowsecurity from pg_class
     where relname in ('payments','invoice_events')`;
-  ok(rls.length === 2 && rls.every((r) => r.relrowsecurity === true),
-    "layer 2: RLS enabled on both tables (policies land in 1.3)");
+  ok(
+    rls.length === 2 && rls.every((r) => r.relrowsecurity === true),
+    "layer 2: RLS enabled on both tables (policies land in 1.3)"
+  );
   const pol = await sql`select count(*)::int as n from pg_policies
     where tablename in ('payments','invoice_events') and cmd in ('UPDATE','DELETE')`;
   ok(pol[0].n === 0, "layer 2: no UPDATE/DELETE policy exists for any role");
@@ -262,8 +266,10 @@ console.log("M5 — issue flow + parent-lock regression");
 {
   const d = await mkDraft(custB, 777); // exact VAT 38.85 → half-up 39
   const inv = await issue(d);
-  ok(Number(inv.vat_amount) === 39 && Number(inv.grand_total) === 816,
-    "issue_invoice() still seals correctly through the matrix trigger");
+  ok(
+    Number(inv.vat_amount) === 39 && Number(inv.grand_total) === 816,
+    "issue_invoice() still seals correctly through the matrix trigger"
+  );
   await rejects(
     sql`update invoice_lines set service_fee = 1 where invoice_id = ${d}`,
     /frozen/,

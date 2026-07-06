@@ -89,7 +89,8 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format, due_days_default)
           values ('List Test Co', true, 500, 'INV-{NN}', 14)`;
-const [cust] = await sql`insert into customers (type, name) values ('regular', 'List Client') returning id`;
+const [cust] =
+  await sql`insert into customers (type, name) values ('regular', 'List Client') returning id`;
 let [method] = await sql`select id from payment_methods limit 1`;
 if (!method) [method] = await sql`insert into payment_methods (label) values ('Cash') returning id`;
 
@@ -161,14 +162,18 @@ try {
     await sql`insert into payments (invoice_id, amount, method_id, received_on)
       values (${inv2.id}, 10000, ${method.id}, current_date)`;
     const over = await status(inv2.id);
-    ok(over.payment_status === "paid" && Number(over.paid_total) === 115000,
-      "overpayment still reads 'paid' (flagged in UI, not an error)");
+    ok(
+      over.payment_status === "paid" && Number(over.paid_total) === 115000,
+      "overpayment still reads 'paid' (flagged in UI, not an error)"
+    );
 
     // Reversal row (negative) drops it back below the total.
     await sql`insert into payments (invoice_id, amount, method_id, received_on)
       values (${inv2.id}, -20000, ${method.id}, current_date)`;
-    ok((await status(inv2.id)).payment_status === "partial",
-      "negative reversal row flows straight into the derived status");
+    ok(
+      (await status(inv2.id)).payment_status === "partial",
+      "negative reversal row flows straight into the derived status"
+    );
   }
 
   /* ═══ L2 — security_invoker: RLS binds the view ════════════════════════ */
@@ -190,8 +195,10 @@ try {
     const page = await probe("/invoices", staffSession);
     const html = await page.text();
     ok(page.status === 200, "staff renders /invoices");
-    ok(html.includes("INV-1") && html.includes("INV-2") && html.includes("INV-3"),
-      "all sealed numbers render");
+    ok(
+      html.includes("INV-1") && html.includes("INV-2") && html.includes("INV-3"),
+      "all sealed numbers render"
+    );
     ok(html.includes("List Client"), "customer names render (snapshot + join for drafts)");
   }
 } finally {

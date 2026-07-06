@@ -35,7 +35,9 @@ export function InvoicesTable({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "issued" | "voided">("all");
-  const [payFilter, setPayFilter] = useState<"all" | "unpaid" | "partial" | "paid" | "overdue">("all");
+  const [payFilter, setPayFilter] = useState<"all" | "unpaid" | "partial" | "paid" | "overdue">(
+    "all"
+  );
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -318,7 +320,9 @@ export function InvoicesTable({
                 <tr
                   key={row.id}
                   onClick={() =>
-                    router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`)
+                    router.push(
+                      r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`
+                    )
                   }
                   className="h-[42px] cursor-pointer border-b border-hairline last:border-b-0 hover:bg-accent/50"
                 >
@@ -332,7 +336,10 @@ export function InvoicesTable({
             })}
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-10 text-center text-[13px] text-ink-3">
+                <td
+                  colSpan={columns.length}
+                  className="px-3 py-10 text-center text-[13px] text-ink-3"
+                >
                   No invoices match — adjust the filters or create the first one.
                 </td>
               </tr>
@@ -346,10 +353,20 @@ export function InvoicesTable({
           <span className="mono text-[10px] text-ink-3">
             {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
           </span>
-          <Button variant="outline" size="sm" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!table.getCanPreviousPage()}
+            onClick={() => table.previousPage()}
+          >
             Prev
           </Button>
-          <Button variant="outline" size="sm" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!table.getCanNextPage()}
+            onClick={() => table.nextPage()}
+          >
             Next
           </Button>
         </div>

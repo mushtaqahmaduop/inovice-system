@@ -37,8 +37,7 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
     () =>
       rows.filter(
         (r) =>
-          (showDeleted || r.deleted_at === null) &&
-          (typeFilter === "all" || r.type === typeFilter)
+          (showDeleted || r.deleted_at === null) && (typeFilter === "all" || r.type === typeFilter)
       ),
     [rows, typeFilter, showDeleted]
   );
@@ -93,7 +92,11 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
           return (
             <div className="flex justify-end gap-1.5">
               {r.deleted_at === null ? (
-                <Button variant="outline" size="sm" onClick={() => setDialog({ kind: "edit", row: r })}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialog({ kind: "edit", row: r })}
+                >
                   Edit
                 </Button>
               ) : null}
@@ -117,7 +120,10 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
   );
 
   async function mutate(id: string, action: "soft_delete" | "restore") {
-    if (action === "soft_delete" && !window.confirm("Remove this customer? (Soft delete — an admin can restore.)"))
+    if (
+      action === "soft_delete" &&
+      !window.confirm("Remove this customer? (Soft delete — an admin can restore.)")
+    )
       return;
     setBusyId(id);
     const res = await fetch(`/api/customers/${id}`, {
@@ -231,7 +237,10 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
             ))}
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-10 text-center text-[13px] text-ink-3">
+                <td
+                  colSpan={columns.length}
+                  className="px-3 py-10 text-center text-[13px] text-ink-3"
+                >
                   No customers match — adjust the search or add the first one.
                 </td>
               </tr>
@@ -245,10 +254,20 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
           <span className="mono text-[10px] text-ink-3">
             {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
           </span>
-          <Button variant="outline" size="sm" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!table.getCanPreviousPage()}
+            onClick={() => table.previousPage()}
+          >
             Prev
           </Button>
-          <Button variant="outline" size="sm" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!table.getCanNextPage()}
+            onClick={() => table.nextPage()}
+          >
             Next
           </Button>
         </div>

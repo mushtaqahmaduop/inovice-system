@@ -90,7 +90,8 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
           values ('Time Test Co', true, 500, 'INV-{NN}')`;
-const [cust] = await sql`insert into customers (type, name) values ('regular', 'Time Client') returning id`;
+const [cust] =
+  await sql`insert into customers (type, name) values ('regular', 'Time Client') returning id`;
 let [method] = await sql`select id from payment_methods where is_active limit 1`;
 if (!method) [method] = await sql`insert into payment_methods (label) values ('Cash') returning id`;
 
@@ -154,19 +155,31 @@ try {
     ok(page.status === 200, "detail view renders");
     ok(html.includes("Created as draft"), "created event shown");
     ok(html.includes("sealed"), "issued event shown");
-    ok(html.includes("Payment recorded") && html.includes("400.00"),
-      "payment event with AED amount");
+    ok(
+      html.includes("Payment recorded") && html.includes("400.00"),
+      "payment event with AED amount"
+    );
     ok(html.includes("Payment reversed"), "reversal event shown");
     ok(html.includes("Print requested"), "print event shown (best-effort semantics)");
-    ok(html.includes("Voided") && html.includes("Client changed the order"),
-      "void event with the reason");
+    ok(
+      html.includes("Voided") && html.includes("Client changed the order"),
+      "void event with the reason"
+    );
     ok(html.includes("Time Staff"), "actor name on staff-driven events");
     ok(html.includes("system"), "system actor on owner-driven events");
-    const order = ["Created as draft", "Payment recorded", "Payment reversed", "Print requested"]
-      .map((s) => html.indexOf(s));
-    ok(order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1])),
-      "events render in chronological order");
-    const eventCount = (await sql`select count(*)::int as n from invoice_events where invoice_id = ${inv.id}`)[0].n;
+    const order = [
+      "Created as draft",
+      "Payment recorded",
+      "Payment reversed",
+      "Print requested",
+    ].map((s) => html.indexOf(s));
+    ok(
+      order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1])),
+      "events render in chronological order"
+    );
+    const eventCount = (
+      await sql`select count(*)::int as n from invoice_events where invoice_id = ${inv.id}`
+    )[0].n;
     ok(eventCount === 6, "six events on record (created/issued/payment/reversal/print/void)");
   }
 } finally {

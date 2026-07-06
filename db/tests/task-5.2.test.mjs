@@ -82,7 +82,8 @@ await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoi
           values ('Ledger Test Co', true, 500, 'INV-{NN}')`;
 const [cust] = await sql`insert into customers (type, name, trn)
   values ('regular', 'Ledger Client LLC', '100000000000003') returning id`;
-const [other] = await sql`insert into customers (type, name) values ('walk_in', 'Other Person') returning id`;
+const [other] =
+  await sql`insert into customers (type, name) values ('walk_in', 'Other Person') returning id`;
 let [method] = await sql`select id from payment_methods where is_active limit 1`;
 if (!method) [method] = await sql`insert into payment_methods (label) values ('Cash') returning id`;
 
@@ -149,7 +150,10 @@ try {
     // 200 instead of a raw HTTP 404 — accept either form.
     const isNotFound = async (res) =>
       res.status === 404 || /could not be found|404/i.test(await res.text());
-    ok(await isNotFound(await probe(`/customers/not-a-uuid`, staffSession)), "malformed id → not-found");
+    ok(
+      await isNotFound(await probe(`/customers/not-a-uuid`, staffSession)),
+      "malformed id → not-found"
+    );
     ok(
       await isNotFound(
         await probe(`/customers/00000000-0000-4000-8000-000000000000`, staffSession)
@@ -170,11 +174,15 @@ try {
     ok(html.includes("300.00"), "paid nets the reversal");
     // outstanding = 210000 − 30000 = 180000 → "1,800.00"
     ok(html.includes("1,800.00"), "outstanding = invoiced − paid");
-    ok(html.includes("INV-1") && html.includes("INV-2") && html.includes("INV-3"),
-      "all documents listed (incl. the voided one, marked)");
+    ok(
+      html.includes("INV-1") && html.includes("INV-2") && html.includes("INV-3"),
+      "all documents listed (incl. the voided one, marked)"
+    );
     ok(html.includes("draft"), "open draft listed");
-    ok(html.includes("partial reversal") || html.includes("reversal"),
-      "reversal row visible in the payments section");
+    ok(
+      html.includes("partial reversal") || html.includes("reversal"),
+      "reversal row visible in the payments section"
+    );
     ok(!html.includes("INV-4"), "another customer's invoice does NOT leak in");
   }
 

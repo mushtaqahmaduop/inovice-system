@@ -38,7 +38,14 @@ const exe = process.env.PG_BIN
 
 const res = spawnSync(
   exe,
-  ["--format=custom", "--schema=public", "--no-owner", "--no-privileges", `--file=${outFile}`, dbUrl],
+  [
+    "--format=custom",
+    "--schema=public",
+    "--no-owner",
+    "--no-privileges",
+    `--file=${outFile}`,
+    dbUrl,
+  ],
   { stdio: "inherit" }
 );
 if (res.error) {
@@ -48,4 +55,6 @@ if (res.error) {
 }
 if (res.status !== 0) process.exit(res.status ?? 1);
 console.log(`\nBackup written: ${outFile}`);
-console.log("Copy it to the client-owned storage location (RUNBOOK step 2) — the local copy is not the backup.");
+console.log(
+  "Copy it to the client-owned storage location (RUNBOOK step 2) — the local copy is not the backup."
+);

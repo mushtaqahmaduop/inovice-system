@@ -27,11 +27,23 @@ export function ExportForms() {
       <div className="flex flex-wrap items-end gap-3 border border-hairline bg-surface p-5">
         <div>
           <FieldLabel htmlFor="exp-from">From (issue / received date)</FieldLabel>
-          <Input id="exp-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mono w-40 text-[12px]" />
+          <Input
+            id="exp-from"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="mono w-40 text-[12px]"
+          />
         </div>
         <div>
           <FieldLabel htmlFor="exp-to">To</FieldLabel>
-          <Input id="exp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mono w-40 text-[12px]" />
+          <Input
+            id="exp-to"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="mono w-40 text-[12px]"
+          />
         </div>
         <FieldHint>Leave empty for everything.</FieldHint>
       </div>

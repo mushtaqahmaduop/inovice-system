@@ -135,9 +135,20 @@ const [payment] = await sql`insert into payments (invoice_id, amount, method_id,
 
 /* ═══ R1 — anon gets NOTHING, visibly ══════════════════════════════════ */
 console.log("R1 — anon: permission denied everywhere");
-for (const t of ["settings", "profiles", "customers", "services", "payment_methods",
-                 "invoices", "invoice_lines", "invoice_extra_columns",
-                 "invoice_line_fees", "payments", "invoice_events", "invoice_counters"]) {
+for (const t of [
+  "settings",
+  "profiles",
+  "customers",
+  "services",
+  "payment_methods",
+  "invoices",
+  "invoice_lines",
+  "invoice_extra_columns",
+  "invoice_line_fees",
+  "payments",
+  "invoice_events",
+  "invoice_counters",
+]) {
   await rejects(
     asAnon((tx) => tx.unsafe(`select * from public.${t} limit 1`)),
     /permission denied/,
@@ -166,8 +177,10 @@ console.log("R2 — app_role() and the read matrix");
   }));
   ok(counts.settings === 1, "staff reads settings");
   ok(counts.profiles === 3, "staff reads profiles (display)");
-  ok(counts.customers === 1 && counts.services === 1 && counts.methods === 1,
-    "staff reads customers/services/payment_methods");
+  ok(
+    counts.customers === 1 && counts.services === 1 && counts.methods === 1,
+    "staff reads customers/services/payment_methods"
+  );
   ok(counts.invoices === 2 && counts.lines === 2, "staff reads invoices + lines");
   ok(counts.payments === 1 && counts.events >= 1, "staff reads payments + events");
   await rejects(
@@ -212,14 +225,16 @@ console.log("R3 — staff: allowed and forbidden writes");
     "staff cannot create payment methods"
   );
   await rejects(
-    runAs(staffId, (tx) =>
-      tx`insert into profiles (id, full_name, role) values (${newUserId}, 'Rogue', 'admin')`),
+    runAs(
+      staffId,
+      (tx) => tx`insert into profiles (id, full_name, role) values (${newUserId}, 'Rogue', 'admin')`
+    ),
     /row-level security/,
     "staff cannot create profiles (no self-made admins)"
   );
   ok(
-    (await runAs(staffId, (tx) =>
-      tx`update profiles set role = 'admin' where id = ${staffId}`)).count === 0,
+    (await runAs(staffId, (tx) => tx`update profiles set role = 'admin' where id = ${staffId}`))
+      .count === 0,
     "staff cannot promote themselves (0 rows)"
   );
 
@@ -233,9 +248,12 @@ console.log("R3 — staff: allowed and forbidden writes");
   });
   ok(!!staffDraft, "staff creates a draft with lines and edits it");
   await rejects(
-    runAs(staffId, (tx) =>
-      tx`insert into invoices (customer_id, status, invoice_number, number_year, number_seq)
-         values (${cust.id}, 'issued', 'INV-666', 2026, 666)`),
+    runAs(
+      staffId,
+      (tx) =>
+        tx`insert into invoices (customer_id, status, invoice_number, number_year, number_seq)
+         values (${cust.id}, 'issued', 'INV-666', 2026, 666)`
+    ),
     /row-level security/,
     "forged pre-sealed INSERT rejected"
   );
@@ -245,8 +263,8 @@ console.log("R3 — staff: allowed and forbidden writes");
     "raw draft→issued UPDATE rejected (sealing only via issue_invoice)"
   );
   ok(
-    (await runAs(staffId, (tx) =>
-      tx`update invoices set notes = 'tamper' where id = ${issuedInv}`)).count === 0,
+    (await runAs(staffId, (tx) => tx`update invoices set notes = 'tamper' where id = ${issuedInv}`))
+      .count === 0,
     "staff UPDATE on issued invoice hits 0 rows"
   );
   ok(
@@ -254,9 +272,12 @@ console.log("R3 — staff: allowed and forbidden writes");
     "staff DELETE on issued invoice hits 0 rows"
   );
   await rejects(
-    runAs(staffId, (tx) =>
-      tx`insert into invoice_lines (invoice_id, position, description, qty)
-         values (${issuedInv}, 9, 'late line', 1)`),
+    runAs(
+      staffId,
+      (tx) =>
+        tx`insert into invoice_lines (invoice_id, position, description, qty)
+         values (${issuedInv}, 9, 'late line', 1)`
+    ),
     /row-level security|frozen/,
     "staff cannot add lines to an issued invoice"
   );
@@ -273,9 +294,12 @@ console.log("R3 — staff: allowed and forbidden writes");
   ok(ev.actor_id === staffId, "event actor = staff uid");
 
   // payments/events: INSERT yes, UPDATE/DELETE denied at the privilege layer
-  await runAs(staffId, (tx) =>
-    tx`insert into payments (invoice_id, amount, method_id, received_on)
-       values (${staffDraft}, 100, ${method.id}, current_date)`);
+  await runAs(
+    staffId,
+    (tx) =>
+      tx`insert into payments (invoice_id, amount, method_id, received_on)
+       values (${staffDraft}, 100, ${method.id}, current_date)`
+  );
   ok(true, "staff records a payment");
   await rejects(
     runAs(staffId, (tx) => tx`update payments set amount = 1 where id = ${payment.id}`),
@@ -298,35 +322,53 @@ console.log("R3 — staff: allowed and forbidden writes");
 console.log("R4 — admin: management surface");
 {
   ok(
-    (await runAs(adminId, (tx) => tx`update settings set tagline = 'Sealed & stamped'`)).count === 1,
+    (await runAs(adminId, (tx) => tx`update settings set tagline = 'Sealed & stamped'`)).count ===
+      1,
     "admin updates settings"
   );
-  await runAs(adminId, (tx) => tx`insert into services (name, govt_fee, service_fee)
-    values ('Translation', 0, 4000)`);
+  await runAs(
+    adminId,
+    (tx) => tx`insert into services (name, govt_fee, service_fee)
+    values ('Translation', 0, 4000)`
+  );
   ok(true, "admin creates services");
   ok(
-    (await runAs(adminId, (tx) =>
-      tx`update services set is_active = false where id = ${svc.id}`)).count === 1,
+    (await runAs(adminId, (tx) => tx`update services set is_active = false where id = ${svc.id}`))
+      .count === 1,
     "admin edits services"
   );
-  await runAs(adminId, (tx) => tx`insert into payment_methods (label, position) values ('Card', 1)`);
+  await runAs(
+    adminId,
+    (tx) => tx`insert into payment_methods (label, position) values ('Card', 1)`
+  );
   ok(true, "admin creates payment methods");
-  await runAs(adminId, (tx) =>
-    tx`insert into profiles (id, full_name, role) values (${newUserId}, 'New Staff', 'staff')`);
+  await runAs(
+    adminId,
+    (tx) =>
+      tx`insert into profiles (id, full_name, role) values (${newUserId}, 'New Staff', 'staff')`
+  );
   ok(true, "admin creates a profile");
   ok(
-    (await runAs(adminId, (tx) =>
-      tx`update profiles set is_active = false where id = ${newUserId}`)).count === 1,
+    (
+      await runAs(
+        adminId,
+        (tx) => tx`update profiles set is_active = false where id = ${newUserId}`
+      )
+    ).count === 1,
     "admin deactivates a user"
   );
   ok(
-    (await runAs(adminId, (tx) =>
-      tx`update customers set deleted_at = now() where id = ${cust.id}`)).count === 1,
+    (
+      await runAs(
+        adminId,
+        (tx) => tx`update customers set deleted_at = now() where id = ${cust.id}`
+      )
+    ).count === 1,
     "admin soft-deletes a customer"
   );
   ok(
-    (await runAs(adminId, (tx) =>
-      tx`update invoices set notes = 'tamper' where id = ${issuedInv}`)).count === 0,
+    (await runAs(adminId, (tx) => tx`update invoices set notes = 'tamper' where id = ${issuedInv}`))
+      .count === 0,
     "admin raw UPDATE on issued invoice ALSO hits 0 rows (functions only)"
   );
   await rejects(
@@ -351,14 +393,18 @@ console.log("R5 — deactivated user");
     payments: (await tx`select * from payments`).length,
     profiles: (await tx`select * from profiles`).length,
   }));
-  ok(Object.values(view).every((n) => n === 0), "every SELECT returns 0 rows");
+  ok(
+    Object.values(view).every((n) => n === 0),
+    "every SELECT returns 0 rows"
+  );
   await rejects(
     runAs(inactiveId, (tx) => tx`insert into customers (type, name) values ('walk_in', 'Ghost')`),
     /row-level security/,
     "INSERT rejected"
   );
   ok(
-    (await runAs(inactiveId, (tx) => tx`update settings set company_name = 'Ghost Co'`)).count === 0,
+    (await runAs(inactiveId, (tx) => tx`update settings set company_name = 'Ghost Co'`)).count ===
+      0,
     "UPDATE hits 0 rows"
   );
   const ghostDraft = await mkDraft();

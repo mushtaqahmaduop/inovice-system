@@ -3,13 +3,7 @@
 // uppercase, letterspaced — so every form reads like registry stationery.
 // Errors are burnt orange (the palette's only warning hue), never red.
 
-export function FieldLabel({
-  htmlFor,
-  children,
-}: {
-  htmlFor?: string;
-  children: React.ReactNode;
-}) {
+export function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return (
     <label
       htmlFor={htmlFor}
