@@ -145,7 +145,7 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
         ))}
         {visible.length === 0 ? (
           <p className="col-span-full border border-hairline bg-surface px-4 py-8 text-center text-[12px] text-ink-3">
-            No services match.
+            No services match — adjust the search, or add the first one to the catalogue.
           </p>
         ) : null}
       </div>

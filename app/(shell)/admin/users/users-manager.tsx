@@ -127,6 +127,13 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
                 </td>
               </tr>
             ))}
+            {profiles.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-3 py-8 text-center text-[12px] text-ink-3">
+                  No accounts on the register — create the first one below.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
