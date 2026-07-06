@@ -144,7 +144,8 @@ const voided = await mkSealed(); // INV-3 → voided
 await sql`select * from void_invoice(${voided.id}, 'export test')`;
 await sql`insert into invoices (customer_id) values (${cust.id})`; // draft — must not appear
 
-const [pay1] = await sql`insert into payments (invoice_id, amount, method_id, received_on, reference)
+const [pay1] =
+  await sql`insert into payments (invoice_id, amount, method_id, received_on, reference)
   values (${inv1.id}, 40000, ${method.id}, '2026-07-01', 'first') returning id`;
 await sql`insert into payments (invoice_id, amount, method_id, received_on, reverses_payment_id, reference)
   values (${inv1.id}, -40000, ${method.id}, '2026-07-03', ${pay1.id}, 'undo')`;
@@ -196,8 +197,10 @@ try {
   {
     const res = await probe("/api/export/invoices", adminSession);
     const csv = await res.text();
-    ok(res.status === 200 && res.headers.get("content-type")?.includes("text/csv"),
-      "downloads as text/csv");
+    ok(
+      res.status === 200 && res.headers.get("content-type")?.includes("text/csv"),
+      "downloads as text/csv"
+    );
     ok(res.headers.get("content-disposition")?.includes("attachment"), "attachment disposition");
     const lines = csv.trim().split("\r\n");
     ok(lines.length === 4, "header + 3 sealed/voided rows (draft EXCLUDED)");
@@ -226,8 +229,10 @@ try {
   {
     const csv = await (await probe("/api/export/vat", adminSession)).text();
     const lines = csv.trim().split("\r\n");
-    ok(lines[0].includes("vat_rate_percent") && lines[0].includes("taxable_base_aed"),
-      "VAT basis columns present");
+    ok(
+      lines[0].includes("vat_rate_percent") && lines[0].includes("taxable_base_aed"),
+      "VAT basis columns present"
+    );
     ok(csv.includes(",5,") || csv.includes(",5\r"), "rate rendered as percent (5)");
     ok(csv.includes("1234.00"), "non-taxable govt passthrough split out");
     ok(csv.includes("50.00"), "sealed VAT amount");

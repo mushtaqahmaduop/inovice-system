@@ -7,12 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
-import {
-  calcInvoiceTotals,
-  toRoman,
-  type DraftLine,
-  type ExtraColumn,
-} from "@/lib/invoice-calc";
+import { calcInvoiceTotals, toRoman, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
 
 // Invoice draft editor (tasks 4.1a + 4.1b): line grid with two fixed fee
 // columns (D-10) + dynamic extra columns (D-24), live totals mirroring
@@ -89,7 +84,11 @@ export function InvoiceEditor({
   const router = useRouter();
 
   const [columns, setColumns] = useState<ExtraColumn[]>(() =>
-    (existing?.columns ?? []).map((c, i) => ({ id: `col-${i}`, label: c.label, vatable: c.vatable }))
+    (existing?.columns ?? []).map((c, i) => ({
+      id: `col-${i}`,
+      label: c.label,
+      vatable: c.vatable,
+    }))
   );
   const [lines, setLines] = useState<EditorLine[]>(() =>
     existing
@@ -158,7 +157,9 @@ export function InvoiceEditor({
   }, [services, svcQuery]);
 
   function setCell(key: number, col: CellKey, value: string) {
-    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, fees: { ...l.fees, [col]: value } } : l)));
+    setLines((ls) =>
+      ls.map((l) => (l.key === key ? { ...l, fees: { ...l.fees, [col]: value } } : l))
+    );
   }
   function setLine(key: number, patch: Partial<EditorLine>) {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -166,7 +167,10 @@ export function InvoiceEditor({
   function addColumn() {
     const label = newColLabel.trim();
     if (!label) return;
-    setColumns((cs) => [...cs, { id: `col-${Date.now()}-${cs.length}`, label, vatable: newColVatable }]);
+    setColumns((cs) => [
+      ...cs,
+      { id: `col-${Date.now()}-${cs.length}`, label, vatable: newColVatable },
+    ]);
     setNewColLabel("");
     setNewColVatable(false);
   }
@@ -182,7 +186,9 @@ export function InvoiceEditor({
   }
   function addFromCatalogue(s: PickerService) {
     setLines((ls) => [
-      ...ls.filter((l) => l.description.trim() !== "" || Object.values(l.fees).some((v) => v?.trim())),
+      ...ls.filter(
+        (l) => l.description.trim() !== "" || Object.values(l.fees).some((v) => v?.trim())
+      ),
       {
         key: nextKey++,
         description: s.name,
@@ -200,7 +206,11 @@ export function InvoiceEditor({
     const res = await fetch("/api/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "walk_in", name: walkInName.trim(), phone: walkInPhone || null }),
+      body: JSON.stringify({
+        type: "walk_in",
+        name: walkInName.trim(),
+        phone: walkInPhone || null,
+      }),
     });
     if (!res.ok) {
       setError((await res.json().catch(() => null))?.error ?? "Could not create walk-in");
@@ -299,9 +309,7 @@ export function InvoiceEditor({
     setIssueError(null);
     const problem = validateForSave();
     if (problem) return setError(problem);
-    const meaningful = lines.some(
-      (l) => l.description.trim() !== "" || lineTotal(l) > 0
-    );
+    const meaningful = lines.some((l) => l.description.trim() !== "" || lineTotal(l) > 0);
     if (!meaningful) return setError("Add at least one line with a description or amount.");
     setSaving(true);
     const id = await persistDraft();
@@ -334,7 +342,9 @@ export function InvoiceEditor({
     const qty = Math.max(1, Math.floor(Number(l.qty) || 1));
     return (
       qty *
-      (cellFils(l, "govt") + cellFils(l, "service") + columns.reduce((s, c) => s + cellFils(l, c.id), 0))
+      (cellFils(l, "govt") +
+        cellFils(l, "service") +
+        columns.reduce((s, c) => s + cellFils(l, c.id), 0))
     );
   };
 
@@ -376,7 +386,9 @@ export function InvoiceEditor({
             <div>
               <p className="text-[13.5px] font-medium text-ink">{customer.name}</p>
               <p className="text-[11px] text-ink-3">
-                <span className="mono uppercase">{customer.type === "walk_in" ? "walk-in" : "regular"}</span>
+                <span className="mono uppercase">
+                  {customer.type === "walk_in" ? "walk-in" : "regular"}
+                </span>
                 {customer.trn ? (
                   <>
                     {" · TRN "}
@@ -390,7 +402,9 @@ export function InvoiceEditor({
                   </>
                 ) : null}
               </p>
-              {customer.address ? <p className="text-[11px] text-ink-3">{customer.address}</p> : null}
+              {customer.address ? (
+                <p className="text-[11px] text-ink-3">{customer.address}</p>
+              ) : null}
             </div>
             <Button variant="outline" size="sm" onClick={() => setCustomer(null)}>
               Change
@@ -479,7 +493,9 @@ export function InvoiceEditor({
         </span>
         <span className="mono border border-hairline bg-surface px-2 py-0.5 text-[11px] text-ink-2">
           Service fee{" "}
-          <span className="text-[9px] text-ink-3">{vatRegistered ? `${ratePct}% VAT` : "0% VAT"}</span>
+          <span className="text-[9px] text-ink-3">
+            {vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
+          </span>
         </span>
         {columns.map((c) => (
           <span
@@ -532,7 +548,9 @@ export function InvoiceEditor({
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-hairline">
-              <th className="mono w-10 px-2 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase">№</th>
+              <th className="mono w-10 px-2 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
+                №
+              </th>
               <th className="mono px-2 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
                 Description
               </th>
@@ -726,10 +744,7 @@ export function InvoiceEditor({
       {/* Mandatory pre-issue preview (D-23): slide-over, ~48% width,
           Esc/outside-click closes. Sealing happens ONLY from here. */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent
-          side="right"
-          className="w-full overflow-y-auto p-5 sm:w-[48%] sm:max-w-[48%]"
-        >
+        <SheetContent side="right" className="w-full overflow-y-auto p-5 sm:w-[48%] sm:max-w-[48%]">
           <SheetTitle className="mono mb-3 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
             Preview · confirm to seal
           </SheetTitle>
@@ -765,13 +780,18 @@ export function InvoiceEditor({
             terms={terms || null}
           />
           <p className="mt-3 text-[11px] leading-relaxed text-ink-3">
-            Issuing allocates the next invoice number and seals this document permanently —
-            totals are recomputed server-side at that moment. Corrections afterwards happen
-            via a new document, never by editing.
+            Issuing allocates the next invoice number and seals this document permanently — totals
+            are recomputed server-side at that moment. Corrections afterwards happen via a new
+            document, never by editing.
           </p>
           {issueError ? <p className="mt-2 text-[11px] text-warning">{issueError}</p> : null}
           <div className="mt-4 flex justify-end gap-2 pb-2">
-            <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} disabled={confirming}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewOpen(false)}
+              disabled={confirming}
+            >
               Back to editing
             </Button>
             <Button size="sm" onClick={confirmIssue} disabled={confirming}>

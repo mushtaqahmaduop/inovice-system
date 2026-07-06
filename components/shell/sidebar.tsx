@@ -117,7 +117,9 @@ function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; v
           ? "mono min-w-4 rounded-[8px] border border-warning bg-warning px-1 text-center text-[9px] leading-4 text-surface"
           : "mono min-w-4 rounded-[8px] border border-hairline-strong bg-surface-2 px-1 text-center text-[9px] leading-4 text-ink-3"
       }
-      title={kind === "overdue" ? `${value} overdue` : `${value} open draft${value === 1 ? "" : "s"}`}
+      title={
+        kind === "overdue" ? `${value} overdue` : `${value} open draft${value === 1 ? "" : "s"}`
+      }
     >
       {value > 99 ? "99+" : value}
     </span>
@@ -158,7 +160,8 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
               .filter((item) => !item.adminOnly || role === "admin")
               .map((item) => {
                 const active =
-                  pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+                  pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(item.href + "/"));
                 if (item.task) {
                   // Placeholder — page lands with the tagged task. Inert on
                   // purpose: no dead links in the shell.

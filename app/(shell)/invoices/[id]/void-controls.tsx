@@ -23,7 +23,11 @@ export function VoidControls({ invoiceId }: { invoiceId: string }) {
     const res = await fetch(`/api/invoices/${invoiceId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "void", reason: reason.trim(), createReplacement: withReplacement }),
+      body: JSON.stringify({
+        action: "void",
+        reason: reason.trim(),
+        createReplacement: withReplacement,
+      }),
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {

@@ -133,11 +133,14 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format)
           values ('Void Test Co', true, 500, 'INV-{NN}')`;
-const [cust] = await sql`insert into customers (type, name) values ('regular', 'Void Client') returning id`;
+const [cust] =
+  await sql`insert into customers (type, name) values ('regular', 'Void Client') returning id`;
 
 async function mkSealed() {
-  const [inv] = await sql`insert into invoices (customer_id, notes) values (${cust.id}, 'copy me') returning id`;
-  const [line] = await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
+  const [inv] =
+    await sql`insert into invoices (customer_id, notes) values (${cust.id}, 'copy me') returning id`;
+  const [line] =
+    await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
     values (${inv.id}, 1, 'Attestation', 2, 20000, 10000) returning id`;
   const [col] = await sql`insert into invoice_extra_columns (invoice_id, label, vatable, position)
     values (${inv.id}, 'Courier', true, 1) returning id`;
@@ -225,8 +228,10 @@ try {
     });
     ok(res.status === 200, "admin voids → 200");
     const [inv] = await sql`select * from invoices where id = ${first.id}`;
-    ok(inv.status === "voided" && inv.void_reason === "Wrong customer on the document",
-      "status voided, reason stored");
+    ok(
+      inv.status === "voided" && inv.void_reason === "Wrong customer on the document",
+      "status voided, reason stored"
+    );
     ok(inv.voided_by === adminId, "voided_by from the session");
     ok(inv.invoice_number === "INV-1", "NUMBER KEPT (done-criterion)");
     eq(inv.grand_total, first.grand_total, "FINANCIALS FROZEN (done-criterion)");
@@ -268,13 +273,17 @@ try {
     ok(rep.notes === "copy me", "notes copied");
     const lines = await sql`select description, qty, govt_fee, service_fee from invoice_lines
       where invoice_id = ${replacementId}`;
-    ok(lines.length === 1 && Number(lines[0].govt_fee) === 20000 && lines[0].qty === 2,
-      "lines copied verbatim");
+    ok(
+      lines.length === 1 && Number(lines[0].govt_fee) === 20000 && lines[0].qty === 2,
+      "lines copied verbatim"
+    );
     const fees = await sql`select f.amount, c.label from invoice_line_fees f
       join invoice_extra_columns c on c.id = f.column_id
       join invoice_lines l on l.id = f.line_id where l.invoice_id = ${replacementId}`;
-    ok(fees.length === 1 && Number(fees[0].amount) === 500 && fees[0].label === "Courier",
-      "extra columns + junction fees copied");
+    ok(
+      fees.length === 1 && Number(fees[0].amount) === 500 && fees[0].label === "Courier",
+      "extra columns + junction fees copied"
+    );
     const [ev] = await sql`select payload from invoice_events
       where invoice_id = ${replacementId} and event_type = 'created'`;
     ok(ev?.payload?.replaces === "INV-2", "'created' event names the replaced number");
@@ -287,8 +296,10 @@ try {
     const html = await voidedPage.text();
     ok(voidedPage.status === 200 && /[Vv]oided/.test(html), "voided view shows the banner");
     ok(html.includes("replaced by"), "voided view links to the replacement");
-    ok((await probe(`/invoices/${replacementId}/edit`, staffSession)).status === 200,
-      "replacement draft opens in the editor");
+    ok(
+      (await probe(`/invoices/${replacementId}/edit`, staffSession)).status === 200,
+      "replacement draft opens in the editor"
+    );
     const staffVoidedView = await probe(`/invoices/${second.id}`, staffSession);
     const staffHtml = await staffVoidedView.text();
     ok(!staffHtml.includes("Void…"), "staff never sees the Void control");

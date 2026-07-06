@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 
 type SearchResults = {
   customers: { id: string; name: string; type: "regular" | "walk_in" }[];
-  invoices: { id: string; invoice_number: string | null; status: string; customer_name: string | null }[];
+  invoices: {
+    id: string;
+    invoice_number: string | null;
+    status: string;
+    customer_name: string | null;
+  }[];
 };
 
 const EMPTY: SearchResults = { customers: [], invoices: [] };
@@ -71,7 +76,8 @@ export function GlobalSearch() {
     return () => clearTimeout(t);
   }, [q, runSearch]);
 
-  const empty = q.trim().length >= 2 && !searching && !results.customers.length && !results.invoices.length;
+  const empty =
+    q.trim().length >= 2 && !searching && !results.customers.length && !results.invoices.length;
 
   return (
     <>
@@ -81,7 +87,13 @@ export function GlobalSearch() {
         className="inline-flex h-7 items-center gap-2 rounded border border-hairline-strong bg-surface px-2.5 text-xs text-ink-3 transition-colors hover:border-ink-3 hover:text-ink"
         aria-label="Search (Ctrl+K)"
       >
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="h-3.5 w-3.5">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          className="h-3.5 w-3.5"
+        >
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.5 10.5L14 14" />
         </svg>
@@ -124,7 +136,9 @@ export function GlobalSearch() {
                       className="flex w-full items-center gap-3 px-2 py-1.5 text-left text-[13px] hover:bg-accent"
                     >
                       <span className="mono text-ink">{inv.invoice_number ?? "—"}</span>
-                      <span className="min-w-0 flex-1 truncate text-ink-2">{inv.customer_name}</span>
+                      <span className="min-w-0 flex-1 truncate text-ink-2">
+                        {inv.customer_name}
+                      </span>
                       <span className="mono text-[9px] tracking-[0.08em] text-ink-3 uppercase">
                         {inv.status}
                       </span>

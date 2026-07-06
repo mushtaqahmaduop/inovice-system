@@ -80,9 +80,12 @@ await sql`truncate table invoice_events, payments, invoice_line_fees,
   invoice_counters, settings cascade`;
 await sql`insert into settings (company_name, vat_registered, vat_rate_bp, invoice_number_format, due_days_default)
           values ('Dash Test Co', true, 500, 'INV-{NN}', 7)`;
-const [debtorBig] = await sql`insert into customers (type, name) values ('regular', 'Big Debtor LLC') returning id`;
-const [debtorSmall] = await sql`insert into customers (type, name) values ('walk_in', 'Small Debtor') returning id`;
-const [paidCust] = await sql`insert into customers (type, name) values ('regular', 'Fully Paid Co') returning id`;
+const [debtorBig] =
+  await sql`insert into customers (type, name) values ('regular', 'Big Debtor LLC') returning id`;
+const [debtorSmall] =
+  await sql`insert into customers (type, name) values ('walk_in', 'Small Debtor') returning id`;
+const [paidCust] =
+  await sql`insert into customers (type, name) values ('regular', 'Fully Paid Co') returning id`;
 let [method] = await sql`select id from payment_methods where is_active limit 1`;
 if (!method) [method] = await sql`insert into payment_methods (label) values ('Cash') returning id`;
 
@@ -144,12 +147,19 @@ try {
     ok(page.status === 200, "staff renders the dashboard");
     // Outstanding total = 210000 + 5000 = 215000 → "2,150.00"
     ok(html.includes("2,150.00"), "outstanding total correct (who owes us)");
-    ok(html.includes("Big Debtor LLC") && html.includes("2,100.00"),
-      "top debtor listed with open balance");
-    ok(html.includes("Small Debtor") && html.includes("50.00"), "partial payer listed with remainder");
+    ok(
+      html.includes("Big Debtor LLC") && html.includes("2,100.00"),
+      "top debtor listed with open balance"
+    );
+    ok(
+      html.includes("Small Debtor") && html.includes("50.00"),
+      "partial payer listed with remainder"
+    );
     ok(!html.includes("Fully Paid Co"), "settled customer ABSENT from debtors");
-    ok(html.indexOf("Big Debtor LLC") < html.indexOf("Small Debtor"),
-      "debtors sorted largest first");
+    ok(
+      html.indexOf("Big Debtor LLC") < html.indexOf("Small Debtor"),
+      "debtors sorted largest first"
+    );
     // This month: all 4 sealed today = 420000 → "4,200.00"; VAT 4×5000 → "200.00"
     ok(html.includes("4,200.00"), "invoiced-this-month total");
     ok(html.includes("4 sealed"), "sealed count this month");

@@ -141,7 +141,13 @@ async function createDraft() {
     terms: null,
     columns: [{ label: "Courier", vatable: true }],
     lines: [
-      { description: "Attestation", qty: 2, govtFee: 20000, serviceFee: 10000, extraFees: { 0: 500 } },
+      {
+        description: "Attestation",
+        qty: 2,
+        govtFee: 20000,
+        serviceFee: 10000,
+        extraFees: { 0: 500 },
+      },
       { description: "Typing", qty: 1, govtFee: 0, serviceFee: 110, extraFees: {} },
     ],
   });
@@ -154,12 +160,21 @@ try {
   let sealedId;
   {
     sealedId = await createDraft();
-    ok((await post(`/api/invoices/${sealedId}`, null, { action: "issue" })).status === 401, "anon → 401");
+    ok(
+      (await post(`/api/invoices/${sealedId}`, null, { action: "issue" })).status === 401,
+      "anon → 401"
+    );
     const res = await post(`/api/invoices/${sealedId}`, staffSession, { action: "issue" });
     const body = await res.json();
-    ok(res.status === 200 && body.invoiceNumber === "INV-1", "issue → 200, number INV-1 allocated AT issue");
+    ok(
+      res.status === 200 && body.invoiceNumber === "INV-1",
+      "issue → 200, number INV-1 allocated AT issue"
+    );
     const [inv] = await sql`select * from invoices where id = ${sealedId}`;
-    ok(inv.status === "issued" && inv.issued_by === staffId, "status issued; issued_by from session");
+    ok(
+      inv.status === "issued" && inv.issued_by === staffId,
+      "status issued; issued_by from session"
+    );
     // Oracle: govt 2×20000=40000; service 2×10000+110=20110; extras 2×500=1000
     // VAT: (2×10000)@5%=1000 + 110@5%=5.5→6 + (2×500)@5%=50 → 1056
     eq(inv.subtotal_govt, 40000, "sealed subtotal_govt");
@@ -168,11 +183,16 @@ try {
     eq(inv.vat_amount, 1056, "sealed VAT (per-component half-up)");
     eq(inv.grand_total, 62166, "sealed grand total");
     ok(inv.customer_snapshot?.name === "Seal Client LLC", "customer snapshot frozen");
-    ok(inv.vat_registered_snapshot === true && inv.vat_rate_bp_snapshot === 500, "VAT snapshots frozen");
-    const lines = await sql`select vat_amount from invoice_lines where invoice_id = ${sealedId} order by position`;
+    ok(
+      inv.vat_registered_snapshot === true && inv.vat_rate_bp_snapshot === 500,
+      "VAT snapshots frozen"
+    );
+    const lines =
+      await sql`select vat_amount from invoice_lines where invoice_id = ${sealedId} order by position`;
     eq(lines[0].vat_amount, 1000, "per-line VAT frozen (line 1)");
     eq(lines[1].vat_amount, 6, "per-line VAT frozen (line 2, 5.5→6)");
-    const events = await sql`select event_type from invoice_events where invoice_id = ${sealedId} order by created_at`;
+    const events =
+      await sql`select event_type from invoice_events where invoice_id = ${sealedId} order by created_at`;
     ok(events.map((e) => e.event_type).join(",") === "created,issued", "'issued' event appended");
   }
 
@@ -181,8 +201,10 @@ try {
   {
     const res = await post(`/api/invoices/${sealedId}`, staffSession, { action: "issue" });
     const body = await res.json();
-    ok(res.status === 200 && body.alreadyIssued === true && body.invoiceNumber === "INV-1",
-      "second issue → 200 alreadyIssued (rendered as success, not error)");
+    ok(
+      res.status === 200 && body.alreadyIssued === true && body.invoiceNumber === "INV-1",
+      "second issue → 200 alreadyIssued (rendered as success, not error)"
+    );
   }
 
   /* ═══ I3 — error paths ═════════════════════════════════════════════════ */
@@ -202,8 +224,11 @@ try {
     const votest = await post(`/api/invoices/${voidedId}`, staffSession, { action: "issue" });
     ok(votest.status === 409, "voided invoice → 409 (not silently reissued)");
     ok(
-      (await post(`/api/invoices/00000000-0000-4000-8000-000000000000`, staffSession, { action: "issue" }))
-        .status === 404,
+      (
+        await post(`/api/invoices/00000000-0000-4000-8000-000000000000`, staffSession, {
+          action: "issue",
+        })
+      ).status === 404,
       "unknown id → 404"
     );
   }
@@ -212,14 +237,16 @@ try {
   console.log("I4 — immutability");
   {
     ok(
-      (await post(`/api/invoices/${sealedId}`, staffSession, {
-        action: "update_draft",
-        data: {
-          customerId: cust.id,
-          columns: [],
-          lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 1, extraFees: {} }],
-        },
-      })).status === 409,
+      (
+        await post(`/api/invoices/${sealedId}`, staffSession, {
+          action: "update_draft",
+          data: {
+            customerId: cust.id,
+            columns: [],
+            lines: [{ description: "x", qty: 1, govtFee: 0, serviceFee: 1, extraFees: {} }],
+          },
+        })
+      ).status === 409,
       "update_draft on sealed → 409 (app layer)"
     );
     await rejects(
@@ -256,11 +283,13 @@ try {
       "draft detail routes to the editor (HTTP or streamed redirect)"
     );
     ok(
-      (await post(`/api/invoices/${draftId2}`, staffSession, { action: "log_print" })).status === 409,
+      (await post(`/api/invoices/${draftId2}`, staffSession, { action: "log_print" })).status ===
+        409,
       "log_print on a draft → 409"
     );
     ok(
-      (await post(`/api/invoices/${sealedId}`, staffSession, { action: "log_print" })).status === 200,
+      (await post(`/api/invoices/${sealedId}`, staffSession, { action: "log_print" })).status ===
+        200,
       "log_print on sealed → 200"
     );
     const [printed] = await sql`select count(*)::int as n from invoice_events
@@ -281,7 +310,10 @@ try {
       inv.vat_registered_snapshot === false && Number(inv.vat_amount) === 0,
       "sealed with ISSUE-time settings (deregistered → 0 VAT)"
     );
-    ok(inv.invoice_number === "INV-3", "gapless numbering continues (INV-3 after INV-2 was voided, number kept)");
+    ok(
+      inv.invoice_number === "INV-3",
+      "gapless numbering continues (INV-3 after INV-2 was voided, number kept)"
+    );
     const [first] = await sql`select vat_amount from invoices where id = ${sealedId}`;
     eq(first.vat_amount, 1056, "earlier sealed invoice untouched by the settings change");
   }

@@ -189,7 +189,8 @@ if (!up) {
 }
 
 async function mkIssuable() {
-  const [c] = await sql`insert into customers (type, name) values ('walk_in', 'VAT Probe') returning id`;
+  const [c] =
+    await sql`insert into customers (type, name) values ('walk_in', 'VAT Probe') returning id`;
   const [inv] = await sql`insert into invoices (customer_id) values (${c.id}) returning id`;
   await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
     values (${inv.id}, 1, 'Typing service', 1, 20000, 10000)`;
@@ -201,7 +202,10 @@ try {
   console.log("T1 — authorization");
   {
     ok((await post("/api/admin/settings", null, BASE_SETTINGS)).status === 401, "anon → 401");
-    ok((await post("/api/admin/settings", staffSession, BASE_SETTINGS)).status === 403, "staff → 403");
+    ok(
+      (await post("/api/admin/settings", staffSession, BASE_SETTINGS)).status === 403,
+      "staff → 403"
+    );
     ok(
       (await post("/api/admin/settings", aal1AdminSession, BASE_SETTINGS)).status === 403,
       "aal1 admin → 403"
@@ -217,8 +221,12 @@ try {
       "empty company name → 400"
     );
     ok(
-      (await post("/api/admin/settings", adminSession, { ...BASE_SETTINGS, invoiceNumberFormat: "INV-" }))
-        .status === 400,
+      (
+        await post("/api/admin/settings", adminSession, {
+          ...BASE_SETTINGS,
+          invoiceNumberFormat: "INV-",
+        })
+      ).status === 400,
       "number format without {NN} → 400 (D-12)"
     );
     ok(
@@ -245,8 +253,10 @@ try {
     ok(res.status === 200, "admin saves settings");
     const [row] = await sql`select * from settings limit 1`;
     ok(row.company_name === "Settings Test Co", "company name updated");
-    ok(row.tagline === BASE_SETTINGS.tagline && row.bank_details === BASE_SETTINGS.bankDetails,
-      "tagline + bank details stored [#11]");
+    ok(
+      row.tagline === BASE_SETTINGS.tagline && row.bank_details === BASE_SETTINGS.bankDetails,
+      "tagline + bank details stored [#11]"
+    );
     ok(row.updated_by === adminId, "updated_by = session admin (never client-supplied)");
     ok(row.due_days_default === 14, "due days stored");
   }
@@ -257,8 +267,10 @@ try {
     const firstId = await mkIssuable();
     const [first] = await sql`select * from issue_invoice(${firstId})`;
     ok(Number(first.vat_amount) === 500, "registered: 5% VAT on service fee (500 fils)");
-    ok(first.vat_registered_snapshot === true && first.vat_rate_bp_snapshot === 500,
-      "VAT state + rate sealed into the invoice");
+    ok(
+      first.vat_registered_snapshot === true && first.vat_rate_bp_snapshot === 500,
+      "VAT state + rate sealed into the invoice"
+    );
 
     const res = await post("/api/admin/settings", adminSession, {
       ...BASE_SETTINGS,
@@ -280,7 +292,10 @@ try {
         firstAgain.vat_rate_bp_snapshot === 500,
       "issued invoice UNCHANGED by the toggle — snapshots hold"
     );
-    ok(row_trn_kept(await sql`select trn from settings limit 1`), "TRN kept during deregistration (F-4b)");
+    ok(
+      row_trn_kept(await sql`select trn from settings limit 1`),
+      "TRN kept during deregistration (F-4b)"
+    );
   }
 
   /* ═══ T5 — payment methods (D-25) ══════════════════════════════════════ */
@@ -298,7 +313,8 @@ try {
     methodId = (await res.json()).id;
     ok(res.status === 201 && !!methodId, "admin adds a method → 201");
     ok(
-      (await post("/api/admin/payment-methods", adminSession, { label: "Payment Link" })).status === 409,
+      (await post("/api/admin/payment-methods", adminSession, { label: "Payment Link" })).status ===
+        409,
       "duplicate label → 409"
     );
     ok(
@@ -307,11 +323,16 @@ try {
       "rename → 200"
     );
     ok(
-      (await post(`/api/admin/payment-methods/${methodId}`, adminSession, { isActive: false, position: 3 }))
-        .status === 200,
+      (
+        await post(`/api/admin/payment-methods/${methodId}`, adminSession, {
+          isActive: false,
+          position: 3,
+        })
+      ).status === 200,
       "deactivate + reposition → 200"
     );
-    const [m] = await sql`select label, is_active, position from payment_methods where id = ${methodId}`;
+    const [m] =
+      await sql`select label, is_active, position from payment_methods where id = ${methodId}`;
     ok(m.label === "Pay Link" && m.is_active === false && m.position === 3, "all edits landed");
     ok(
       (await probe(`/api/admin/payment-methods/${methodId}`, adminSession, { method: "DELETE" }))
@@ -329,9 +350,14 @@ try {
   {
     const staffPage = await probe("/admin/settings", staffSession);
     const loc = new URL(staffPage.headers.get("location") ?? "/", APP).pathname;
-    ok([301, 302, 303, 307, 308].includes(staffPage.status) && loc === "/dashboard",
-      "staff → redirected to /dashboard");
-    ok((await probe("/admin/settings", adminSession)).status === 200, "aal2 admin renders the page");
+    ok(
+      [301, 302, 303, 307, 308].includes(staffPage.status) && loc === "/dashboard",
+      "staff → redirected to /dashboard"
+    );
+    ok(
+      (await probe("/admin/settings", adminSession)).status === 200,
+      "aal2 admin renders the page"
+    );
   }
 } finally {
   server.kill();

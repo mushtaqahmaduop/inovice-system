@@ -60,10 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       if (/is a draft/.test(error.message)) {
-        return NextResponse.json(
-          { error: "Drafts are edited, not voided." },
-          { status: 422 }
-        );
+        return NextResponse.json({ error: "Drafts are edited, not voided." }, { status: 422 });
       }
       if (/already voided/.test(error.message)) {
         return NextResponse.json({ error: "Already voided." }, { status: 409 });
@@ -109,7 +106,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .order("position"),
       supabase
         .from("invoice_lines")
-        .select("id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)")
+        .select(
+          "id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)"
+        )
         .eq("invoice_id", id)
         .order("position"),
     ]);

@@ -50,21 +50,27 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
 
   return (
     <section className="border border-hairline bg-surface p-5">
-      <p className="mono mb-1 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
-        Payment methods
-      </p>
+      <p className="mono mb-1 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Payment methods</p>
       <p className="mb-4 text-[11px] leading-relaxed text-ink-3">
-        Used when recording payments (pending Q-10). Methods are never deleted — deactivating
-        hides one from new payments while history keeps its label.
+        Used when recording payments (pending Q-10). Methods are never deleted — deactivating hides
+        one from new payments while history keeps its label.
       </p>
 
       <div className="divide-y divide-hairline border border-hairline">
         {methods.map((m, i) => (
           <div key={m.id} className="flex items-center gap-2 px-3 py-2">
-            <span className={`flex-1 text-[13px] ${m.is_active ? "text-ink" : "text-ink-4 line-through"}`}>
+            <span
+              className={`flex-1 text-[13px] ${m.is_active ? "text-ink" : "text-ink-4 line-through"}`}
+            >
               {m.label}
             </span>
-            <Button variant="outline" size="sm" disabled={busy || i === 0} onClick={() => move(i, -1)} aria-label={`Move ${m.label} up`}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || i === 0}
+              onClick={() => move(i, -1)}
+              aria-label={`Move ${m.label} up`}
+            >
               ↑
             </Button>
             <Button
@@ -87,7 +93,9 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
           </div>
         ))}
         {methods.length === 0 ? (
-          <p className="px-3 py-4 text-[12px] text-ink-3">No methods yet — run the seed or add one.</p>
+          <p className="px-3 py-4 text-[12px] text-ink-3">
+            No methods yet — run the seed or add one.
+          </p>
         ) : null}
       </div>
 

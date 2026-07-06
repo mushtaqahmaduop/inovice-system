@@ -9,11 +9,7 @@ import { formatAed } from "@/lib/money";
 // with balances. All money comes from sealed columns and the derived
 // invoice_list view — nothing recomputed. Balance counts ISSUED invoices
 // only: drafts owe nothing yet, voided invoices are out of force.
-export default async function CustomerLedgerPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   await requireUser();
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -60,15 +56,27 @@ export default async function CustomerLedgerPage({
           <p className="mono mb-1 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
             Customer ledger
           </p>
-          <h1 className={`text-[16px] font-medium tracking-tight text-ink ${customer.deleted_at ? "line-through" : ""}`}>
+          <h1
+            className={`text-[16px] font-medium tracking-tight text-ink ${customer.deleted_at ? "line-through" : ""}`}
+          >
             {customer.name}
           </h1>
           <p className="text-[11px] text-ink-3">
             <span className="mono uppercase">
               {customer.type === "walk_in" ? "walk-in" : "regular"}
             </span>
-            {customer.trn ? <> · TRN <span className="mono">{customer.trn}</span></> : null}
-            {customer.phone ? <> · <span className="mono">{customer.phone}</span></> : null}
+            {customer.trn ? (
+              <>
+                {" "}
+                · TRN <span className="mono">{customer.trn}</span>
+              </>
+            ) : null}
+            {customer.phone ? (
+              <>
+                {" "}
+                · <span className="mono">{customer.phone}</span>
+              </>
+            ) : null}
             {customer.deleted_at ? " · deleted" : null}
           </p>
           {customer.address ? <p className="text-[11px] text-ink-3">{customer.address}</p> : null}
@@ -136,7 +144,10 @@ export default async function CustomerLedgerPage({
           <thead>
             <tr className="border-b border-hairline">
               {["Number", "Issued", "Total", "Paid", "Status", "Payment"].map((h) => (
-                <th key={h} className="mono px-3 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
+                <th
+                  key={h}
+                  className="mono px-3 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase"
+                >
                   {h}
                 </th>
               ))}
@@ -144,7 +155,10 @@ export default async function CustomerLedgerPage({
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-hairline last:border-b-0 hover:bg-accent/50">
+              <tr
+                key={r.id}
+                className="border-b border-hairline last:border-b-0 hover:bg-accent/50"
+              >
                 <td className="px-3 py-2">
                   <Link
                     href={r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`}
@@ -189,16 +203,22 @@ export default async function CustomerLedgerPage({
         {(payments ?? []).map((p) => (
           <div key={p.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
             <span className="mono w-24 text-[11.5px] text-ink-3">{p.received_on}</span>
-            <span className={`mono w-28 text-right text-[12px] ${p.amount < 0 ? "text-warning" : "text-ink"}`}>
+            <span
+              className={`mono w-28 text-right text-[12px] ${p.amount < 0 ? "text-warning" : "text-ink"}`}
+            >
               {p.amount < 0 ? "−" : ""}AED {formatAed(Math.abs(p.amount))}
             </span>
             <span className="text-[11.5px] text-ink-2">{methodLabel.get(p.method_id) ?? "—"}</span>
             <span className="mono text-[11px] text-ink-3">
               {numberById.get(p.invoice_id) ?? "—"}
             </span>
-            <span className="min-w-0 flex-1 truncate text-[11px] text-ink-4">{p.reference ?? ""}</span>
+            <span className="min-w-0 flex-1 truncate text-[11px] text-ink-4">
+              {p.reference ?? ""}
+            </span>
             {p.reverses_payment_id ? (
-              <span className="mono text-[9px] tracking-[0.1em] text-warning uppercase">reversal</span>
+              <span className="mono text-[9px] tracking-[0.1em] text-warning uppercase">
+                reversal
+              </span>
             ) : null}
           </div>
         ))}
@@ -214,7 +234,9 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
   return (
     <div className="border border-hairline bg-surface p-3">
       <p className="mono mb-1 text-[9px] tracking-[0.14em] text-ink-3 uppercase">{label}</p>
-      <p className={`mono text-[15px] font-medium ${warn ? "text-warning" : "text-ink"}`}>{value}</p>
+      <p className={`mono text-[15px] font-medium ${warn ? "text-warning" : "text-ink"}`}>
+        {value}
+      </p>
     </div>
   );
 }

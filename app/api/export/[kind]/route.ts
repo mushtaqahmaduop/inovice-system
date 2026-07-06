@@ -37,7 +37,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
   if (parsed.data.kind === "payments") {
     let q = supabase
       .from("payments")
-      .select("received_on, amount, reference, reverses_payment_id, method_id, invoice_id, recorded_by")
+      .select(
+        "received_on, amount, reference, reverses_payment_id, method_id, invoice_id, recorded_by"
+      )
       .order("received_on");
     if (from) q = q.gte("received_on", from);
     if (to) q = q.lte("received_on", to);
@@ -52,7 +54,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
     const invNumber = new Map((invoices ?? []).map((i) => [i.id, i.invoice_number]));
     const person = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
     csv = csvDocument(
-      ["received_on", "invoice_number", "amount_aed", "method", "reference", "is_reversal", "recorded_by"],
+      [
+        "received_on",
+        "invoice_number",
+        "amount_aed",
+        "method",
+        "reference",
+        "is_reversal",
+        "recorded_by",
+      ],
       (rows ?? []).map((p) => [
         p.received_on,
         invNumber.get(p.invoice_id) ?? "",
@@ -82,12 +92,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
       parsed.data.kind === "invoices"
         ? csvDocument(
             [
-              "invoice_number", "status", "issue_date", "customer",
-              "govt_fees_aed", "service_fees_aed", "other_charges_aed",
-              "vat_aed", "grand_total_aed", "paid_aed", "payment_status",
+              "invoice_number",
+              "status",
+              "issue_date",
+              "customer",
+              "govt_fees_aed",
+              "service_fees_aed",
+              "other_charges_aed",
+              "vat_aed",
+              "grand_total_aed",
+              "paid_aed",
+              "payment_status",
             ],
             (rows ?? []).map((r) => [
-              r.invoice_number, r.status, r.issue_date, name(r),
+              r.invoice_number,
+              r.status,
+              r.issue_date,
+              name(r),
               filsToCsvAed(r.subtotal_govt ?? 0),
               filsToCsvAed(r.subtotal_service ?? 0),
               filsToCsvAed(r.subtotal_extras ?? 0),
@@ -101,12 +122,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
             // VAT report BASIS (the accountant's V-1..V-6 answers finalize
             // the actual return format — this is deliberately raw).
             [
-              "invoice_number", "status", "issue_date", "customer",
-              "vat_registered", "vat_rate_percent",
-              "non_taxable_govt_aed", "taxable_base_aed", "vat_aed", "grand_total_aed",
+              "invoice_number",
+              "status",
+              "issue_date",
+              "customer",
+              "vat_registered",
+              "vat_rate_percent",
+              "non_taxable_govt_aed",
+              "taxable_base_aed",
+              "vat_aed",
+              "grand_total_aed",
             ],
             (rows ?? []).map((r) => [
-              r.invoice_number, r.status, r.issue_date, name(r),
+              r.invoice_number,
+              r.status,
+              r.issue_date,
+              name(r),
               r.vat_registered_snapshot ? "yes" : "no",
               ((r.vat_rate_bp_snapshot ?? 0) / 100).toString(),
               filsToCsvAed(r.subtotal_govt ?? 0),

@@ -118,9 +118,16 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
         <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">Company</p>
         <div className="grid gap-4 sm:grid-cols-2">
           {TEXT_FIELDS.map((f) => (
-            <div key={f.name} className={f.name === "address" || f.name === "bankDetails" ? "sm:col-span-2" : ""}>
+            <div
+              key={f.name}
+              className={f.name === "address" || f.name === "bankDetails" ? "sm:col-span-2" : ""}
+            >
               <FieldLabel htmlFor={`s-${f.name}`}>{f.label}</FieldLabel>
-              <Input id={`s-${f.name}`} {...form.register(f.name as "companyName")} className="text-[13px]" />
+              <Input
+                id={`s-${f.name}`}
+                {...form.register(f.name as "companyName")}
+                className="text-[13px]"
+              />
               {f.hint ? <FieldHint>{f.hint}</FieldHint> : null}
             </div>
           ))}
@@ -156,7 +163,11 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <FieldLabel htmlFor="s-format">Number format</FieldLabel>
-            <Input id="s-format" {...form.register("invoiceNumberFormat")} className="mono text-[13px]" />
+            <Input
+              id="s-format"
+              {...form.register("invoiceNumberFormat")}
+              className="mono text-[13px]"
+            />
             <FieldHint>{"must contain {NN} (D-12)"}</FieldHint>
           </div>
           <div>
@@ -173,7 +184,12 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
           </div>
           <div>
             <FieldLabel htmlFor="s-due">Default due days</FieldLabel>
-            <Input id="s-due" {...form.register("dueDaysDefault")} inputMode="numeric" className="mono text-right text-[13px]" />
+            <Input
+              id="s-due"
+              {...form.register("dueDaysDefault")}
+              inputMode="numeric"
+              className="mono text-right text-[13px]"
+            />
             <FieldHint>overdue convention (Q-11: 7 days)</FieldHint>
           </div>
         </div>

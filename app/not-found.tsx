@@ -11,8 +11,8 @@ export default function NotFound() {
           Not on the register
         </p>
         <p className="mb-4 text-[13px] leading-relaxed text-ink-2">
-          No document or page exists at this address. It may have been mistyped, or the record
-          you followed no longer exists.
+          No document or page exists at this address. It may have been mistyped, or the record you
+          followed no longer exists.
         </p>
         <Link
           href="/dashboard"

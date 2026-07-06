@@ -12,9 +12,9 @@ export default async function ExportsPage() {
       </p>
       <h1 className="mb-2 text-[15px] font-medium tracking-tight text-ink">CSV exports</h1>
       <p className="mb-6 text-[12px] leading-relaxed text-ink-3">
-        Sealed and voided documents only — drafts carry no financials. Amounts are exact
-        2-decimal AED. The VAT file is the report <em>basis</em>; the accountant&apos;s answers
-        (V-register) finalize the return format.
+        Sealed and voided documents only — drafts carry no financials. Amounts are exact 2-decimal
+        AED. The VAT file is the report <em>basis</em>; the accountant&apos;s answers (V-register)
+        finalize the return format.
       </p>
       <ExportForms />
     </div>

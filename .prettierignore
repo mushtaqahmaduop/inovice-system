@@ -4,3 +4,4 @@ pnpm-lock.yaml
 reference/
 docs/
 *.md
+db/migrations/meta/

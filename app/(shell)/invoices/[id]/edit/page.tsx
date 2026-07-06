@@ -32,8 +32,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             {invoice.invoice_number ?? "Invoice"} · {invoice.status}
           </p>
           <p className="text-sm leading-relaxed text-ink-2">
-            This invoice is sealed and cannot be edited. Corrections happen via a new document.
-            The detail view arrives with tasks 4.3/5.3.
+            This invoice is sealed and cannot be edited. Corrections happen via a new document. The
+            detail view arrives with tasks 4.3/5.3.
           </p>
           <Link
             href="/invoices/new"
@@ -46,37 +46,44 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     );
   }
 
-  const [{ data: settings }, { data: customers }, { data: services }, { data: cols }, { data: lines }] =
-    await Promise.all([
-      supabase
-        .from("settings")
-        .select(
-          "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, tagline, trn, address, phone, email, bank_details"
-        )
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("customers")
-        .select("id, name, type, trn, phone, address")
-        .is("deleted_at", null)
-        .order("name"),
-      supabase
-        .from("services")
-        .select("id, name, unit, govt_fee, service_fee")
-        .is("deleted_at", null)
-        .eq("is_active", true)
-        .order("name"),
-      supabase
-        .from("invoice_extra_columns")
-        .select("id, label, vatable, position")
-        .eq("invoice_id", id)
-        .order("position"),
-      supabase
-        .from("invoice_lines")
-        .select("id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)")
-        .eq("invoice_id", id)
-        .order("position"),
-    ]);
+  const [
+    { data: settings },
+    { data: customers },
+    { data: services },
+    { data: cols },
+    { data: lines },
+  ] = await Promise.all([
+    supabase
+      .from("settings")
+      .select(
+        "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, tagline, trn, address, phone, email, bank_details"
+      )
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("customers")
+      .select("id, name, type, trn, phone, address")
+      .is("deleted_at", null)
+      .order("name"),
+    supabase
+      .from("services")
+      .select("id, name, unit, govt_fee, service_fee")
+      .is("deleted_at", null)
+      .eq("is_active", true)
+      .order("name"),
+    supabase
+      .from("invoice_extra_columns")
+      .select("id, label, vatable, position")
+      .eq("invoice_id", id)
+      .order("position"),
+    supabase
+      .from("invoice_lines")
+      .select(
+        "id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)"
+      )
+      .eq("invoice_id", id)
+      .order("position"),
+  ]);
 
   const columnList = cols ?? [];
   const colIndexById = new Map(columnList.map((c, i) => [c.id, i]));

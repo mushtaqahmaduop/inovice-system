@@ -101,9 +101,15 @@ export function PaymentsPanel({
           {" of "}
           <span className="mono">AED {formatAed(grandTotal)}</span>
           {overpaid ? (
-            <span className="text-warning"> · overpaid by AED {formatAed(paidTotal - grandTotal)}</span>
+            <span className="text-warning">
+              {" "}
+              · overpaid by AED {formatAed(paidTotal - grandTotal)}
+            </span>
           ) : outstanding > 0 ? (
-            <> · outstanding <span className="mono">AED {formatAed(outstanding)}</span></>
+            <>
+              {" "}
+              · outstanding <span className="mono">AED {formatAed(outstanding)}</span>
+            </>
           ) : null}
         </p>
       </div>
@@ -113,7 +119,9 @@ export function PaymentsPanel({
           {payments.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
               <span className="mono w-24 text-[11.5px] text-ink-3">{p.received_on}</span>
-              <span className={`mono w-28 text-right text-[12.5px] ${p.amount < 0 ? "text-warning" : "text-ink"}`}>
+              <span
+                className={`mono w-28 text-right text-[12.5px] ${p.amount < 0 ? "text-warning" : "text-ink"}`}
+              >
                 {p.amount < 0 ? "−" : ""}AED {formatAed(Math.abs(p.amount))}
               </span>
               <span className="text-[11.5px] text-ink-2">{p.method_label}</span>
@@ -134,7 +142,11 @@ export function PaymentsPanel({
                   size="sm"
                   disabled={busy}
                   onClick={() => {
-                    if (window.confirm("Reverse this payment? A negative correction row is added — history is never edited."))
+                    if (
+                      window.confirm(
+                        "Reverse this payment? A negative correction row is added — history is never edited."
+                      )
+                    )
                       void call({ type: "reverse", paymentId: p.id });
                   }}
                 >

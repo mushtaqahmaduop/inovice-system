@@ -91,13 +91,23 @@ export function ServiceFormDialog({
               <label className="mb-1 block text-[11px] text-ink-3" htmlFor="sv-govt">
                 Govt fee (AED)
               </label>
-              <Input id="sv-govt" {...form.register("govtFeeAed")} inputMode="decimal" className="mono h-8 text-[13px]" />
+              <Input
+                id="sv-govt"
+                {...form.register("govtFeeAed")}
+                inputMode="decimal"
+                className="mono h-8 text-[13px]"
+              />
             </div>
             <div className="flex-1">
               <label className="mb-1 block text-[11px] text-ink-3" htmlFor="sv-svc">
                 Service fee (AED)
               </label>
-              <Input id="sv-svc" {...form.register("serviceFeeAed")} inputMode="decimal" className="mono h-8 text-[13px]" />
+              <Input
+                id="sv-svc"
+                {...form.register("serviceFeeAed")}
+                inputMode="decimal"
+                className="mono h-8 text-[13px]"
+              />
             </div>
           </div>
           {serverError ? <p className="text-[11px] text-warning">{serverError}</p> : null}

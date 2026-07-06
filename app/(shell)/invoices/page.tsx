@@ -47,9 +47,7 @@ export default async function InvoicesPage() {
     due_date: r.due_date,
     created_at: r.created_at,
     customer_name:
-      (r.customer_snapshot as { name?: string } | null)?.name ??
-      nameById.get(r.customer_id) ??
-      "—",
+      (r.customer_snapshot as { name?: string } | null)?.name ?? nameById.get(r.customer_id) ?? "—",
   }));
 
   return (

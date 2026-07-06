@@ -40,10 +40,12 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
   return (
     <div>
       <p className="mb-5 text-[13px] leading-relaxed text-ink-2">
-        {active} services in the catalogue. Each has a <em>government fee</em> (passthrough, no
-        VAT) and a <em>service fee</em> (revenue, taxable). Defaults fill into new invoices;
-        staff can override on any line —{" "}
-        {isAdmin ? "only you can change the defaults here." : "only the owner edits this catalogue."}
+        {active} services in the catalogue. Each has a <em>government fee</em> (passthrough, no VAT)
+        and a <em>service fee</em> (revenue, taxable). Defaults fill into new invoices; staff can
+        override on any line —{" "}
+        {isAdmin
+          ? "only you can change the defaults here."
+          : "only the owner edits this catalogue."}
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -80,7 +82,9 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className={`truncate text-[13.5px] font-medium text-ink ${s.deleted_at ? "line-through" : ""}`}>
+                <p
+                  className={`truncate text-[13.5px] font-medium text-ink ${s.deleted_at ? "line-through" : ""}`}
+                >
                   {s.name}
                 </p>
                 <p className="text-[11px] text-ink-3">
@@ -97,7 +101,9 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
                     variant="outline"
                     size="sm"
                     disabled={busyId === s.id}
-                    onClick={() => mutate(s.id, { action: "update", data: { isActive: !s.is_active } })}
+                    onClick={() =>
+                      mutate(s.id, { action: "update", data: { isActive: !s.is_active } })
+                    }
                   >
                     {s.is_active ? "Deactivate" : "Activate"}
                   </Button>
@@ -130,15 +136,23 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
                 <p className="mono mb-1 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
                   Govt fee
                 </p>
-                <p className={`mono text-[15px] font-medium ${s.govt_fee > 0 ? "text-ink" : "text-ink-3"}`}>
-                  {s.govt_fee > 0 ? `AED ${formatAed(s.govt_fee)}` : <span className="text-[12px] italic">none</span>}
+                <p
+                  className={`mono text-[15px] font-medium ${s.govt_fee > 0 ? "text-ink" : "text-ink-3"}`}
+                >
+                  {s.govt_fee > 0 ? (
+                    `AED ${formatAed(s.govt_fee)}`
+                  ) : (
+                    <span className="text-[12px] italic">none</span>
+                  )}
                 </p>
               </div>
               <div className="flex-1">
                 <p className="mono mb-1 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
                   Service fee
                 </p>
-                <p className="mono text-[15px] font-medium text-ink">AED {formatAed(s.service_fee)}</p>
+                <p className="mono text-[15px] font-medium text-ink">
+                  AED {formatAed(s.service_fee)}
+                </p>
               </div>
             </div>
           </div>

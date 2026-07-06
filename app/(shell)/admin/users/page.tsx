@@ -14,12 +14,8 @@ export default async function UsersPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <p className="mono mb-1 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-        Admin · Users
-      </p>
-      <h1 className="mb-8 text-[15px] font-medium tracking-tight text-ink">
-        Accounts & sessions
-      </h1>
+      <p className="mono mb-1 text-[10px] tracking-[0.14em] text-ink-3 uppercase">Admin · Users</p>
+      <h1 className="mb-8 text-[15px] font-medium tracking-tight text-ink">Accounts & sessions</h1>
       <UsersManager profiles={profiles ?? []} selfId={ctx.userId} />
     </div>
   );

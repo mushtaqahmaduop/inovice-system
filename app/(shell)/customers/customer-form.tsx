@@ -12,9 +12,7 @@ import { FieldLabel, FieldError } from "@/components/ui/field";
 import type { CustomerRow } from "./page";
 
 export type DialogMode =
-  | { kind: "regular" }
-  | { kind: "walk_in" }
-  | { kind: "edit"; row: CustomerRow };
+  { kind: "regular" } | { kind: "walk_in" } | { kind: "edit"; row: CustomerRow };
 
 // Form-local schema: plain optional strings (the API normalizes "" → null
 // server-side via the shared customer schemas — the wire format stays thin).
@@ -81,7 +79,10 @@ export function CustomerFormDialog({
       : await fetch("/api/customers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, type: mode.kind === "walk_in" ? "walk_in" : "regular" }),
+          body: JSON.stringify({
+            ...payload,
+            type: mode.kind === "walk_in" ? "walk_in" : "regular",
+          }),
         });
     if (res.ok) onSaved();
     else setServerError((await res.json().catch(() => null))?.error ?? "Request failed");

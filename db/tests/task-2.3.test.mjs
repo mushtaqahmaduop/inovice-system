@@ -114,7 +114,8 @@ await sql`insert into invoice_lines (invoice_id, position, description, qty, gov
 
 // Issued invoice — created draft-first, sealed through issue_invoice() (the
 // only sanctioned path; owner connection passes assert_active_app_user()).
-const [toIssue] = await sql`insert into invoices (customer_id) values (${trigramCo.id}) returning id`;
+const [toIssue] =
+  await sql`insert into invoices (customer_id) values (${trigramCo.id}) returning id`;
 await sql`insert into invoice_lines (invoice_id, position, description, qty, govt_fee, service_fee)
   values (${toIssue.id}, 1, 'Attestation service', 1, 20000, 10000)`;
 const [issued] = await sql`select * from issue_invoice(${toIssue.id})`;
@@ -180,7 +181,10 @@ try {
     const ghost = await (await search("Ghost Deleted", staffSession)).json();
     ok(ghost.customers.length === 0, "soft-deleted customers are excluded");
     const walkin = await (await search("walkin", staffSession)).json();
-    ok(walkin.customers.some((c) => c.type === "walk_in"), "walk-ins are searchable too");
+    ok(
+      walkin.customers.some((c) => c.type === "walk_in"),
+      "walk-ins are searchable too"
+    );
   }
 
   /* ═══ S4 — invoice search: number + snapshot name, drafts invisible ════ */
@@ -222,7 +226,10 @@ try {
       "renamed customer no longer matches the old name in customer results"
     );
     const renamed = await (await search("Renamed After", staffSession)).json();
-    ok(renamed.customers.some((c) => c.id === trigramCo.id), "customer found under new name");
+    ok(
+      renamed.customers.some((c) => c.id === trigramCo.id),
+      "customer found under new name"
+    );
   }
 } finally {
   server.kill();
