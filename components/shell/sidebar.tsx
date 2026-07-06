@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { INVOICES_CHANNEL, INVOICES_CHANGED_EVENT } from "@/lib/realtime";
 import { NAV_SECTIONS, type NavItem } from "./nav-items";
 
 // Prototype line icons (16×16, stroke 1.4) ported 1:1 from
@@ -54,8 +57,76 @@ function NavIcon({ icon }: { icon: NavItem["icon"] }) {
   );
 }
 
+type NavCounts = { overdue: number; drafts: number };
+
+// Sidebar counts + the app's ONE realtime subscriber (task 6.3 R-5,
+// broadcast-refetch). It lives here — not per page — because realtime-js
+// reuses a channel instance per topic on the singleton browser client, so
+// a second subscriber's unmount cleanup would tear the shared channel down
+// under the first. The sidebar is always mounted, so it owns the channel:
+// on a broadcast it refetches the badge counts AND router.refresh()es the
+// current route (debounced), which keeps /invoices and every other server
+// component live through the caller's own RLS.
+function useNavCounts(pathname: string): NavCounts {
+  const router = useRouter();
+  const [counts, setCounts] = useState<NavCounts>({ overdue: 0, drafts: 0 });
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const refetch = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nav-counts", { cache: "no-store" });
+      if (res.ok) setCounts((await res.json()) as NavCounts);
+    } catch {
+      // Badge-only data — a missed fetch just means a stale count.
+    }
+  }, []);
+
+  useEffect(() => {
+    void refetch();
+  }, [pathname, refetch]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(INVOICES_CHANNEL)
+      .on("broadcast", { event: INVOICES_CHANGED_EVENT }, () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+          router.refresh();
+          void refetch();
+        }, 400);
+      })
+      .subscribe();
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      void supabase.removeChannel(channel);
+    };
+  }, [router, refetch]);
+
+  return counts;
+}
+
+// Small mono count badge (DESIGN_BRIEF §3 problem 9). Color contract as in
+// status-chip: burnt orange is overdue-only, drafts stay neutral.
+function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; value: number }) {
+  if (value <= 0) return null;
+  return (
+    <span
+      className={
+        kind === "overdue"
+          ? "mono min-w-4 rounded-[8px] border border-warning bg-warning px-1 text-center text-[9px] leading-4 text-surface"
+          : "mono min-w-4 rounded-[8px] border border-hairline-strong bg-surface-2 px-1 text-center text-[9px] leading-4 text-ink-3"
+      }
+      title={kind === "overdue" ? `${value} overdue` : `${value} open draft${value === 1 ? "" : "s"}`}
+    >
+      {value > 99 ? "99+" : value}
+    </span>
+  );
+}
+
 export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
+  const counts = useNavCounts(pathname);
 
   return (
     <aside className="sticky top-0 hidden h-screen w-52 shrink-0 flex-col border-r border-hairline bg-surface md:flex print:!hidden">
@@ -115,6 +186,9 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                   >
                     <NavIcon icon={item.icon} />
                     <span className="flex-1">{item.label}</span>
+                    {item.countKey ? (
+                      <CountBadge kind={item.countKey} value={counts[item.countKey]} />
+                    ) : null}
                     {item.adminOnly ? (
                       <span className="mono text-[9px] tracking-[0.08em] text-primary">ADM</span>
                     ) : null}

@@ -10,6 +10,8 @@ export type NavItem = {
   adminOnly?: boolean;
   /** BUILD_PHASES task that delivers this page; undefined = live now. */
   task?: string;
+  /** Key into /api/nav-counts — renders as a small mono badge when > 0. */
+  countKey?: "overdue" | "drafts";
 };
 
 export type NavSection = { label: string; adminOnly?: boolean; items: NavItem[] };
@@ -19,8 +21,8 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Ledger",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
-      { label: "Invoices", href: "/invoices", icon: "invoices" },
-      { label: "New invoice", href: "/invoices/new", icon: "plus" },
+      { label: "Invoices", href: "/invoices", icon: "invoices", countKey: "overdue" },
+      { label: "New invoice", href: "/invoices/new", icon: "plus", countKey: "drafts" },
     ],
   },
   {
