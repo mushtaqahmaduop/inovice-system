@@ -186,7 +186,7 @@ export function InvoicesTable({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search number or customer…"
-          className="h-8 w-60 text-[13px]"
+          className="h-8 w-full text-[13px] sm:w-60"
         />
         <select
           value={statusFilter}
@@ -228,7 +228,70 @@ export function InvoicesTable({
         />
       </div>
 
-      <div className="max-h-[70vh] overflow-auto border border-hairline bg-surface">
+      {/* DESIGN_BRIEF §3 #10 — below sm the table becomes stacked cards
+          keyed by the mono number; same filtered + paginated row model. */}
+      <div className="max-h-[70vh] overflow-auto border border-hairline bg-surface sm:hidden">
+        {table.getRowModel().rows.map((row) => {
+          const r = row.original;
+          return (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() =>
+                router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`)
+              }
+              className="block w-full border-b border-hairline px-3 py-2.5 text-left last:border-b-0 hover:bg-accent/50"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                {r.invoice_number ? (
+                  <span className="mono text-[12.5px] text-ink">{r.invoice_number}</span>
+                ) : (
+                  <span className="mono text-[9px] tracking-[0.1em] text-ink-3 uppercase">
+                    draft
+                  </span>
+                )}
+                {r.grand_total !== null ? (
+                  <span className="mono text-[12.5px] text-ink">
+                    <span className="mr-1 text-[10px] text-ink-3">AED</span>
+                    {formatAed(r.grand_total)}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-ink-4">—</span>
+                )}
+              </div>
+              <p className="mt-0.5 truncate text-[13px] text-ink-2">{r.customer_name}</p>
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <span className="mono text-[11px] text-ink-3">{r.issue_date ?? "—"}</span>
+                <span className="flex items-center gap-1.5">
+                  {r.status === "issued" ? (
+                    <StatusChip variant="ink">· sealed ·</StatusChip>
+                  ) : r.status === "voided" ? (
+                    <StatusChip variant="warning">voided</StatusChip>
+                  ) : (
+                    <StatusChip variant="neutral">draft</StatusChip>
+                  )}
+                  {r.status === "issued" ? (
+                    isOverdue(r) ? (
+                      <StatusChip variant="warning-filled">overdue</StatusChip>
+                    ) : (
+                      <StatusChip variant={r.payment_status === "paid" ? "success" : "neutral"}>
+                        {r.payment_status}
+                      </StatusChip>
+                    )
+                  ) : null}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+        {table.getRowModel().rows.length === 0 ? (
+          <p className="px-3 py-10 text-center text-[13px] text-ink-3">
+            No invoices match — adjust the filters or create the first one.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="hidden max-h-[70vh] overflow-auto border border-hairline bg-surface sm:block">
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-[1]">
             {table.getHeaderGroups().map((hg) => (

@@ -81,8 +81,8 @@ export default async function CustomerLedgerPage({
         </Link>
       </div>
 
-      {/* Balances — issued invoices only */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      {/* Balances — issued invoices only; stacked at 390px (brief §3 #10) */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Invoiced (sealed)" value={`AED ${formatAed(totalInvoiced)}`} />
         <Stat label="Paid" value={`AED ${formatAed(totalPaid)}`} />
         <Stat
@@ -94,7 +94,44 @@ export default async function CustomerLedgerPage({
 
       {/* Invoices */}
       <p className="mono mb-2 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Invoices</p>
-      <div className="mb-6 overflow-x-auto border border-hairline bg-surface">
+
+      {/* Below sm the invoice table becomes stacked cards keyed by number. */}
+      <div className="mb-6 border border-hairline bg-surface sm:hidden">
+        {rows.map((r) => (
+          <Link
+            key={r.id}
+            href={r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`}
+            className="block border-b border-hairline px-3 py-2.5 last:border-b-0 hover:bg-accent/50"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="mono text-[12px] text-primary">{r.invoice_number ?? "draft"}</span>
+              <span className="mono text-[12px] text-ink">
+                {r.grand_total !== null ? `AED ${formatAed(r.grand_total)}` : "—"}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="mono text-[11px] text-ink-3">{r.issue_date ?? "—"}</span>
+              <span className="mono text-[9px] tracking-[0.1em] uppercase">
+                <span className="text-ink-3">
+                  {r.status === "issued" ? "· sealed ·" : r.status}
+                </span>
+                {r.status === "issued" ? (
+                  <span
+                    className={`ml-2 ${r.payment_status === "paid" ? "text-success" : "text-ink-3"}`}
+                  >
+                    {r.payment_status ?? "—"}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+          </Link>
+        ))}
+        {rows.length === 0 ? (
+          <p className="px-3 py-6 text-center text-[12px] text-ink-3">No invoices yet.</p>
+        ) : null}
+      </div>
+
+      <div className="mb-6 hidden overflow-x-auto border border-hairline bg-surface sm:block">
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-hairline">
