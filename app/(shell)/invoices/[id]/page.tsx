@@ -59,7 +59,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   ] = await Promise.all([
     supabase
       .from("settings")
-      .select("company_name, tagline, trn, address, phone, email, bank_details")
+      .select("company_name, tagline, trn, address, phone, email, bank_details, paper_size")
       .limit(1)
       .maybeSingle(),
     supabase
@@ -118,8 +118,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const vatRegistered = invoice.vat_registered_snapshot ?? false;
   const ratePct = ((invoice.vat_rate_bp_snapshot ?? 0) / 100).toString();
 
+  // Task 6.1 (Q-07): the paper size is presentation, not sealed content —
+  // the shop can flip A4/A5 in Settings and reprint any invoice. A5 keeps
+  // the exact sample layout, scaled to the narrower sheet (130mm vs 182mm
+  // of content width → 0.72). Body <style> comes after the global sheet,
+  // so its @page wins over the A4 default in globals.css.
+  const paper = settings?.paper_size === "A5" ? "A5" : "A4";
+  const pageStyle =
+    `@page { size: ${paper}; margin: ${paper === "A5" ? "9mm" : "14mm"}; }` +
+    (paper === "A5" ? " @media print { .print-doc { zoom: 0.72; } }" : "");
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 print:max-w-none print:p-0">
+      <style>{pageStyle}</style>
       <div className="mb-4 flex items-center justify-between print:hidden">
         <div className="flex items-baseline gap-3">
           <p className="mono text-[10px] tracking-[0.14em] text-ink-3 uppercase">

@@ -92,3 +92,19 @@ Copilot flagged 10 potential performance issues. Disposition after checking the 
   `ERR_UNKNOWN_BUILTIN_MODULE`). Workaround used: `corepack pnpm …`, which honors the
   repo's pinned `packageManager: pnpm@9.15.9`. Permanent fix: re-pin the global pnpm
   to 9, or upgrade the machine to Node 22.
+
+## 2026-07-07 — task 6.1 (print CSS, delivered without logo/Arabic/V-2)
+
+- **Delivered**: paper size (Q-07) now consumed — the sealed view emits
+  `@page A4|A5` from `settings.paper_size` (A5 = the sample layout zoomed 0.72);
+  fonts moved to `font-display: block` (R-8a); `print-color-adjust: exact` +
+  row `break-inside: avoid` added to the print rules.
+- **Still deferred inside 6.1**: the **logo file** (Q-02 remainder — the
+  placeholder block prints the company name), **Arabic bilingual runs** (Q-08
+  answered "bilingual" by the client but Mushtaq must confirm scope; the sample
+  invoice is English-only), and **V-2 full-vs-simplified tax-invoice blocks**
+  (VERIFY — awaiting the client's accountant; dormant in deregistered launch
+  mode; the current title/TRN conditional is the safe minimal).
+- **Manual check owed (2 min, Mushtaq):** Chrome/Edge print-to-PDF of a sealed
+  invoice on A4 and A5 (flip Settings → Paper size) — print rendering can't be
+  asserted from HTML alone.
