@@ -213,7 +213,7 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
             />
           </div>
         </div>
-        <FieldHint>Logo upload lands with the print work (task 6.1).</FieldHint>
+        <FieldHint>Logo upload pending the client&apos;s logo file (Q-02 remainder).</FieldHint>
       </section>
 
       <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-hairline bg-paper px-1 py-3">

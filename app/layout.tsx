@@ -4,14 +4,18 @@ import "./globals.css";
 
 // D-21: Inter Tight for UI, JetBrains Mono for all numerics. No serif fonts.
 // next/font self-hosts at build time — no request ever leaves our deployment.
+// display "block" (R-8a, task 6.1): print must never capture fallback glyphs;
+// the fonts are local + preloaded, so the block period is effectively zero.
 const interTight = Inter_Tight({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "block",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  display: "block",
 });
 
 export const metadata: Metadata = {

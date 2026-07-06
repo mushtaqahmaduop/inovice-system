@@ -179,10 +179,12 @@
   }
 }
 
-/* ── Minimal readable A4 print (task 4.2 / [#23a]) ──────────────────────
-   Demo insurance only — pixel-honest print CSS is task 6.1. The shell
-   chrome carries Tailwind print:hidden; these rules make the document
-   itself print clean on white A4. */
+/* ── Print (task 6.1, D-09) ─────────────────────────────────────────────
+   The shell chrome carries Tailwind print:hidden; the document itself is
+   components/invoice/invoice-doc.tsx (client's sample layout). A4 is the
+   default page; the sealed view emits an overriding @page (+ A5 zoom)
+   from settings.paper_size — body <style> comes after this sheet, so it
+   wins (Q-07: A4/A5, never thermal). */
 @page {
   size: A4;
   margin: 14mm;
@@ -194,5 +196,13 @@
   }
   .print-doc {
     box-shadow: none !important;
+    /* The dark logo block must actually print — browsers strip
+       backgrounds by default. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* Never split a line-item row across sheets; thead repeats natively. */
+  .print-doc tr {
+    break-inside: avoid;
   }
 }
