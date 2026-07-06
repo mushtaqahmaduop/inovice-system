@@ -18,6 +18,11 @@ const actionSchema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Auth before validation (7.3): anonymous callers must see a bare 401,
+  // never validation detail.
+  const userGuard = await requireUserApi();
+  if (userGuard.error) return userGuard.error;
+
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
@@ -32,8 +37,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   if (parsed.data.action === "update") {
-    const guard = await requireUserApi();
-    if (guard.error) return guard.error;
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("customers")
