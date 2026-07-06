@@ -1,0 +1,45 @@
+# Task 7.7 — uptime monitoring (BUILD_PHASES [#27]).
+#
+# External pinger: GitHub's runners probe production every 15 minutes from
+# outside our infrastructure. A failed run makes GitHub email the repo
+# owner (default notification for failed scheduled workflows) — that IS the
+# operator alert; no extra service or account needed. Sentry alert rules
+# remain pending task 7.2 (account not yet created).
+#
+# Simulated-outage test (the task's done-criterion): run this workflow
+# manually (Actions → Uptime → Run workflow) with url set to something
+# dead, e.g. https://inovice-system.vercel.app/definitely-down — the run
+# fails and the failure email is the simulated alert.
+
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Override URL (use a dead path to simulate an outage)"
+        required: false
+        default: ""
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production
+        env:
+          TARGET: ${{ inputs.url != '' && inputs.url || 'https://inovice-system.vercel.app/login' }}
+        run: |
+          set -u
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$TARGET") && \
+              [ "$code" = "200" ] && { echo "OK ($code) on attempt $attempt"; exit 0; }
+            echo "attempt $attempt: got '${code:-no response}'"
+            sleep 20
+          done
+          echo "::error::Production did not answer 200 after 3 attempts: $TARGET"
+          exit 1
