@@ -713,7 +713,7 @@ export function InvoiceEditor({
         </div>
       </div>
 
-      {error ? <p className="mt-3 text-right text-[11px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-right text-[11px] text-warning">{error}</p> : null}
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving}>
           {saving ? "Saving…" : draftId ? "Save draft" : "Save as draft"}
@@ -769,7 +769,7 @@ export function InvoiceEditor({
             totals are recomputed server-side at that moment. Corrections afterwards happen
             via a new document, never by editing.
           </p>
-          {issueError ? <p className="mt-2 text-[11px] text-destructive">{issueError}</p> : null}
+          {issueError ? <p className="mt-2 text-[11px] text-warning">{issueError}</p> : null}
           <div className="mt-4 flex justify-end gap-2 pb-2">
             <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)} disabled={confirming}>
               Back to editing

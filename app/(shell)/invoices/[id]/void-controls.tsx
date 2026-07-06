@@ -82,7 +82,7 @@ export function VoidControls({ invoiceId }: { invoiceId: string }) {
           />
           Create a replacement draft (copies the lines, links back)
         </label>
-        {error ? <p className="mt-2 text-[11px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-2 text-[11px] text-warning">{error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={busy}>
             Cancel
