@@ -2,6 +2,27 @@
 
 Not fixed inline; each entry needs its own decision/task.
 
+## 2026-07-05 — task 7.3 security sweep (results)
+
+- **Authz:** all 16 API routes verified guarded (requireUserApi /
+  requireAdminApi / direct getUser); identity is session-derived everywhere —
+  no client-supplied principals found. Page surfaces re-guard via layouts.
+- **Input validation:** every body/query-taking route parses with zod;
+  `recovery-codes` takes no input (nothing to validate).
+- **Secrets:** git history contains only `.env.example`; no JWTs, connection
+  strings, or service-role material in the tree. Service key used ONLY in the
+  two sanctioned S-5.4 paths (GoTrue admin ops) + tests/seed via env.
+- **Rate limiting:** `recover-mfa` (the TOTP-bypass surface for a
+  password-holding attacker) now throttled 5/15min per user BEFORE code
+  comparison (lib/rate-limit.ts — in-memory per instance, a brake not a wall).
+  Login/password grants rate-limit inside GoTrue itself.
+  **ACTION FOR MUSHTAQ:** review Supabase dashboard → Auth → Rate Limits
+  (defaults are fine but confirm), and consider enabling Vercel WAF/Attack
+  Mode before real client data as the infra-level outer layer.
+- **Residual (accepted/tracked):** staging keys rotated before production
+  (already tracked); ~10-min JWT TTL is a dashboard setting (set on staging
+  per Mushtaq; re-check on production project when it goes live).
+
 ## 2026-07-05 — task 1.2a
 
 - **`pnpm format:check` fails repo-wide (23 files), pre-existing.** It flags files

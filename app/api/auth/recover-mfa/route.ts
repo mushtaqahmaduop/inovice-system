@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { hashRecoveryCode } from "@/lib/auth/recovery-codes";
+import { rateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({ code: z.string().min(8).max(20) });
 
@@ -21,6 +22,18 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  // 7.3: this endpoint is the TOTP-bypass surface for an attacker who
+  // already has the password — throttle BEFORE any code comparison.
+  // 5 tries / 15 min per user; ~10^15 code space makes spraying useless
+  // at that rate even across serverless instances.
+  const retryAfter = rateLimit(`recover-mfa:${user.id}`, 5, 15 * 60 * 1000);
+  if (retryAfter !== null) {
+    return NextResponse.json(
+      { error: "Too many attempts — try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
