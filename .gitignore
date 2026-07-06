@@ -26,6 +26,9 @@ pnpm-debug.log*
 # Test / coverage output
 coverage/
 
+# Backup exports (task 7.6) — ledger data, never in git
+backups/
+
 # TypeScript incremental state
 *.tsbuildinfo
 next-env.d.ts
