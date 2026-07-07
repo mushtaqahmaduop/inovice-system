@@ -5,35 +5,74 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ────────────────────────────────────────────────────────────
-   STAMPED PAPER — design tokens (D-20/D-21/D-22)
-   Values ported EXACTLY from reference/invoice_system_v2.html.
-   Naming note: the prototype calls the FTA federal blue `--accent`;
-   shadcn already uses `--accent` for subtle hover surfaces, so the
-   blue is exposed here as `--accent-action` and mapped to shadcn's
-   `--primary`. Burnt orange `--warning` is for OVERDUE ONLY.
+   WARM PAPER / FEDERAL BLUE — design tokens
+   Source of truth: DESIGN_SYSTEM_CLAUDE_BLUE.md §2 (supersedes the
+   Stamped Paper set; redesign slice 1). The old Stamped Paper names
+   (--paper/--ink/--hairline/--warning…) remain below as ALIASES so
+   every existing screen re-skins immediately; screens migrate to the
+   new names slice by slice, then the aliases are deleted.
+   --danger (burnt orange) is OVERDUE ONLY; form errors use --error.
    Components use tokens only — no hardcoded hex (CLAUDE.md §5).
    ──────────────────────────────────────────────────────────── */
 
 :root {
-  /* Stamped Paper — light */
-  --paper: #f6f5f2;
+  /* §2.1 — light (default) */
+  --bg: #faf9f5;
+  --bg-sunken: #f5f4ef;
   --surface: #ffffff;
-  --surface-2: #ecebe7;
-  --surface-3: #e3e1db;
-  --ink: #0f1419;
-  --ink-2: #4a4f57;
-  --ink-3: #8a8e94;
-  --ink-4: #b8bbbf;
-  --hairline: #e0ddd6;
-  --hairline-strong: #c7c4bb;
-  --accent-action: #003b5c;
-  --accent-action-hover: #00527d;
-  --accent-soft: #e5edf2;
-  --warning: #c2410c;
-  --warning-soft: #fef0e6;
-  --success: #15633c;
-  --success-soft: #e6f0ea;
-  --shadow-focus: 0 0 0 3px rgba(0, 59, 92, 0.15);
+  --surface-raised: #ffffff;
+
+  --text: #29261b;
+  --text-secondary: #6e6b60;
+  --text-tertiary: #9a968a;
+  --text-inverse: #faf9f5;
+
+  --border: #e8e6dc;
+  --border-strong: #d6d3c6;
+
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --accent-pressed: #1e3a8a;
+  --accent-soft: #eff4fe;
+  --accent-border: #bfd3f8;
+  --on-accent: #ffffff;
+
+  --success: #15803d;
+  --success-soft: #edf7ef;
+  --warn: #b45309;
+  --warn-soft: #fbf3e7;
+  --danger: #c2410c;
+  --danger-soft: #fbefe7;
+  --neutral-soft: #f0efe9;
+  --error: #b91c1c;
+
+  --ring-color: #1d4ed8;
+
+  /* §4.4 elevation — floating layers only */
+  --shadow-popover: 0 4px 16px rgba(41, 38, 27, 0.08), 0 1px 3px rgba(41, 38, 27, 0.06);
+  --shadow-drawer: 0 8px 40px rgba(41, 38, 27, 0.14);
+
+  /* §8 motion */
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 150ms;
+  --dur-med: 200ms;
+  --dur-slow: 300ms;
+
+  /* ── Stamped Paper ALIASES (delete when all screens migrated) ── */
+  --paper: var(--bg);
+  --surface-2: var(--bg-sunken);
+  --surface-3: var(--neutral-soft);
+  --ink: var(--text);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--text-tertiary);
+  --ink-4: var(--text-tertiary);
+  --hairline: var(--border);
+  --hairline-strong: var(--border-strong);
+  --accent-action: var(--accent);
+  --accent-action-hover: var(--accent-hover);
+  --warning: var(--danger);
+  --warning-soft: var(--danger-soft);
+  --shadow-focus: 0 0 0 3px rgba(29, 78, 216, 0.15);
 
   /* shadcn semantic mapping */
   --background: var(--paper);
@@ -48,18 +87,16 @@
   --secondary-foreground: var(--ink);
   --muted: var(--surface-2);
   --muted-foreground: var(--ink-3);
-  --accent: var(--surface-2);
   --accent-foreground: var(--ink);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: var(--hairline);
-  --input: var(--hairline-strong);
-  --ring: var(--accent-action);
+  --destructive: var(--error);
+  --input: var(--border-strong);
+  --ring: var(--ring-color);
   --chart-1: var(--accent-action);
   --chart-2: var(--ink-2);
   --chart-3: var(--ink-3);
   --chart-4: var(--success);
   --chart-5: var(--warning);
-  --radius: 0.25rem;
+  --radius: 0.75rem; /* §4.3 md — cards, menus; sm/lg set explicitly below */
   --sidebar: var(--surface);
   --sidebar-foreground: var(--ink-2);
   --sidebar-primary: var(--accent-action);
@@ -71,29 +108,45 @@
 }
 
 .dark {
-  /* Stamped Paper — dark */
-  --paper: #0a0d12;
-  --surface: #11151c;
-  --surface-2: #181d26;
-  --surface-3: #20262f;
-  --ink: #e6e4dd;
-  --ink-2: #a8a59c;
-  --ink-3: #6b6963;
-  --ink-4: #45433e;
-  --hairline: #1f242d;
-  --hairline-strong: #2f353f;
-  --accent-action: #5b95c4;
-  --accent-action-hover: #7badd5;
-  --accent-soft: #122530;
-  --warning: #d97744;
-  --warning-soft: #2a1810;
-  --success: #4a9d72;
-  --success-soft: #122218;
-  --shadow-focus: 0 0 0 3px rgba(91, 149, 196, 0.2);
+  /* §2.2 — dark (warm charcoal, never pure black) */
+  --bg: #262624;
+  --bg-sunken: #1f1e1d;
+  --surface: #2b2a27;
+  --surface-raised: #30302e;
 
-  --primary-foreground: #0a0d12;
-  --sidebar-primary-foreground: #0a0d12;
-  --destructive: oklch(0.704 0.191 22.216);
+  --text: #f5f4ef;
+  --text-secondary: #b8b5aa;
+  --text-tertiary: #85826f;
+  --text-inverse: #29261b;
+
+  --border: #3a3935;
+  --border-strong: #4a4943;
+
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-pressed: #2563eb;
+  --accent-soft: #1e2a44;
+  --accent-border: #2c4370;
+  --on-accent: #ffffff;
+
+  --success: #4ade80;
+  --success-soft: #17281c;
+  --warn: #f59e0b;
+  --warn-soft: #2c2415;
+  --danger: #f97316;
+  --danger-soft: #2e1d12;
+  --neutral-soft: #33322e;
+  --error: #f87171;
+
+  --ring-color: #3b82f6;
+
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-drawer: 0 8px 40px rgba(0, 0, 0, 0.4);
+  --shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.2);
+
+  --primary-foreground: #ffffff;
+  --sidebar-primary-foreground: #ffffff;
+  --destructive: var(--error);
 }
 
 @theme inline {
@@ -101,7 +154,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-serif);
+  --font-serif: var(--font-serif);
   --color-paper: var(--paper);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -137,7 +191,24 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
+  /* Naming collision, resolved: the DESIGN_SYSTEM's `--accent` is Federal
+     Blue, but the `bg-accent` utility was shadcn's subtle hover surface
+     and ~50 call sites rely on that. So the utility maps to the §5.5
+     hover color (--neutral-soft); the blue is `primary` (shadcn mapping)
+     and the `accent-action` alias. */
+  --color-accent: var(--neutral-soft);
+  --color-bg-sunken: var(--bg-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-on-accent: var(--on-accent);
+  --color-accent-border: var(--accent-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-neutral-soft: var(--neutral-soft);
+  --color-error: var(--error);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -148,13 +219,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* §4.3 radius scale — explicit, not derived */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-4xl: 28px;
 }
 
 @layer base {
@@ -162,14 +234,16 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings:
-      "cv11" 1,
-      "ss01" 1;
+    /* font-family MUST live here, not on <html>: the next/font variable
+       classes are on <body>, and a var() that is undefined at the element
+       where it's used invalidates the whole declaration — this exact
+       mistake shipped the app in Times New Roman (UI_AUDIT.md P0). */
+    @apply bg-background font-sans text-foreground;
+    font-feature-settings: "tnum" 1;
     -webkit-font-smoothing: antialiased;
   }
-  html {
-    @apply font-sans;
+  .serif {
+    font-family: var(--font-serif);
   }
   /* D-21: JetBrains Mono for ALL numerics — amounts, invoice numbers, dates in tables */
   .num,
