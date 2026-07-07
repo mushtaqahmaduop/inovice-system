@@ -21,6 +21,7 @@ export function StatTile({
   trend,
   trendDirection,
   sub,
+  size = "md",
   className,
 }: {
   label: string;
@@ -29,6 +30,8 @@ export function StatTile({
   trend?: string;
   trendDirection?: "up" | "down";
   sub?: string;
+  /** lg = the dashboard hero figure (display-xl); md = regular tile. */
+  size?: "lg" | "md";
   className?: string;
 }) {
   return (
@@ -36,7 +39,11 @@ export function StatTile({
       <p className="text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase">
         {label}
       </p>
-      <p className="serif mt-2 text-[34px] leading-10 font-semibold text-foreground">
+      <p
+        className={`serif mt-2 font-semibold text-foreground ${
+          size === "lg" ? "text-[34px] leading-10" : "text-[22px] leading-7"
+        }`}
+      >
         {prefix ? (
           <span className="mr-1.5 align-middle text-[15px] font-normal text-text-tertiary">
             {prefix}
