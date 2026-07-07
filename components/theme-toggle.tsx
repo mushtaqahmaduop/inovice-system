@@ -24,12 +24,10 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="inline-flex h-7 items-center gap-1.5 rounded border border-hairline-strong bg-surface px-2.5 text-xs text-ink-2 transition-colors hover:border-ink-3 hover:text-ink"
+      className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border-strong bg-transparent px-3 text-[13px] text-text-secondary transition-colors duration-150 outline-none hover:bg-bg-sunken hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       aria-label="Toggle theme"
     >
-      <span className="mono text-[10px] tracking-[0.08em] uppercase">
-        {dark ? "Dark" : "Light"}
-      </span>
+      <span>{dark ? "Dark" : "Light"}</span>
     </button>
   );
 }

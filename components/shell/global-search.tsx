@@ -84,21 +84,23 @@ export function GlobalSearch() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-7 items-center gap-2 rounded border border-hairline-strong bg-surface px-2.5 text-xs text-ink-3 transition-colors hover:border-ink-3 hover:text-ink"
+        className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border border-border-strong bg-transparent px-3 text-[13px] text-text-secondary transition-colors duration-150 outline-none hover:bg-bg-sunken hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label="Search (Ctrl+K)"
       >
         <svg
           viewBox="0 0 16 16"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.4"
+          strokeWidth="1.75"
           className="h-3.5 w-3.5"
         >
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.5 10.5L14 14" />
         </svg>
         <span className="hidden sm:inline">Search</span>
-        <kbd className="mono hidden text-[9px] tracking-[0.08em] text-ink-4 sm:inline">CTRL K</kbd>
+        <kbd className="mono hidden text-[10px] tracking-[0.08em] text-text-tertiary sm:inline">
+          Ctrl K
+        </kbd>
       </button>
 
       {open ? (
@@ -111,7 +113,7 @@ export function GlobalSearch() {
           aria-modal="true"
           aria-label="Global search"
         >
-          <div className="w-full max-w-lg border border-hairline-strong bg-surface shadow-lg">
+          <div className="w-full max-w-lg overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
             <input
               ref={inputRef}
               value={q}
