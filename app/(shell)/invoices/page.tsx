@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
 import { InvoicesTable } from "./invoices-table";
 
 export type InvoiceListRow = {
@@ -50,10 +52,25 @@ export default async function InvoicesPage() {
       (r.customer_snapshot as { name?: string } | null)?.name ?? nameById.get(r.customer_id) ?? "—",
   }));
 
+  const issued = list.filter((r) => r.status === "issued").length;
+  const drafts = list.filter((r) => r.status === "draft").length;
+
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      {/* Live refetch (R-5) now rides the sidebar's single realtime subscriber. */}
-      <h1 className="mb-1 text-[20px] font-semibold tracking-tight text-ink">Invoices</h1>
+    <div className="mx-auto max-w-[1040px] px-4 py-8 md:px-8">
+      {/* Live refetch (R-5) rides the sidebar's single realtime subscriber. */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          {/* The screen's one serif display element (§3.2). */}
+          <h1 className="serif text-[26px] leading-8 font-semibold text-foreground">Invoices</h1>
+          <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+            {list.length === 1 ? "1 invoice" : `${list.length} invoices`} on record — {issued}{" "}
+            sealed{drafts > 0 ? `, ${drafts} open ${drafts === 1 ? "draft" : "drafts"}` : ""}.
+            Sealed invoices are immutable; payment status derives from recorded payments.
+          </p>
+        </div>
+        {/* The only blue button on this screen (§4). */}
+        <Button render={<Link href="/invoices/new" />}>Create invoice</Button>
+      </div>
       <InvoicesTable rows={list} dueDaysDefault={settings?.due_days_default ?? null} />
     </div>
   );

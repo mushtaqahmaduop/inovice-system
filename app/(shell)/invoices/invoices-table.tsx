@@ -14,17 +14,55 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { StatusChip } from "@/components/ui/status-chip";
+import { Segmented } from "@/components/ui/segmented";
+import { StatusChip, type ChipVariant } from "@/components/ui/status-chip";
 import { formatAed } from "@/lib/money";
-import { toRoman } from "@/lib/invoice-calc";
 import type { InvoiceListRow } from "./page";
 
 const col = createColumnHelper<InvoiceListRow>();
 
-// Invoice list table (task 4.3). "Sealed" = issued, independent of payment
-// (CLAUDE.md §5 vocabulary). Overdue is a pure display predicate — burnt
-// orange, the ONLY use of that color — from due_date, falling back to
-// issue_date + settings.due_days_default until Q-11 answers.
+// §2.3: dates in tables are mono and unambiguous — "07 Jul 2026".
+const dateFmt = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+const fmtDate = (iso: string | null) => (iso ? dateFmt.format(new Date(iso + "T00:00:00Z")) : "—");
+
+type Filter = "all" | "draft" | "issued" | "paid" | "overdue" | "voided";
+
+const EMPTY_COPY: Record<Filter, string> = {
+  all: "No invoices yet — create your first one.",
+  draft: "No open drafts.",
+  issued: "No sealed invoices yet.",
+  paid: "No paid invoices yet.",
+  overdue: "No overdue invoices — nice.",
+  voided: "No voided invoices.",
+};
+
+// One status chip per row (§5.7): lifecycle + payment merged. "Sealed" =
+// issued, independent of payment (CLAUDE.md §5). Overdue is a pure display
+// predicate — burnt orange, the ONLY use of that color — from due_date,
+// falling back to issue_date + settings.due_days_default (Q-11: 7 days).
+function rowChip(
+  r: InvoiceListRow,
+  overdue: boolean
+): { variant: ChipVariant; label: string; title?: string } {
+  if (r.status === "draft") return { variant: "neutral", label: "Draft" };
+  if (r.status === "voided") return { variant: "warning", label: "Voided" };
+  if (overdue) return { variant: "warning-filled", label: "Overdue" };
+  if (r.payment_status === "paid") {
+    const overpaid = r.grand_total !== null && r.paid_total > r.grand_total;
+    return {
+      variant: "success",
+      label: overpaid ? "Paid ⚑ · sealed" : "Paid · sealed",
+      title: overpaid ? `Overpaid: AED ${formatAed(r.paid_total)} received` : undefined,
+    };
+  }
+  if (r.payment_status === "partial") return { variant: "ink", label: "Sealed · partial" };
+  return { variant: "ink", label: "Sealed" };
+}
+
 export function InvoicesTable({
   rows,
   dueDaysDefault,
@@ -34,10 +72,7 @@ export function InvoicesTable({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "issued" | "voided">("all");
-  const [payFilter, setPayFilter] = useState<"all" | "unpaid" | "partial" | "paid" | "overdue">(
-    "all"
-  );
+  const [filter, setFilter] = useState<Filter>("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -58,85 +93,69 @@ export function InvoicesTable({
   const data = useMemo(
     () =>
       rows.filter((r) => {
-        if (statusFilter !== "all" && r.status !== statusFilter) return false;
-        if (payFilter === "overdue") {
-          if (!isOverdue(r)) return false;
-        } else if (payFilter !== "all" && r.payment_status !== payFilter) return false;
+        if (filter === "draft" && r.status !== "draft") return false;
+        if (filter === "voided" && r.status !== "voided") return false;
+        if (filter === "issued" && r.status !== "issued") return false;
+        if (filter === "paid" && !(r.status === "issued" && r.payment_status === "paid"))
+          return false;
+        if (filter === "overdue" && !isOverdue(r)) return false;
         if (fromDate && (r.issue_date ?? r.created_at.slice(0, 10)) < fromDate) return false;
         if (toDate && (r.issue_date ?? r.created_at.slice(0, 10)) > toDate) return false;
         return true;
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, statusFilter, payFilter, fromDate, toDate, dueDaysDefault]
+    [rows, filter, fromDate, toDate, dueDaysDefault]
   );
 
   const columns = useMemo(
     () => [
-      col.display({
-        id: "idx",
-        header: "№",
-        cell: (c) => (
-          <span className="mono text-[10px] text-ink-3">
-            {toRoman(c.row.index + 1 + c.table.getState().pagination.pageIndex * 25)}
-          </span>
-        ),
-      }),
       col.accessor("invoice_number", {
         header: "Number",
         cell: (c) =>
           c.getValue() ? (
-            <span className="mono text-[12.5px] text-ink">{c.getValue()}</span>
+            <span className="mono text-[13px] font-medium text-foreground">{c.getValue()}</span>
           ) : (
-            <span className="mono text-[9px] tracking-[0.1em] text-ink-3 uppercase">draft</span>
+            <span className="text-[13px] text-text-tertiary">Draft</span>
           ),
       }),
       col.accessor("customer_name", {
         header: "Customer",
-        cell: (c) => <span className="truncate text-[13px] text-ink">{c.getValue()}</span>,
+        cell: (c) => (
+          <span
+            className="block max-w-[28ch] truncate text-[15px] text-foreground"
+            title={c.getValue()}
+          >
+            {c.getValue()}
+          </span>
+        ),
       }),
       col.accessor("issue_date", {
         header: "Issued",
-        cell: (c) => <span className="mono text-[11.5px] text-ink-3">{c.getValue() ?? "—"}</span>,
+        cell: (c) => (
+          <span className="mono text-[13px] text-text-secondary">{fmtDate(c.getValue())}</span>
+        ),
       }),
       col.accessor("grand_total", {
         header: "Total",
         cell: (c) =>
           c.getValue() !== null ? (
-            <span className="mono block text-right text-[12.5px] text-ink">
-              <span className="mr-1 text-[10px] text-ink-3">AED</span>
+            <span className="mono block text-right text-[15px] font-medium text-foreground">
+              <span className="mr-1 text-[11px] font-normal text-text-tertiary">AED</span>
               {formatAed(c.getValue()!)}
             </span>
           ) : (
-            <span className="block text-right text-[11px] text-ink-4">—</span>
+            <span className="block text-right text-[13px] text-text-tertiary">—</span>
           ),
       }),
-      col.accessor("status", {
+      col.display({
+        id: "state",
         header: "Status",
         cell: (c) => {
-          const s = c.getValue();
-          if (s === "issued") return <StatusChip variant="ink">· sealed ·</StatusChip>;
-          if (s === "voided") return <StatusChip variant="warning">voided</StatusChip>;
-          return <StatusChip variant="neutral">draft</StatusChip>;
-        },
-      }),
-      col.display({
-        id: "payment",
-        header: "Payment",
-        cell: (c) => {
           const r = c.row.original;
-          if (r.status !== "issued") return <span className="text-[11px] text-ink-4">—</span>;
-          if (isOverdue(r)) {
-            return <StatusChip variant="warning-filled">overdue</StatusChip>;
-          }
-          const overpaid =
-            r.payment_status === "paid" && r.grand_total !== null && r.paid_total > r.grand_total;
+          const chip = rowChip(r, isOverdue(r));
           return (
-            <StatusChip
-              variant={r.payment_status === "paid" ? "success" : "neutral"}
-              title={overpaid ? `Overpaid: AED ${formatAed(r.paid_total)} received` : undefined}
-            >
-              {r.payment_status}
-              {overpaid ? " ⚑" : ""}
+            <StatusChip variant={chip.variant} title={chip.title}>
+              {chip.label}
             </StatusChip>
           );
         },
@@ -167,142 +186,104 @@ export function InvoicesTable({
     initialState: { pagination: { pageSize: 25 } },
   });
 
-  const issued = rows.filter((r) => r.status === "issued").length;
-  const drafts = rows.filter((r) => r.status === "draft").length;
+  const openRow = (r: InvoiceListRow) =>
+    router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`);
 
   return (
     <div>
-      <p className="mb-5 text-[13px] leading-relaxed text-ink-2">
-        {rows.length} invoices on record — <em>{issued} sealed</em>
-        {drafts > 0 ? (
-          <>
-            {" and "}
-            <em>{drafts} open drafts</em>
-          </>
-        ) : null}
-        . Payment status is derived from recorded payments; sealed invoices are immutable.
-      </p>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* Toolbar: segmented filter + search + date range in one row (§4). */}
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <Segmented
+          aria-label="Filter invoices"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "draft", label: "Draft" },
+            { value: "issued", label: "Sealed" },
+            { value: "paid", label: "Paid" },
+            { value: "overdue", label: "Overdue" },
+            { value: "voided", label: "Voided" },
+          ]}
+        />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search number or customer…"
-          className="h-8 w-full text-[13px] sm:w-60"
+          className="h-8 w-full text-[13px] sm:w-56"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          className="h-8 rounded border border-hairline-strong bg-surface px-2 text-[12px] text-ink-2"
-          aria-label="Filter by status"
-        >
-          <option value="all">All statuses</option>
-          <option value="draft">Drafts</option>
-          <option value="issued">Sealed</option>
-          <option value="voided">Voided</option>
-        </select>
-        <select
-          value={payFilter}
-          onChange={(e) => setPayFilter(e.target.value as typeof payFilter)}
-          className="h-8 rounded border border-hairline-strong bg-surface px-2 text-[12px] text-ink-2"
-          aria-label="Filter by payment"
-        >
-          <option value="all">All payments</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="partial">Partial</option>
-          <option value="paid">Paid</option>
-          <option value="overdue">Overdue</option>
-        </select>
         <Input
           type="date"
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
-          className="mono h-8 w-36 text-[11px]"
+          className="mono h-8 w-36 text-[12px]"
           aria-label="From date"
         />
-        <span className="text-[11px] text-ink-4">–</span>
+        <span className="text-[12px] text-text-tertiary">–</span>
         <Input
           type="date"
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
-          className="mono h-8 w-36 text-[11px]"
+          className="mono h-8 w-36 text-[12px]"
           aria-label="To date"
         />
       </div>
 
-      {/* DESIGN_BRIEF §3 #10 — below sm the table becomes stacked cards
-          keyed by the mono number; same filtered + paginated row model. */}
-      <div className="max-h-[70vh] overflow-auto border border-hairline bg-surface sm:hidden">
+      {/* Below sm the table becomes stacked cards keyed by the mono number;
+          same filtered + paginated row model. */}
+      <div className="max-h-[70vh] overflow-auto rounded-[12px] border border-border bg-surface sm:hidden">
         {table.getRowModel().rows.map((row) => {
           const r = row.original;
+          const chip = rowChip(r, isOverdue(r));
           return (
             <button
               key={row.id}
               type="button"
-              onClick={() =>
-                router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`)
-              }
-              className="block w-full border-b border-hairline px-3 py-2.5 text-left last:border-b-0 hover:bg-accent/50"
+              onClick={() => openRow(r)}
+              className="block w-full cursor-pointer border-b border-border px-3 py-2.5 text-left transition-colors duration-150 last:border-b-0 hover:bg-bg-sunken"
             >
               <div className="flex items-baseline justify-between gap-3">
                 {r.invoice_number ? (
-                  <span className="mono text-[12.5px] text-ink">{r.invoice_number}</span>
-                ) : (
-                  <span className="mono text-[9px] tracking-[0.1em] text-ink-3 uppercase">
-                    draft
+                  <span className="mono text-[13px] font-medium text-foreground">
+                    {r.invoice_number}
                   </span>
+                ) : (
+                  <span className="text-[13px] text-text-tertiary">Draft</span>
                 )}
                 {r.grand_total !== null ? (
-                  <span className="mono text-[12.5px] text-ink">
-                    <span className="mr-1 text-[10px] text-ink-3">AED</span>
+                  <span className="mono text-[13px] text-foreground">
+                    <span className="mr-1 text-[11px] text-text-tertiary">AED</span>
                     {formatAed(r.grand_total)}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-ink-4">—</span>
+                  <span className="text-[13px] text-text-tertiary">—</span>
                 )}
               </div>
-              <p className="mt-0.5 truncate text-[13px] text-ink-2">{r.customer_name}</p>
+              <p className="mt-0.5 truncate text-[13px] text-text-secondary">{r.customer_name}</p>
               <div className="mt-1.5 flex items-center justify-between gap-2">
-                <span className="mono text-[11px] text-ink-3">{r.issue_date ?? "—"}</span>
-                <span className="flex items-center gap-1.5">
-                  {r.status === "issued" ? (
-                    <StatusChip variant="ink">· sealed ·</StatusChip>
-                  ) : r.status === "voided" ? (
-                    <StatusChip variant="warning">voided</StatusChip>
-                  ) : (
-                    <StatusChip variant="neutral">draft</StatusChip>
-                  )}
-                  {r.status === "issued" ? (
-                    isOverdue(r) ? (
-                      <StatusChip variant="warning-filled">overdue</StatusChip>
-                    ) : (
-                      <StatusChip variant={r.payment_status === "paid" ? "success" : "neutral"}>
-                        {r.payment_status}
-                      </StatusChip>
-                    )
-                  ) : null}
-                </span>
+                <span className="mono text-[12px] text-text-tertiary">{fmtDate(r.issue_date)}</span>
+                <StatusChip variant={chip.variant}>{chip.label}</StatusChip>
               </div>
             </button>
           );
         })}
         {table.getRowModel().rows.length === 0 ? (
-          <p className="px-3 py-10 text-center text-[13px] text-ink-3">
-            No invoices match — adjust the filters or create the first one.
+          <p className="px-3 py-10 text-center text-[13px] text-text-secondary">
+            {EMPTY_COPY[filter]}
           </p>
         ) : null}
       </div>
 
-      <div className="hidden max-h-[70vh] overflow-auto border border-hairline bg-surface sm:block">
+      <div className="hidden max-h-[70vh] overflow-auto rounded-[12px] border border-border bg-surface sm:block">
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-[1]">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-hairline bg-surface-2">
+              <tr key={hg.id} className="border-b border-border-strong bg-surface">
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
                     onClick={h.column.getToggleSortingHandler()}
-                    className={`mono px-3 py-2.5 text-[10px] tracking-[0.14em] text-ink-3 uppercase ${
+                    className={`px-3 py-2.5 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase ${
                       h.column.getCanSort() ? "cursor-pointer select-none" : ""
                     } ${h.column.id === "grand_total" ? "text-right" : ""}`}
                   >
@@ -314,33 +295,26 @@ export function InvoicesTable({
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => {
-              const r = row.original;
-              return (
-                <tr
-                  key={row.id}
-                  onClick={() =>
-                    router.push(
-                      r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`
-                    )
-                  }
-                  className="h-[42px] cursor-pointer border-b border-hairline last:border-b-0 hover:bg-accent/50"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 align-middle">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+            {table.getRowModel().rows.map((row) => (
+              <tr
+                key={row.id}
+                onClick={() => openRow(row.original)}
+                className="h-12 cursor-pointer border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-bg-sunken"
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="px-3 py-2 align-middle">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-3 py-10 text-center text-[13px] text-ink-3"
+                  className="px-3 py-12 text-center text-[13px] text-text-secondary"
                 >
-                  No invoices match — adjust the filters or create the first one.
+                  {EMPTY_COPY[filter]}
                 </td>
               </tr>
             ) : null}
@@ -350,7 +324,7 @@ export function InvoicesTable({
 
       {table.getPageCount() > 1 ? (
         <div className="mt-3 flex items-center justify-end gap-2">
-          <span className="mono text-[10px] text-ink-3">
+          <span className="mono text-[12px] text-text-tertiary">
             {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
           </span>
           <Button
