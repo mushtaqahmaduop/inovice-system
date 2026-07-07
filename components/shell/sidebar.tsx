@@ -3,58 +3,34 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  FileText,
+  LayoutDashboard,
+  List,
+  Plus,
+  Settings,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { INVOICES_CHANNEL, INVOICES_CHANGED_EVENT } from "@/lib/realtime";
 import { NAV_SECTIONS, type NavItem } from "./nav-items";
 
-// Prototype line icons (16×16, stroke 1.4) ported 1:1 from
-// reference/invoice_system_v2.html.
-const ICONS: Record<NavItem["icon"], React.ReactNode> = {
-  dashboard: (
-    <>
-      <rect x="2" y="2.5" width="5" height="5" />
-      <rect x="9" y="2.5" width="5" height="5" />
-      <rect x="2" y="9.5" width="5" height="4" />
-      <rect x="9" y="9.5" width="5" height="4" />
-    </>
-  ),
-  invoices: (
-    <>
-      <path d="M3 2h7l3 3v9H3z" />
-      <path d="M10 2v3h3M5 8h6M5 11h6" />
-    </>
-  ),
-  plus: <path d="M8 2v12M2 8h12" />,
-  customers: (
-    <>
-      <circle cx="8" cy="6" r="2.5" />
-      <path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4" />
-    </>
-  ),
-  services: <path d="M2 3.5h12M2 8h12M2 12.5h12" />,
-  users: (
-    <>
-      <circle cx="6" cy="6" r="2.2" />
-      <circle cx="11.5" cy="7" r="1.8" />
-      <path d="M2 13c0-2 2-3.5 4-3.5s4 1.5 4 3.5M9 13c0-1.5 1.3-2.5 2.5-2.5S14 11.5 14 13" />
-    </>
-  ),
-  settings: (
-    <>
-      <circle cx="8" cy="8" r="2" />
-      <path d="M8 2v2M8 12v2M2 8h2M12 8h2M3.8 3.8l1.4 1.4M10.8 10.8l1.4 1.4M3.8 12.2l1.4-1.4M10.8 5.2l1.4-1.4" />
-    </>
-  ),
+// Lucide only (DESIGN_SYSTEM §6): 16px, stroke 1.75, inherits text color.
+const ICONS: Record<NavItem["icon"], LucideIcon> = {
+  dashboard: LayoutDashboard,
+  invoices: FileText,
+  plus: Plus,
+  customers: Users,
+  services: List,
+  users: UserCog,
+  settings: Settings,
 };
 
 function NavIcon({ icon }: { icon: NavItem["icon"] }) {
-  return (
-    <span className="h-4 w-4 shrink-0 text-current">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-        {ICONS[icon]}
-      </svg>
-    </span>
-  );
+  const Icon = ICONS[icon];
+  return <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />;
 }
 
 type NavCounts = { overdue: number; drafts: number };
@@ -106,16 +82,16 @@ function useNavCounts(pathname: string): NavCounts {
   return counts;
 }
 
-// Small mono count badge (DESIGN_BRIEF §3 problem 9). Color contract as in
-// status-chip: burnt orange is overdue-only, drafts stay neutral.
+// Count badge per §2.3 — soft bg + strong text, never solid-filled.
+// Color contract survives: burnt orange (danger family) is overdue-only.
 function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; value: number }) {
   if (value <= 0) return null;
   return (
     <span
       className={
         kind === "overdue"
-          ? "mono min-w-4 rounded-[8px] border border-warning bg-warning px-1 text-center text-[9px] leading-4 text-surface"
-          : "mono min-w-4 rounded-[8px] border border-hairline-strong bg-surface-2 px-1 text-center text-[9px] leading-4 text-ink-3"
+          ? "mono min-w-[18px] rounded-full border border-danger/40 bg-danger-soft px-1.5 text-center text-[11px] leading-[17px] text-danger"
+          : "mono min-w-[18px] rounded-full border border-border-strong bg-neutral-soft px-1.5 text-center text-[11px] leading-[17px] text-text-secondary"
       }
       title={
         kind === "overdue" ? `${value} overdue` : `${value} open draft${value === 1 ? "" : "s"}`
@@ -131,29 +107,27 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const counts = useNavCounts(pathname);
 
   return (
-    // DESIGN_BRIEF §3 #9: full 208px sidebar at md+, collapsed 64px icon
-    // rail below — small screens keep navigation instead of losing it.
-    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col border-r border-hairline bg-surface md:w-52 print:!hidden">
-      <div className="border-b border-hairline px-2 py-4 md:px-4">
-        <div className="flex items-center justify-center gap-3 md:justify-start">
-          <span className="mono inline-flex h-8 w-8 shrink-0 items-center justify-center border border-ink text-[10px] font-bold text-ink outline outline-offset-2 outline-ink/40">
-            IL
+    // §4.1: 240px sidebar on --bg-sunken with a right hairline; below md it
+    // collapses to a 64px icon rail — small screens keep navigation.
+    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col border-r border-border bg-bg-sunken md:w-60 print:!hidden">
+      <div className="px-2 pt-5 pb-2 md:px-4">
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring md:justify-start"
+        >
+          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-accent">
+            P
           </span>
-          <div className="hidden min-w-0 md:block">
-            <span className="block text-[14px] font-semibold tracking-tight text-ink">
-              Invoice Ledger
-            </span>
-            <span className="mono block text-[8px] tracking-[0.2em] text-ink-3 uppercase">
-              Official Registry
-            </span>
-          </div>
-        </div>
+          <span className="hidden min-w-0 truncate text-[14px] font-semibold tracking-tight text-foreground md:block">
+            Prestige Land
+          </span>
+        </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 overflow-y-auto p-2">
         {NAV_SECTIONS.filter((s) => !s.adminOnly || role === "admin").map((section) => (
-          <div key={section.label} className="mb-4">
-            <p className="mono hidden px-2 pb-1.5 text-[9px] tracking-[0.16em] text-ink-3 uppercase md:block">
+          <div key={section.label} className="mb-3">
+            <p className="mt-3 hidden px-3 pb-1 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase md:block">
               {section.label}
             </p>
             {section.items
@@ -168,13 +142,13 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                   return (
                     <span
                       key={item.href}
-                      className="flex cursor-default items-center justify-center gap-2.5 px-2 py-1.5 text-[13px] text-ink-4 md:justify-start"
+                      className="flex h-[34px] cursor-default items-center justify-center gap-2.5 rounded-full px-3 text-[14px] text-text-tertiary md:justify-start"
                       aria-disabled="true"
                       title={`${item.label} — arrives with task ${item.task}`}
                     >
                       <NavIcon icon={item.icon} />
                       <span className="hidden flex-1 md:block">{item.label}</span>
-                      <span className="mono hidden text-[9px] tracking-[0.08em] text-ink-4 md:inline">
+                      <span className="mono hidden text-[10px] tracking-[0.08em] text-text-tertiary md:inline">
                         {item.task}
                       </span>
                     </span>
@@ -187,23 +161,20 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                     title={item.label}
                     aria-current={active ? "page" : undefined}
                     className={
+                      // §5.5: full-width pill, 34px; active = soft-gray pill
+                      // (NOT a blue fill), hover = neutral-soft.
                       active
-                        ? "relative flex items-center justify-center gap-2.5 border-l-2 border-primary bg-accent px-2 py-1.5 text-[13px] font-medium text-ink md:justify-start"
-                        : "relative flex items-center justify-center gap-2.5 border-l-2 border-transparent px-2 py-1.5 text-[13px] text-ink-2 transition-colors hover:bg-accent hover:text-ink md:justify-start"
+                        ? "relative flex h-[34px] items-center justify-center gap-2.5 rounded-full bg-nav-active px-3 text-[14px] font-[550] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring md:justify-start"
+                        : "relative flex h-[34px] items-center justify-center gap-2.5 rounded-full px-3 text-[14px] font-medium text-text-secondary transition-colors duration-150 outline-none hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:justify-start"
                     }
                   >
                     <NavIcon icon={item.icon} />
-                    <span className="hidden flex-1 md:block">{item.label}</span>
+                    <span className="hidden flex-1 truncate md:block">{item.label}</span>
                     {item.countKey ? (
                       // In the rail the badge rides the icon's corner; at
                       // md+ it sits in flow at the row's right edge.
                       <span className="absolute top-0 right-0.5 md:static">
                         <CountBadge kind={item.countKey} value={counts[item.countKey]} />
-                      </span>
-                    ) : null}
-                    {item.adminOnly ? (
-                      <span className="mono hidden text-[9px] tracking-[0.08em] text-primary md:inline">
-                        ADM
                       </span>
                     ) : null}
                   </Link>
@@ -212,10 +183,6 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
           </div>
         ))}
       </nav>
-
-      <div className="hidden border-t border-hairline px-4 py-3 md:block">
-        <p className="mono text-[9px] tracking-[0.14em] text-ink-4 uppercase">Stamped Paper</p>
-      </div>
     </aside>
   );
 }

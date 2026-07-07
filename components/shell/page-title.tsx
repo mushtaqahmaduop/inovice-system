@@ -13,8 +13,8 @@ export function PageTitle() {
     .sort((a, b) => b.href.length - a.href.length)[0];
 
   return (
-    <h1 className="truncate text-[15px] font-medium tracking-tight text-ink">
-      {match?.label ?? "Invoice Ledger"}
+    <h1 className="truncate text-[15px] font-medium tracking-tight text-foreground">
+      {match?.label ?? "Prestige Land"}
     </h1>
   );
 }

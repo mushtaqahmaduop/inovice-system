@@ -20,29 +20,21 @@ async function signOut() {
 // its own stricter layout guard inside.
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireUser();
-  // Stamp-style document reference (prototype top-right): LDG/YYYY/MM/DD.
-  const now = new Date();
-  const docRef = `LDG/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${String(
-    now.getUTCDate()
-  ).padStart(2, "0")}`;
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="flex min-h-screen bg-background">
       <Sidebar role={ctx.role} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-hairline bg-paper px-3 md:gap-4 md:px-6 print:hidden">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 md:gap-4 md:px-6 print:hidden">
           <div className="flex min-w-0 items-baseline gap-3">
             <PageTitle />
-            <span className="mono hidden text-[10px] tracking-[0.08em] text-ink-3 sm:inline">
-              {docRef}
-            </span>
           </div>
           <div className="flex items-center gap-2.5">
             <GlobalSearch />
             <ThemeToggle />
-            <span className="hidden items-center gap-1.5 text-xs text-ink-2 md:inline-flex">
+            <span className="hidden items-center gap-1.5 text-[13px] text-text-secondary md:inline-flex">
               {ctx.fullName}
-              <span className="mono text-[10px] tracking-[0.08em] text-ink-3 uppercase">
+              <span className="text-[12px] font-medium tracking-[0.04em] text-text-tertiary uppercase">
                 {ctx.role}
               </span>
             </span>

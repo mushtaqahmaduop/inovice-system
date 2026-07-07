@@ -45,6 +45,7 @@
   --danger-soft: #fbefe7;
   --neutral-soft: #f0efe9;
   --error: #b91c1c;
+  --nav-active: #e9e7dd; /* §5.5 active nav pill — soft gray, NOT blue */
 
   --ring-color: #1d4ed8;
 
@@ -137,6 +138,7 @@
   --danger-soft: #2e1d12;
   --neutral-soft: #33322e;
   --error: #f87171;
+  --nav-active: #33322e;
 
   --ring-color: #3b82f6;
 
@@ -209,6 +211,7 @@
   --color-warn-soft: var(--warn-soft);
   --color-neutral-soft: var(--neutral-soft);
   --color-error: var(--error);
+  --color-nav-active: var(--nav-active);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
