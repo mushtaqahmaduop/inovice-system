@@ -2,10 +2,11 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { formatAed } from "@/lib/money";
-import { toRoman } from "@/lib/invoice-calc";
+import { StatTile } from "@/components/ui/card";
 
-// Dashboard (task 7.1). The client's one named report — "who still owes
-// our money" — leads the page. Everything derives from sealed columns +
+// Dashboard (task 7.1, redesign slice 5). The client's one named report —
+// "who still owes our money" — leads the page as the serif hero figure
+// (PREMIUM_EXECUTION_GUIDE §4). Everything derives from sealed columns +
 // the invoice_list view at read time; nothing is stored or recomputed.
 export default async function DashboardPage() {
   const ctx = await requireUser();
@@ -55,74 +56,96 @@ export default async function DashboardPage() {
   const eventNumbers = new Map(rows.map((r) => [r.id, r.invoice_number]));
   const person = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
   const EVENT_LABEL: Record<string, string> = {
-    created: "draft created",
-    draft_updated: "draft edited",
-    issued: "issued",
-    payment_recorded: "payment recorded",
-    payment_reversed: "payment reversed",
-    voided: "voided",
-    printed: "printed",
-    emailed: "emailed",
+    created: "Draft created",
+    draft_updated: "Draft edited",
+    issued: "Issued",
+    payment_recorded: "Payment recorded",
+    payment_reversed: "Payment reversed",
+    voided: "Voided",
+    printed: "Printed",
+    emailed: "Emailed",
   };
+  const timeFmt = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Dubai",
+  });
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="mx-auto max-w-[1040px] px-4 py-8 md:px-8">
       <header className="mb-8">
-        <h1 className="text-[20px] font-semibold tracking-tight text-ink">Dashboard</h1>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
+        <h1 className="text-[18px] leading-[26px] font-semibold text-foreground">Dashboard</h1>
+        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
           Signed in as {ctx.fullName}
           {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. Figures derive from sealed invoices
           and recorded payments — nothing here is ever edited by hand.
         </p>
       </header>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Stat
-          label="Outstanding — who owes us"
-          value={formatAed(outstandingTotal)}
-          warn={outstandingTotal > 0}
-        />
-        <Stat
+      {/* The screen's one serif display element: the figure that matters
+          most (§4). Not a boxed card — it IS the page opening. */}
+      <section className="mb-8">
+        <p className="text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase">
+          Outstanding — who owes us
+        </p>
+        <p className="serif mt-2 text-[34px] leading-10 font-semibold text-foreground">
+          <span className="mr-2 align-middle text-[15px] font-normal text-text-tertiary">AED</span>
+          <span className="mono tracking-tight">{formatAed(outstandingTotal)}</span>
+        </p>
+        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+          {debtorList.length === 0
+            ? "All sealed invoices are settled."
+            : `Across ${debtorList.length} customer${debtorList.length === 1 ? "" : "s"} with open balances.`}
+        </p>
+      </section>
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:max-w-[560px]">
+        <StatTile
           label="Invoiced this month"
+          prefix="AED"
           value={formatAed(monthTotal)}
           sub={`${monthRows.length} sealed`}
         />
-        <Stat label="VAT collected this month" value={formatAed(monthVat)} />
+        <StatTile label="VAT collected this month" prefix="AED" value={formatAed(monthVat)} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
-          <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">
+          <p className="mb-2 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase">
             Open balances by customer
           </p>
-          <div className="divide-y divide-hairline border border-hairline bg-surface">
-            {debtorList.map((d, i) => (
+          <div className="divide-y divide-border overflow-hidden rounded-[12px] border border-border bg-surface">
+            {debtorList.map((d) => (
               <Link
                 key={d.id}
                 href={`/customers/${d.id}`}
-                className="flex min-h-[42px] items-center gap-3 px-4 py-2 hover:bg-accent"
+                className="flex min-h-[42px] items-center gap-3 px-4 py-2 transition-colors duration-150 hover:bg-bg-sunken"
               >
-                <span className="mono w-7 shrink-0 text-[11px] text-ink-3">{toRoman(i + 1)}</span>
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">
+                <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
                   {d.name}
                 </span>
-                <span className="mono text-[10px] text-ink-3">
+                <span className="mono text-[12px] text-text-tertiary">
                   {d.count} invoice{d.count === 1 ? "" : "s"}
                 </span>
-                <span className="mono text-[13px] font-medium text-warning">
-                  AED {formatAed(d.open)}
+                {/* Open ≠ overdue — burnt orange stays reserved for the
+                    overdue predicate, so balances render in ink. */}
+                <span className="mono text-[15px] font-medium text-foreground">
+                  <span className="mr-1 text-[11px] font-normal text-text-tertiary">AED</span>
+                  {formatAed(d.open)}
                 </span>
               </Link>
             ))}
             {debtorList.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[13px] text-ink-3">
+              <p className="px-4 py-10 text-center text-[13px] text-text-secondary">
                 Nobody owes anything — all sealed invoices are settled.
               </p>
             ) : null}
             {debtorList.length > 0 ? (
               <Link
                 href="/customers"
-                className="block px-4 py-2.5 text-[12px] font-medium text-accent-action hover:bg-accent"
+                className="block px-4 py-2.5 text-[13px] font-medium text-primary transition-colors duration-150 hover:bg-bg-sunken"
               >
                 View all customers
               </Link>
@@ -131,61 +154,38 @@ export default async function DashboardPage() {
         </div>
 
         <div>
-          <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">
+          <p className="mb-2 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase">
             Recent activity
           </p>
-          <div className="divide-y divide-hairline border border-hairline bg-surface">
+          <div className="divide-y divide-border overflow-hidden rounded-[12px] border border-border bg-surface">
             {(events ?? []).map((e) => (
               <Link
                 key={e.id}
                 href={`/invoices/${e.invoice_id}`}
-                className="flex min-h-[42px] items-center gap-3 px-4 py-2 hover:bg-accent"
+                className="flex min-h-[42px] items-center gap-3 px-4 py-2 transition-colors duration-150 hover:bg-bg-sunken"
               >
-                <span className="mono w-20 shrink-0 text-[11px] text-ink-2">
-                  {eventNumbers.get(e.invoice_id) ?? "draft"}
+                <span className="mono w-20 shrink-0 text-[13px] font-medium text-foreground">
+                  {eventNumbers.get(e.invoice_id) ?? "Draft"}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">
+                <span className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
                   {EVENT_LABEL[e.event_type] ?? e.event_type}
                 </span>
-                <span className="mono text-[10px] text-ink-3">
+                <span className="text-[12px] text-text-tertiary">
                   {person.get(e.actor_id ?? "") ?? "system"}
                 </span>
-                <span className="mono text-[10px] text-ink-4">
-                  {new Date(e.created_at).toISOString().slice(5, 16).replace("T", " ")}
+                <span className="mono text-[12px] text-text-tertiary">
+                  {timeFmt.format(new Date(e.created_at))}
                 </span>
               </Link>
             ))}
             {(events ?? []).length === 0 ? (
-              <p className="px-4 py-8 text-center text-[13px] text-ink-3">No activity yet.</p>
+              <p className="px-4 py-10 text-center text-[13px] text-text-secondary">
+                No activity yet.
+              </p>
             ) : null}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  sub,
-  warn,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  warn?: boolean;
-}) {
-  return (
-    <div className="border border-hairline bg-surface p-5">
-      <p className="mono mb-2 text-[10px] tracking-[0.15em] text-ink-3 uppercase">{label}</p>
-      <p
-        className={`num text-[26px] leading-none font-medium ${warn ? "text-warning" : "text-ink"}`}
-      >
-        <span className="mr-1.5 align-middle text-[12px] font-normal text-ink-3">AED</span>
-        {value}
-      </p>
-      {sub ? <p className="mono mt-2 text-[10px] text-ink-3">{sub}</p> : null}
     </div>
   );
 }
