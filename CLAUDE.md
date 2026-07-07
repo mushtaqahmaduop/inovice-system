@@ -57,12 +57,16 @@ This file contains hard rules for every Claude Code session. Read PROJECT_PLAN.m
 - All inputs validated with zod on the server. Never trust client-computed totals — recompute all money server-side at issue time.
 - **Identity and role come from the server-verified session only** (`auth.getUser()` / the verified JWT). Never accept a user id, role, or any other principal as a client-supplied parameter — not in server actions, not in route handlers, not "just for convenience."
 
-## 5. Design system rules — "Stamped Paper"
+## 5. Design system rules — "Warm Paper / Federal Blue"
 
-- **Light:** cool paper `#f6f5f2`. **Dark:** deep blue-black `#0a0d12`.
-- **Single accent:** FTA federal blue (`#003b5c` light / `#5b95c4` dark) — used ONLY for action signals. **Burnt orange `#c2410c` — used ONLY for overdue.** No other accent colors, no gradients.
-- **Typography:** Inter Tight for UI text; **JetBrains Mono for ALL numerics** (amounts, invoice numbers, dates in tables). **No serif fonts anywhere** — explicitly no Instrument Serif.
-- Editorial details from the approved prototype: Roman numeral row indices, hairline borders, "Paid · sealed" lock indicators, stamp-style document reference top-right.
+> **SUPERSEDED 2026-07-07 (owner decision):** the visual layer is governed by
+> `DESIGN_SYSTEM_CLAUDE_BLUE.md` + `LIBRARIES_GUIDE.md` + `PREMIUM_EXECUTION_GUIDE.md`
+> at repo root — read those before any UI work. The invariants below survive
+> the redesign; the old "Stamped Paper" specifics (cool paper, #003b5c blue,
+> no-serif rule, Roman numerals, stamp decorations) do not.
+
+- **Single accent:** Federal Blue (`#1D4ED8` light / `#3B82F6` dark) — primary actions, links, active states only. **Burnt orange `#C2410C` — used ONLY for overdue** (form errors use the muted red `--error`). No other accent colors, no gradients.
+- **Typography:** Inter for UI; **Source Serif 4 for display type — max one display element per screen**; **JetBrains Mono for ALL numerics** (amounts, invoice numbers, dates in tables).
 - **Vocabulary: "sealed" means issued/immutable — independent of payment status.** An issued-unpaid invoice is just as sealed as a paid one. Keep the "Paid · sealed" client-facing label only where it cannot mislead staff into thinking unpaid invoices are editable.
 - **Invoice preview:** slide-over drawer (~45–50% width, Esc/outside-click closes) via shadcn Sheet — never a permanent split view. Issuing an invoice always shows a mandatory preview + "Confirm & Issue" step before sealing.
 - Use only design tokens (CSS variables) defined in the theme. No hardcoded hex values in components.

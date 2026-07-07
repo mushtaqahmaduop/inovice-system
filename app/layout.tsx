@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
-import { Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
-// D-21: Inter Tight for UI, JetBrains Mono for all numerics. No serif fonts.
-// next/font self-hosts at build time — no request ever leaves our deployment.
-// display "block" (R-8a, task 6.1): print must never capture fallback glyphs;
-// the fonts are local + preloaded, so the block period is effectively zero.
-const interTight = Inter_Tight({
+// DESIGN_SYSTEM_CLAUDE_BLUE §3.1: Inter for UI, Source Serif 4 for display
+// (one per screen), JetBrains Mono for ALL numerics. next/font self-hosts at
+// build time — no request ever leaves our deployment. display stays "block"
+// (deliberate deviation from §3.1's swap): ADJUDICATION R-8a — print must
+// never capture fallback glyphs; fonts are local + preloaded so the block
+// window is effectively zero.
+const inter = Inter({
   variable: "--font-sans",
+  subsets: ["latin"],
+  display: "block",
+});
+
+const sourceSerif = Source_Serif_4({
+  variable: "--font-serif",
   subsets: ["latin"],
   display: "block",
 });
@@ -41,7 +49,9 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className={`${interTight.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body
+        className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>
