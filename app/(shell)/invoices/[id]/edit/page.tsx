@@ -27,19 +27,21 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   if (invoice.status !== "draft") {
     return (
       <div className="flex h-full min-h-[60vh] items-center justify-center p-6">
-        <div className="max-w-md border border-hairline bg-surface p-8 text-center">
-          <p className="mono mb-2 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
+        <div className="max-w-md rounded-[12px] border border-border bg-surface p-8 text-center">
+          <p className="mono mb-3 text-[13px] text-text-tertiary">
             {invoice.invoice_number ?? "Invoice"} · {invoice.status}
           </p>
-          <p className="text-sm leading-relaxed text-ink-2">
-            This invoice is sealed and cannot be edited. Corrections happen via a new document. The
-            detail view arrives with tasks 4.3/5.3.
+          <p className="serif text-[18px] leading-[26px] font-semibold text-foreground">
+            This invoice is sealed
+          </p>
+          <p className="mt-2 text-[13px] leading-[19px] text-text-secondary">
+            Sealed invoices cannot be edited — corrections happen via a new document.
           </p>
           <Link
-            href="/invoices/new"
-            className="mt-3 inline-block text-sm text-primary underline-offset-2 hover:underline"
+            href={`/invoices/${invoice.id}`}
+            className="mt-4 inline-block text-[13px] text-primary underline-offset-2 hover:underline"
           >
-            ← New invoice
+            View the sealed invoice →
           </Link>
         </div>
       </div>
@@ -109,7 +111,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
       <InvoiceEditor
         vatRegistered={settings?.vat_registered ?? true}
         vatRateBp={settings?.vat_rate_bp ?? 500}
