@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { requireAdminAal2 } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { UsersManager } from "./users-manager";
@@ -15,14 +16,18 @@ export default async function UsersPage() {
   return (
     <div className="w-full px-5 py-6 md:px-8">
       <header className="mb-6">
+        <nav className="mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
+          <span>Admin</span>
+          <ChevronRight className="size-3" />
+          <span className="text-text-secondary">Users</span>
+        </nav>
         <h1 className="text-[22px] leading-7 font-semibold text-foreground">Users</h1>
         <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-          Accounts, roles and access for your team.
+          Manage user accounts, roles, and access. Sign out users from all devices or reactivate
+          accounts.
         </p>
       </header>
-      <div className="max-w-3xl">
-        <UsersManager profiles={profiles ?? []} selfId={ctx.userId} />
-      </div>
+      <UsersManager profiles={profiles ?? []} selfId={ctx.userId} />
     </div>
   );
 }

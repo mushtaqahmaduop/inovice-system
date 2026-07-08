@@ -105,17 +105,42 @@ function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; v
   );
 }
 
-// Hexagon brand mark with three ledger rules — an "invoice ledger" glyph.
+// Brand mark — navy badge, gold crown over a "PL" monogram (owner's logo
+// direction, logoo.png). Hand-built placeholder until the final logo asset
+// lands; the navy/gold are intentionally literal brand colors, not design
+// tokens (same exception as the print document and the MFA QR).
 function BrandMark() {
   return (
-    <svg viewBox="0 0 28 28" className="size-7 shrink-0" aria-hidden="true">
-      <polygon points="14,1.5 25.5,8 25.5,20 14,26.5 2.5,20 2.5,8" className="fill-primary" />
-      <path
-        d="M9.5 11h9M9.5 14.5h9M9.5 18h5.5"
-        stroke="white"
-        strokeWidth="1.6"
-        strokeLinecap="round"
+    <svg viewBox="0 0 40 40" className="size-9 shrink-0" aria-hidden="true">
+      <rect x="1" y="1" width="38" height="38" rx="10" fill="#16233f" />
+      <rect
+        x="1"
+        y="1"
+        width="38"
+        height="38"
+        rx="10"
+        fill="none"
+        stroke="#2a3c63"
+        strokeWidth="1"
       />
+      {/* three-peak crown */}
+      <path
+        d="M12.5 17.5 L12.5 12 L16.25 15 L20 10.5 L23.75 15 L27.5 12 L27.5 17.5 Z"
+        fill="#d9a441"
+      />
+      {/* PL monogram */}
+      <text
+        x="20"
+        y="32"
+        textAnchor="middle"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontSize="16"
+        fontWeight="700"
+        letterSpacing="-1.5"
+        fill="#d9a441"
+      >
+        PL
+      </text>
     </svg>
   );
 }
@@ -161,32 +186,41 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
         collapsed ? "w-16" : "w-16 md:w-60"
       }`}
     >
-      <div className="flex items-center gap-2 px-2 pt-5 pb-2 md:px-3">
-        <Link
-          href="/dashboard"
-          className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`}
-        >
-          <BrandMark />
-          <span className={`min-w-0 flex-1 ${label}`}>
-            <span className="block truncate text-[14px] leading-4 font-semibold tracking-tight text-foreground">
-              Prestige Land
-            </span>
-            <span className="mono block truncate text-[11px] leading-4 text-text-tertiary">
-              Invoice Ledger
-            </span>
-          </span>
-        </Link>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={`hidden size-7 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:inline-flex ${
-            collapsed ? "md:hidden" : ""
+      <div className="px-2 pt-4 pb-2 md:px-3">
+        <div
+          className={`flex items-center gap-2 rounded-[12px] ${
+            collapsed ? "" : "md:border md:border-border md:bg-surface md:p-2"
           }`}
         >
-          <ChevronsLeft className="size-4" strokeWidth={1.75} />
-        </button>
+          <Link
+            href="/dashboard"
+            className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`}
+          >
+            <BrandMark />
+            <span className={`min-w-0 flex-1 ${label}`}>
+              <span className="block truncate text-[15px] leading-5 font-semibold tracking-tight text-foreground">
+                Prestige Land
+              </span>
+              <span className="block truncate text-[13px] leading-4 font-medium text-primary">
+                Typing Center
+              </span>
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={`hidden size-7 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:inline-flex ${
+              collapsed ? "md:hidden" : ""
+            }`}
+          >
+            <ChevronsLeft className="size-4" strokeWidth={1.75} />
+          </button>
+        </div>
+        <p className={`mt-2 px-1 text-[11px] leading-4 text-text-tertiary ${label}`}>
+          Business Services · Government Transactions · Clearance & Follow-up
+        </p>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2">

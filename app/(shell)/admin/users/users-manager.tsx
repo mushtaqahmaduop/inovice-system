@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldLabel, FieldHint } from "@/components/ui/field";
-import { StatusChip } from "@/components/ui/status-chip";
 
 type Profile = {
   id: string;
@@ -15,14 +15,27 @@ type Profile = {
   created_at: string;
 };
 
-// Plain table for now — TanStack Table arrives with the data-heavy views
-// (2.3/4.3). Every action here is re-authorized server-side by the API.
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+const PAGE_SIZE = 10;
+
+// User management (task 2.2, D-18/D-19), rebuilt for the Cool White /
+// Federal Blue system against the owner's Users mockup: New-account card on
+// top, then an "Accounts & sessions" table with avatars, role pills, status
+// dots, and pagination. Every action is re-authorized server-side.
 export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ fullName: "", email: "", password: "", role: "staff" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [page, setPage] = useState(0);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   async function call(path: string, body: unknown) {
     setBusy(true);
@@ -51,147 +64,253 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
     }
   }
 
+  const pageCount = Math.max(1, Math.ceil(profiles.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount - 1);
+  const pageRows = profiles.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE);
+
   return (
-    <div className="space-y-8">
-      {error && <p className="text-sm text-warning">{error}</p>}
-      {notice && <p className="text-sm text-success">{notice}</p>}
+    <div className="space-y-6">
+      {error && <p className="text-[13px] text-error">{error}</p>}
+      {notice && <p className="text-[13px] text-success">{notice}</p>}
 
-      <div className="overflow-x-auto border border-hairline bg-surface">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-hairline bg-surface-2 text-left">
-              <th className="mono px-3 py-2.5 text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase">
-                Name
-              </th>
-              <th className="mono px-3 py-2.5 text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase">
-                Role
-              </th>
-              <th className="mono px-3 py-2.5 text-[10px] font-medium tracking-[0.14em] text-ink-3 uppercase">
-                Status
-              </th>
-              <th className="px-3 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            {profiles.map((p) => (
-              <tr key={p.id} className="h-[42px] border-b border-hairline last:border-b-0">
-                <td className={`px-3 py-2.5 ${p.is_active ? "text-ink" : "text-ink-3"}`}>
-                  {p.full_name}
-                  {p.id === selfId && <span className="ml-2 text-[11px] text-ink-3">(you)</span>}
-                </td>
-                <td className="px-3 py-2.5">
-                  <StatusChip variant={p.role === "admin" ? "ink" : "neutral"}>{p.role}</StatusChip>
-                </td>
-                <td className="px-3 py-2.5">
-                  {p.is_active ? (
-                    <StatusChip variant="ink">active</StatusChip>
-                  ) : (
-                    <StatusChip variant="neutral">deactivated</StatusChip>
-                  )}
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  <div className="inline-flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      disabled={busy || !p.is_active}
-                      onClick={() =>
-                        call(`/api/admin/users/${p.id}`, { action: "revoke_sessions" }).then(
-                          (ok) =>
-                            ok && setNotice(`All sessions for ${p.full_name} were signed out.`)
-                        )
-                      }
-                    >
-                      Sign out everywhere
-                    </Button>
-                    {p.id !== selfId &&
-                      (p.is_active ? (
-                        <Button
-                          variant="destructive"
-                          size="xs"
-                          disabled={busy}
-                          onClick={() => call(`/api/admin/users/${p.id}`, { action: "deactivate" })}
-                        >
-                          Deactivate
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          disabled={busy}
-                          onClick={() => call(`/api/admin/users/${p.id}`, { action: "reactivate" })}
-                        >
-                          Reactivate
-                        </Button>
-                      ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {profiles.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-[12px] text-ink-3">
-                  No accounts on the register — create the first one below.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-
+      {/* New account */}
       <form
         onSubmit={createUser}
-        className="max-w-md space-y-4 border border-hairline bg-surface p-6"
+        className="rounded-[14px] border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
       >
-        <p className="mono text-[10px] tracking-[0.15em] text-ink-3 uppercase">New account</p>
-        <div>
-          <FieldLabel htmlFor="u-name">Full name</FieldLabel>
-          <Input
-            id="u-name"
-            required
-            value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-          />
+        <h2 className="mb-4 text-[15px] font-semibold text-foreground">New account</h2>
+        <div className="grid gap-4 lg:grid-cols-4">
+          <div>
+            <FieldLabel htmlFor="u-name">Full name</FieldLabel>
+            <Input
+              id="u-name"
+              ref={nameRef}
+              required
+              placeholder="Enter full name"
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="u-email">Email</FieldLabel>
+            <Input
+              id="u-email"
+              type="email"
+              required
+              placeholder="Enter email address"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="u-password">Initial password</FieldLabel>
+            <div className="relative">
+              <Input
+                id="u-password"
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={10}
+                placeholder="Enter initial password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+                className="absolute top-1/2 right-2.5 -translate-y-1/2 text-text-tertiary hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            <FieldHint>Share in person; minimum 10 characters.</FieldHint>
+          </div>
+          <div>
+            <FieldLabel htmlFor="u-role">Role</FieldLabel>
+            <select
+              id="u-role"
+              className="h-[38px] w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-foreground transition-colors outline-none focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+            >
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+            </select>
+            <FieldHint>Admins must enroll TOTP on first sign-in.</FieldHint>
+          </div>
         </div>
-        <div>
-          <FieldLabel htmlFor="u-email">Email</FieldLabel>
-          <Input
-            id="u-email"
-            type="email"
-            required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
+        <div className="mt-4 flex justify-end">
+          <Button type="submit" disabled={busy}>
+            {busy ? "Working…" : "Create account"}
+          </Button>
         </div>
-        <div>
-          <FieldLabel htmlFor="u-password">Initial password</FieldLabel>
-          <Input
-            id="u-password"
-            type="text"
-            required
-            minLength={10}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-          <FieldHint>Share in person; minimum 10 characters.</FieldHint>
-        </div>
-        <div>
-          <FieldLabel htmlFor="u-role">Role</FieldLabel>
-          <select
-            id="u-role"
-            className="h-9 w-full border border-input bg-surface px-2.5 text-sm text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-          >
-            <option value="staff">Staff</option>
-            <option value="admin">Admin (requires TOTP at first sign-in)</option>
-          </select>
-          <FieldHint>Admins must enroll TOTP on first sign-in.</FieldHint>
-        </div>
-        <Button type="submit" disabled={busy}>
-          {busy ? "Working…" : "Create account"}
-        </Button>
       </form>
+
+      {/* Accounts & sessions */}
+      <div className="rounded-[14px] border border-border bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex items-center justify-between gap-3 px-5 py-4">
+          <h2 className="text-[15px] font-semibold text-foreground">Accounts &amp; sessions</h2>
+          <Button size="sm" onClick={() => nameRef.current?.focus()}>
+            <Plus /> New account
+          </Button>
+        </div>
+        <div className="overflow-x-auto border-t border-border">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-5 py-3 text-[11px] font-medium tracking-[0.06em] text-text-tertiary uppercase">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-[11px] font-medium tracking-[0.06em] text-text-tertiary uppercase">
+                  Role
+                </th>
+                <th className="px-4 py-3 text-[11px] font-medium tracking-[0.06em] text-text-tertiary uppercase">
+                  Status
+                </th>
+                <th className="px-5 py-3 text-right text-[11px] font-medium tracking-[0.06em] text-text-tertiary uppercase">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((p) => (
+                <tr key={p.id} className="border-b border-border last:border-b-0">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-semibold text-primary">
+                        {initials(p.full_name)}
+                      </span>
+                      <span
+                        className={`text-[14px] font-semibold ${p.is_active ? "text-foreground" : "text-text-tertiary"}`}
+                      >
+                        {p.full_name}
+                        {p.id === selfId ? (
+                          <span className="ml-2 text-[12px] font-normal text-primary">(you)</span>
+                        ) : null}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={
+                        p.role === "admin"
+                          ? "inline-flex rounded-full bg-accent-soft px-2.5 py-0.5 text-[12px] font-medium text-primary"
+                          : "inline-flex rounded-full bg-neutral-soft px-2.5 py-0.5 text-[12px] font-medium text-text-secondary"
+                      }
+                    >
+                      {p.role}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary">
+                      <span
+                        className={`size-1.5 rounded-full ${p.is_active ? "bg-success" : "bg-text-tertiary"}`}
+                      />
+                      {p.is_active ? "Active" : "Deactivated"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busy || !p.is_active}
+                        onClick={() =>
+                          call(`/api/admin/users/${p.id}`, { action: "revoke_sessions" }).then(
+                            (ok) =>
+                              ok && setNotice(`All sessions for ${p.full_name} were signed out.`)
+                          )
+                        }
+                      >
+                        Sign out everywhere
+                      </Button>
+                      {p.id !== selfId &&
+                        (p.is_active ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() =>
+                              call(`/api/admin/users/${p.id}`, { action: "deactivate" })
+                            }
+                          >
+                            Deactivate
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() =>
+                              call(`/api/admin/users/${p.id}`, { action: "reactivate" })
+                            }
+                          >
+                            Reactivate
+                          </Button>
+                        ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {profiles.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-5 py-10 text-center text-[13px] text-text-secondary"
+                  >
+                    No accounts on the register — create the first one above.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+        {profiles.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-4 border-t border-border px-5 py-3">
+            <p className="text-[13px] text-text-secondary">
+              Showing {current * PAGE_SIZE + 1}–
+              {Math.min(profiles.length, (current + 1) * PAGE_SIZE)} of {profiles.length} users
+            </p>
+            {pageCount > 1 ? (
+              <div className="ml-auto flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  disabled={current <= 0}
+                  onClick={() => setPage(current - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft />
+                </Button>
+                {Array.from({ length: pageCount }, (_, i) => i).map((p) => (
+                  <Button
+                    key={p}
+                    variant={p === current ? "default" : "outline"}
+                    size="icon-sm"
+                    onClick={() => setPage(p)}
+                    aria-label={`Page ${p + 1}`}
+                    aria-current={p === current ? "page" : undefined}
+                    className="mono"
+                  >
+                    {p + 1}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  disabled={current >= pageCount - 1}
+                  onClick={() => setPage(current + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight />
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

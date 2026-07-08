@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PaymentMethodRow } from "./page";
@@ -49,38 +50,40 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
   }
 
   return (
-    <section className="border border-hairline bg-surface p-5">
-      <p className="mono mb-1 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Payment methods</p>
-      <p className="mb-4 text-[11px] leading-relaxed text-ink-3">
-        Used when recording payments (pending Q-10). Methods are never deleted — deactivating hides
-        one from new payments while history keeps its label.
+    <section className="rounded-[14px] border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <p className="mb-1 text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
+        Payment methods
+      </p>
+      <p className="mb-4 text-[12px] leading-relaxed text-text-tertiary">
+        Used when recording payments. Methods are never deleted — deactivating hides one from new
+        payments while history keeps its label.
       </p>
 
-      <div className="divide-y divide-hairline border border-hairline">
+      <div className="divide-y divide-border overflow-hidden rounded-[10px] border border-border">
         {methods.map((m, i) => (
-          <div key={m.id} className="flex items-center gap-2 px-3 py-2">
+          <div key={m.id} className="flex items-center gap-2 px-4 py-2.5">
             <span
-              className={`flex-1 text-[13px] ${m.is_active ? "text-ink" : "text-ink-4 line-through"}`}
+              className={`flex-1 text-[14px] ${m.is_active ? "text-foreground" : "text-text-tertiary line-through"}`}
             >
               {m.label}
             </span>
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
               disabled={busy || i === 0}
               onClick={() => move(i, -1)}
               aria-label={`Move ${m.label} up`}
             >
-              ↑
+              <ChevronUp />
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
               disabled={busy || i === methods.length - 1}
               onClick={() => move(i, 1)}
               aria-label={`Move ${m.label} down`}
             >
-              ↓
+              <ChevronDown />
             </Button>
             <Button
               variant="outline"
@@ -93,18 +96,18 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
           </div>
         ))}
         {methods.length === 0 ? (
-          <p className="px-3 py-4 text-[12px] text-ink-3">
+          <p className="px-4 py-4 text-[13px] text-text-tertiary">
             No methods yet — run the seed or add one.
           </p>
         ) : null}
       </div>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-4 flex gap-2">
         <Input
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
-          placeholder="New method label…"
-          className="h-8 w-56 text-[13px]"
+          placeholder="New method name…"
+          className="h-10 w-64 text-[13px]"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -112,11 +115,11 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
             }
           }}
         />
-        <Button size="sm" variant="outline" disabled={busy || !newLabel.trim()} onClick={add}>
+        <Button variant="outline" disabled={busy || !newLabel.trim()} onClick={add}>
           Add method
         </Button>
       </div>
-      {error ? <p className="mt-2 text-[11px] text-warning">{error}</p> : null}
+      {error ? <p className="mt-2 text-[13px] text-error">{error}</p> : null}
     </section>
   );
 }

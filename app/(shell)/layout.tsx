@@ -38,6 +38,10 @@ export default async function ShellLayout({ children }: { children: React.ReactN
           </div>
         </header>
         <main className="min-w-0 flex-1">{children}</main>
+        <footer className="flex shrink-0 items-center justify-between border-t border-border px-5 py-4 text-[12px] text-text-tertiary md:px-8 print:hidden">
+          <span>© 2026 Prestige Land. All rights reserved.</span>
+          <span className="mono">Version 1.0.0</span>
+        </footer>
       </div>
     </div>
   );

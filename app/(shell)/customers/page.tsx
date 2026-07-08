@@ -34,9 +34,6 @@ export default async function CustomersPage() {
     <div className="w-full px-5 py-6 md:px-8">
       <header className="mb-6">
         <h1 className="text-[22px] leading-7 font-semibold text-foreground">Customers</h1>
-        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-          Everyone you invoice — regular accounts and walk-ins.
-        </p>
       </header>
       <CustomersView rows={visible} isAdmin={ctx.role === "admin"} />
     </div>
