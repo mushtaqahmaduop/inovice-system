@@ -25,11 +25,15 @@ export default async function ServicesPage() {
 
   const rows = (data ?? []) as ServiceRow[];
   const visible = ctx.role === "admin" ? rows : rows.filter((r) => r.deleted_at === null);
+  const activeCount = rows.filter((r) => r.deleted_at === null).length;
 
   return (
     <div className="w-full px-5 py-6 md:px-8">
-      <header className="mb-6">
+      <header className="mb-6 flex items-center gap-2.5">
         <h1 className="text-[22px] leading-7 font-semibold text-foreground">Services</h1>
+        <span className="mono rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium text-primary">
+          {activeCount}
+        </span>
       </header>
       <ServicesView rows={visible} isAdmin={ctx.role === "admin"} />
     </div>
