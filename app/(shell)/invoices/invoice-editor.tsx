@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import {
+  X,
+  Info,
+  BookOpen,
+  Minus,
+  Plus,
+  Trash2,
+  Save,
+  Clock,
+  Columns3,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldLabel } from "@/components/ui/field";
@@ -11,13 +22,15 @@ import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
 import { calcInvoiceTotals, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
 
-// Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Warm Paper /
-// Federal Blue system (redesign slice 6). Document-shaped form per
-// PREMIUM_EXECUTION_GUIDE §4: quiet line grid (borders appear on
-// hover/focus), Tab past the last cell adds a row (§2.6), drafts autosave
-// silently every 20s once they exist, live totals mirror issue_invoice()
-// display-only. Issuing (4.2) stays behind the mandatory preview sheet.
-// Q-04 (extra-column presets) unanswered — columns stay manual-add only.
+// Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Cool White /
+// Federal Blue system (redesign slice 6 → owner-mockup pass). Numbered
+// step cards (Bill to → Items → Details / Summary) per the owner's own
+// New-Invoice mockup, but every behaviour is unchanged: quiet line grid
+// (borders appear on hover/focus), Tab past the last cell adds a row
+// (§2.6), drafts autosave silently every 20s once they exist, live totals
+// mirror issue_invoice() display-only, and issuing (4.2) stays behind the
+// mandatory preview sheet. Q-04 (extra-column presets) unanswered —
+// columns stay manual-add only.
 
 export type PickerCustomer = {
   id: string;
@@ -34,6 +47,11 @@ export type PickerService = {
   govt_fee: number;
   service_fee: number;
 };
+export type PayMethod = { id: string; label: string };
+// Recently-used line items (owner "Get from recent") — sourced from recent
+// invoice_lines, deduped by description. No service_id link exists, so
+// "recent services" means the lines actually put on recent invoices.
+export type RecentLine = { description: string; govtFee: number; serviceFee: number };
 export type ExistingDraft = {
   id: string;
   customerId: string;
@@ -77,6 +95,8 @@ export function InvoiceEditor({
   vatRateBp,
   customers,
   services,
+  methods,
+  recent = [],
   defaultNotes,
   defaultTerms,
   existing,
@@ -86,6 +106,8 @@ export function InvoiceEditor({
   vatRateBp: number;
   customers: PickerCustomer[];
   services: PickerService[];
+  methods: PayMethod[];
+  recent?: RecentLine[];
   defaultNotes: string;
   defaultTerms: string;
   existing: ExistingDraft | null;
@@ -123,6 +145,14 @@ export function InvoiceEditor({
   const [terms, setTerms] = useState(existing ? (existing.terms ?? "") : defaultTerms);
   const [issueDate, setIssueDate] = useState(existing?.issueDate ?? "");
 
+  // Record-on-issue payment (owner request): a draft carries no payments,
+  // so this stays local until issue seals the invoice — confirmIssue then
+  // posts it to the payments ledger before navigating to print.
+  const [markPaid, setMarkPaid] = useState(false);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethodId, setPayMethodId] = useState(methods[0]?.id ?? "");
+  const [payReceivedOn, setPayReceivedOn] = useState(() => new Date().toISOString().slice(0, 10));
+
   const [custQuery, setCustQuery] = useState("");
   const [custOpen, setCustOpen] = useState(false);
   const [walkInMode, setWalkInMode] = useState(false);
@@ -130,6 +160,9 @@ export function InvoiceEditor({
   const [walkInPhone, setWalkInPhone] = useState("");
   const [svcOpen, setSvcOpen] = useState(false);
   const [svcQuery, setSvcQuery] = useState("");
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recentQuery, setRecentQuery] = useState("");
+  const [colsOpen, setColsOpen] = useState(false);
   const [newColLabel, setNewColLabel] = useState("");
   const [newColVatable, setNewColVatable] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -176,6 +209,12 @@ export function InvoiceEditor({
     return services.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 10);
   }, [services, svcQuery]);
 
+  const recentMatches = useMemo(() => {
+    const q = recentQuery.trim().toLowerCase();
+    const base = q ? recent.filter((r) => r.description.toLowerCase().includes(q)) : recent;
+    return base.slice(0, 10);
+  }, [recent, recentQuery]);
+
   function setCell(key: number, col: CellKey, value: string) {
     setLines((ls) =>
       ls.map((l) => (l.key === key ? { ...l, fees: { ...l.fees, [col]: value } } : l))
@@ -183,6 +222,9 @@ export function InvoiceEditor({
   }
   function setLine(key: number, patch: Partial<EditorLine>) {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  }
+  function bumpQty(l: EditorLine, delta: number) {
+    setLine(l.key, { qty: String(Math.max(1, (Math.floor(Number(l.qty)) || 1) + delta)) });
   }
   function addLine(focus = false) {
     const nl = blankLine();
@@ -223,6 +265,21 @@ export function InvoiceEditor({
     ]);
     setSvcOpen(false);
     setSvcQuery("");
+  }
+  function addFromRecent(r: RecentLine) {
+    setLines((ls) => [
+      ...ls.filter(
+        (l) => l.description.trim() !== "" || Object.values(l.fees).some((v) => v?.trim())
+      ),
+      {
+        key: nextKey++,
+        description: r.description,
+        qty: "1",
+        fees: { govt: filsToInput(r.govtFee), service: filsToInput(r.serviceFee) },
+      },
+    ]);
+    setRecentOpen(false);
+    setRecentQuery("");
   }
 
   async function quickCreateWalkIn() {
@@ -361,6 +418,12 @@ export function InvoiceEditor({
     if (problem) return setError(problem);
     const meaningful = lines.some((l) => l.description.trim() !== "" || lineTotal(l) > 0);
     if (!meaningful) return setError("Add at least one line with a description or amount.");
+    if (markPaid) {
+      const fils = aedToFils(payAmount);
+      if (fils === null || fils <= 0)
+        return setError("Enter a valid payment amount, or uncheck “Client is paying now”.");
+      if (!payMethodId) return setError("Choose a payment method to record the payment.");
+    }
     setSaving(true);
     const id = await persistDraft();
     setSaving(false);
@@ -382,7 +445,27 @@ export function InvoiceEditor({
     const body = await res.json().catch(() => null);
     if (res.ok) {
       // R-6: alreadyIssued is SUCCESS — show the issued invoice either way.
-      router.push(`/invoices/${draftId}`);
+      // Record-on-issue payment: the invoice is now sealed, so the ledger
+      // will accept it. Best-effort — if it fails, the sealed page still
+      // loads and the payment can be recorded there manually.
+      if (markPaid) {
+        const fils = aedToFils(payAmount);
+        if (fils && fils > 0 && payMethodId) {
+          await fetch(`/api/invoices/${draftId}/payments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "record",
+              amount: fils,
+              methodId: payMethodId,
+              receivedOn: payReceivedOn,
+              reference: null,
+            }),
+          }).catch(() => {});
+        }
+      }
+      // Owner request: land on the sealed invoice and print it as issued.
+      router.push(`/invoices/${draftId}?print=1`);
       return; // stay disabled while navigating
     }
     setIssueError(body?.error ?? "Issue failed — the draft is unchanged.");
@@ -426,26 +509,20 @@ export function InvoiceEditor({
   );
 
   return (
-    <div>
-      {/* Header — the screen's one serif display element (§3.2). */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="serif text-[26px] leading-8 font-semibold text-foreground">
-            {existing ? "Draft invoice" : "New invoice"}
-          </h1>
-          <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-            {vatRegistered
-              ? `VAT ${ratePct}% applies per fee column.`
-              : "VAT-deregistered — no VAT will be applied."}{" "}
-            The invoice number is allocated only at issue.
-          </p>
-        </div>
-        {savedAt ? <span className="mono text-[13px] text-text-tertiary">{savedAt}</span> : null}
+    <div className="space-y-6">
+      {/* Status banner — replaces the in-content title (the topbar carries it). */}
+      <div className="flex items-start gap-3 rounded-[12px] border border-accent-border bg-accent-soft px-4 py-3">
+        <Info className="mt-0.5 size-[18px] shrink-0 text-primary" />
+        <p className="text-[13px] leading-5 text-foreground">
+          {vatRegistered
+            ? `VAT ${ratePct}% applies per fee column.`
+            : "VAT — deregistered: no VAT will be applied."}{" "}
+          The invoice number is allocated only at issue.
+        </p>
       </div>
 
-      {/* Bill to */}
-      <section className="mb-6 rounded-[12px] border border-border bg-surface p-5">
-        <p className={`mb-3 ${captionClass}`}>Bill to</p>
+      {/* ① Bill to */}
+      <StepCard n={1} title="Bill to">
         {customer ? (
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -505,7 +582,7 @@ export function InvoiceEditor({
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+            <div className="relative flex-1">
               <Input
                 value={custQuery}
                 onChange={(e) => {
@@ -514,9 +591,9 @@ export function InvoiceEditor({
                 }}
                 onFocus={() => setCustOpen(true)}
                 onBlur={() => setTimeout(() => setCustOpen(false), 150)}
-                placeholder="Search customers…"
+                placeholder="Type to search customers…"
                 aria-label="Search customers"
-                className="w-80"
+                className="w-full"
                 autoFocus={!existing}
               />
               {custOpen && custMatches.length > 0 ? (
@@ -541,245 +618,450 @@ export function InvoiceEditor({
                 </div>
               ) : null}
             </div>
-            <Button variant="outline" size="sm" onClick={() => setWalkInMode(true)}>
-              New walk-in
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setWalkInMode(true)}
+              className="border-accent-border bg-accent-soft text-primary hover:bg-accent-soft hover:brightness-95"
+            >
+              <Plus /> New walk-in
             </Button>
           </div>
         )}
-      </section>
+      </StepCard>
 
-      {/* Fee-column manager (D-24) */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className={captionClass}>Fee columns</span>
-        <FeeColumnChip label="Govt fee" vat="0% VAT" />
-        <FeeColumnChip label="Service fee" vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"} />
-        {columns.map((c) => (
-          <FeeColumnChip
-            key={c.id}
-            label={c.label}
-            vat={c.vatable && vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
-            onRemove={() => removeColumn(c.id)}
-          />
-        ))}
-        <span className="flex items-center gap-2">
-          <Input
-            value={newColLabel}
-            onChange={(e) => setNewColLabel(e.target.value)}
-            placeholder="Courier, stamp…"
-            aria-label="New fee column label"
-            className="h-8 w-36 text-[13px]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addColumn();
-              }
-            }}
-          />
-          <label className="flex items-center gap-1.5 text-[13px] text-text-secondary">
-            <input
-              type="checkbox"
-              checked={newColVatable}
-              onChange={(e) => setNewColVatable(e.target.checked)}
-              className="size-3.5 accent-[var(--accent)]"
-            />
-            VAT
-          </label>
-          <Button variant="outline" size="sm" onClick={addColumn} disabled={!newColLabel.trim()}>
-            Add column
-          </Button>
-        </span>
-      </div>
-
-      {/* Line grid — quiet cells, §2.7 deliberate column widths */}
-      <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="border-b border-border-strong">
-              <th className={`w-10 px-3 py-2.5 ${captionClass}`}>#</th>
-              <th className={`px-2 py-2.5 ${captionClass}`}>Description</th>
-              <th className={`w-14 px-2 py-2.5 text-right ${captionClass}`}>Qty</th>
-              <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Govt fee</th>
-              <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Service fee</th>
-              {columns.map((c) => (
-                <th key={c.id} className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>
-                  {c.label}
-                </th>
-              ))}
-              <th className={`w-28 px-3 py-2.5 text-right ${captionClass}`}>Line total</th>
-              <th className="w-9" />
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((l, idx) => {
-              const isLastLine = idx === lines.length - 1;
-              return (
-                <tr key={l.key} className="border-b border-border last:border-b-0">
-                  <td className="mono px-3 py-1 text-[13px] text-text-tertiary">{idx + 1}</td>
-                  <td className="px-1 py-1">
-                    <Input
-                      ref={(el) => {
-                        if (el) descRefs.current.set(l.key, el);
-                        else descRefs.current.delete(l.key);
-                      }}
-                      value={l.description}
-                      onChange={(e) => setLine(l.key, { description: e.target.value })}
-                      placeholder="Service description…"
-                      aria-label={`Description for line ${idx + 1}`}
-                      className={`min-w-44 ${cellInputClass}`}
-                    />
-                  </td>
-                  <td className="px-1 py-1">
-                    <Input
-                      value={l.qty}
-                      onChange={(e) => setLine(l.key, { qty: e.target.value })}
-                      inputMode="numeric"
-                      aria-label={`Quantity for line ${idx + 1}`}
-                      className={`mono w-14 text-right ${cellInputClass}`}
-                    />
-                  </td>
-                  {feeCell(l, "govt", "Govt fee", isLastLine)}
-                  {feeCell(l, "service", "Service fee", isLastLine)}
-                  {columns.map((c) => feeCell(l, c.id, c.label, isLastLine))}
-                  <td className="mono px-3 py-1 text-right text-[13px] font-medium text-foreground">
-                    {formatAed(lineTotal(l))}
-                  </td>
-                  <td className="px-1 py-1 text-center">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
-                      disabled={lines.length === 1}
-                      aria-label={`Remove line ${idx + 1}`}
-                      title="Remove line"
-                      className="text-text-tertiary hover:text-foreground"
-                    >
-                      <X />
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="relative mt-3 flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => addLine()}>
-          Add line
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setSvcOpen((v) => !v)}>
-          From service catalogue
-        </Button>
-        {svcOpen ? (
-          <div className="absolute top-10 left-24 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
-            <input
-              value={svcQuery}
-              onChange={(e) => setSvcQuery(e.target.value)}
-              placeholder="Search catalogue…"
-              className="h-10 w-full border-b border-border bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-text-tertiary"
-              autoFocus
-            />
-            <div className="max-h-64 overflow-y-auto">
-              {svcMatches.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => addFromCatalogue(s)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
-                >
-                  <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                  <span className="mono text-[12px] text-text-tertiary">
-                    {formatAed(s.govt_fee)} + {formatAed(s.service_fee)} / {s.unit}
-                  </span>
-                </button>
-              ))}
-              {svcMatches.length === 0 ? (
-                <p className="px-3 py-3 text-[13px] text-text-secondary">No catalogue matches.</p>
+      {/* ② Invoice items */}
+      <StepCard
+        n={2}
+        title="Invoice items"
+        actions={
+          <div className="relative flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSvcOpen((v) => !v);
+                setRecentOpen(false);
+                setColsOpen(false);
+              }}
+            >
+              <BookOpen /> Get from service catalogue
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setRecentOpen((v) => !v);
+                setSvcOpen(false);
+                setColsOpen(false);
+              }}
+            >
+              <Clock /> Get from recent
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setColsOpen((v) => !v);
+                setSvcOpen(false);
+                setRecentOpen(false);
+              }}
+            >
+              <Columns3 /> Columns
+              {columns.length > 0 ? (
+                <span className="mono ml-1 rounded-full bg-bg-sunken px-1.5 text-[11px] text-text-secondary">
+                  {columns.length}
+                </span>
               ) : null}
+            </Button>
+
+            {/* Get-from-recent popover — recently-used line items. */}
+            {recentOpen ? (
+              <div className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
+                <input
+                  value={recentQuery}
+                  onChange={(e) => setRecentQuery(e.target.value)}
+                  placeholder="Search recent items…"
+                  className="h-10 w-full border-b border-border bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-text-tertiary"
+                  autoFocus
+                />
+                <div className="max-h-64 overflow-y-auto">
+                  {recentMatches.map((r, i) => (
+                    <button
+                      key={`${r.description}-${i}`}
+                      type="button"
+                      onClick={() => addFromRecent(r)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{r.description}</span>
+                      <span className="mono text-[12px] text-text-tertiary">
+                        {formatAed(r.govtFee)} + {formatAed(r.serviceFee)}
+                      </span>
+                    </button>
+                  ))}
+                  {recentMatches.length === 0 ? (
+                    <p className="px-3 py-3 text-[13px] text-text-secondary">
+                      {recent.length === 0 ? "No recent items yet." : "No matches."}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Columns popover — fee-column manager (D-24). */}
+            {colsOpen ? (
+              <div className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised p-3 shadow-[var(--shadow-popover)]">
+                <p className={`mb-2 ${captionClass}`}>Fee columns</p>
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  <FeeColumnChip label="Govt fee" vat="0% VAT" />
+                  <FeeColumnChip
+                    label="Service fee"
+                    vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
+                  />
+                  {columns.map((c) => (
+                    <FeeColumnChip
+                      key={c.id}
+                      label={c.label}
+                      vat={c.vatable && vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
+                      onRemove={() => removeColumn(c.id)}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newColLabel}
+                    onChange={(e) => setNewColLabel(e.target.value)}
+                    placeholder="Courier, stamp…"
+                    aria-label="New fee column label"
+                    className="h-8 flex-1 text-[13px]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addColumn();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addColumn}
+                    disabled={!newColLabel.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {vatRegistered ? (
+                  <label className="mt-2 flex items-center gap-1.5 text-[13px] text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={newColVatable}
+                      onChange={(e) => setNewColVatable(e.target.checked)}
+                      className="size-3.5 accent-[var(--accent)]"
+                    />
+                    Apply {ratePct}% VAT to this column
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        }
+      >
+        {/* Line grid — quiet cells, §2.7 deliberate column widths */}
+        <div className="overflow-x-auto rounded-[10px] border border-border">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-border bg-bg-sunken">
+                <th className={`w-10 px-3 py-2.5 ${captionClass}`}>#</th>
+                <th className={`px-2 py-2.5 ${captionClass}`}>Description</th>
+                <th className={`w-28 px-2 py-2.5 text-center ${captionClass}`}>Qty</th>
+                <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Govt fee</th>
+                <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Service fee</th>
+                {columns.map((c) => (
+                  <th key={c.id} className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>
+                    {c.label}
+                  </th>
+                ))}
+                <th className={`w-28 px-3 py-2.5 text-right ${captionClass}`}>Line total</th>
+                <th className="w-9" />
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, idx) => {
+                const isLastLine = idx === lines.length - 1;
+                return (
+                  <tr key={l.key} className="border-b border-border last:border-b-0">
+                    <td className="mono px-3 py-1 text-[13px] text-text-tertiary">{idx + 1}</td>
+                    <td className="px-1 py-1">
+                      <Input
+                        ref={(el) => {
+                          if (el) descRefs.current.set(l.key, el);
+                          else descRefs.current.delete(l.key);
+                        }}
+                        value={l.description}
+                        onChange={(e) => setLine(l.key, { description: e.target.value })}
+                        placeholder="Service description…"
+                        aria-label={`Description for line ${idx + 1}`}
+                        className={`min-w-44 ${cellInputClass}`}
+                      />
+                    </td>
+                    <td className="px-1 py-1">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => bumpQty(l, -1)}
+                          disabled={(Math.floor(Number(l.qty)) || 1) <= 1}
+                          aria-label={`Decrease quantity for line ${idx + 1}`}
+                          title="Decrease quantity"
+                          className="text-text-tertiary hover:text-foreground"
+                        >
+                          <Minus />
+                        </Button>
+                        <Input
+                          value={l.qty}
+                          onChange={(e) => setLine(l.key, { qty: e.target.value })}
+                          inputMode="numeric"
+                          aria-label={`Quantity for line ${idx + 1}`}
+                          className={`mono w-10 text-center ${cellInputClass}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => bumpQty(l, 1)}
+                          aria-label={`Increase quantity for line ${idx + 1}`}
+                          title="Increase quantity"
+                          className="text-text-tertiary hover:text-foreground"
+                        >
+                          <Plus />
+                        </Button>
+                      </div>
+                    </td>
+                    {feeCell(l, "govt", "Govt fee", isLastLine)}
+                    {feeCell(l, "service", "Service fee", isLastLine)}
+                    {columns.map((c) => feeCell(l, c.id, c.label, isLastLine))}
+                    <td className="mono px-3 py-1 text-right text-[13px] font-medium text-foreground">
+                      {formatAed(lineTotal(l))}
+                    </td>
+                    <td className="px-1 py-1 text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
+                        disabled={lines.length === 1}
+                        aria-label={`Remove line ${idx + 1}`}
+                        title="Remove line"
+                        className="text-text-tertiary hover:text-danger"
+                      >
+                        <Trash2 />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="relative mt-3 flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => addLine()}>
+            <Plus /> Add line
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSvcOpen((v) => !v)}>
+            <BookOpen /> Add from service catalogue
+          </Button>
+          {svcOpen ? (
+            <div className="absolute top-10 left-24 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
+              <input
+                value={svcQuery}
+                onChange={(e) => setSvcQuery(e.target.value)}
+                placeholder="Search catalogue…"
+                className="h-10 w-full border-b border-border bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-text-tertiary"
+                autoFocus
+              />
+              <div className="max-h-64 overflow-y-auto">
+                {svcMatches.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => addFromCatalogue(s)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+                  >
+                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <span className="mono text-[12px] text-text-tertiary">
+                      {formatAed(s.govt_fee)} + {formatAed(s.service_fee)} / {s.unit}
+                    </span>
+                  </button>
+                ))}
+                {svcMatches.length === 0 ? (
+                  <p className="px-3 py-3 text-[13px] text-text-secondary">No catalogue matches.</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </StepCard>
+
+      {/* ③ details + ④ summary */}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <StepCard n={3} title="Invoice details" subtitle="Optional">
+          <div className="space-y-4">
+            <div>
+              <FieldLabel htmlFor="inv-date">Invoice date</FieldLabel>
+              <Input
+                id="inv-date"
+                type="date"
+                value={issueDate}
+                onChange={(e) => setIssueDate(e.target.value)}
+                className="mono w-48 text-[13px]"
+              />
+              <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+                Defaults to today if left blank.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <FieldLabel htmlFor="inv-notes">Notes (printed)</FieldLabel>
+                  <span className="mono text-[11px] text-text-tertiary">{notes.length} / 250</span>
+                </div>
+                <textarea
+                  id="inv-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value.slice(0, 250))}
+                  maxLength={250}
+                  rows={3}
+                  placeholder="Add any notes…"
+                  className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
+                />
+              </div>
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <FieldLabel htmlFor="inv-terms">Payment terms (printed)</FieldLabel>
+                  <span className="mono text-[11px] text-text-tertiary">{terms.length} / 250</span>
+                </div>
+                <textarea
+                  id="inv-terms"
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value.slice(0, 250))}
+                  maxLength={250}
+                  rows={3}
+                  placeholder="e.g. Due in 7 days"
+                  className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
+                />
+              </div>
             </div>
           </div>
-        ) : null}
-      </div>
+        </StepCard>
 
-      {/* Meta + totals */}
-      <div className="mt-8 flex flex-wrap items-start justify-between gap-6">
-        <div className="min-w-64 flex-1 space-y-4">
-          <div>
-            <FieldLabel htmlFor="inv-date">Invoice date</FieldLabel>
-            <Input
-              id="inv-date"
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-              className="mono w-48 text-[13px]"
-            />
-            <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-              Defaults to today at issue.
+        <StepCard n={4} title="Summary">
+          <div className="rounded-[12px] border border-accent-border bg-accent-soft p-5">
+            {totals.subtotalGovt > 0 ? (
+              <TotalsRow label="Government fees (passthrough)" fils={totals.subtotalGovt} />
+            ) : null}
+            {totals.subtotalService > 0 ? (
+              <TotalsRow
+                label={`Service fees${vatRegistered ? " (taxable)" : ""}`}
+                fils={totals.subtotalService}
+              />
+            ) : null}
+            {totals.extrasVatable > 0 ? (
+              <TotalsRow label="Other charges (taxable)" fils={totals.extrasVatable} />
+            ) : null}
+            {totals.extrasNonVatable > 0 ? (
+              <TotalsRow label="Other charges (non-taxable)" fils={totals.extrasNonVatable} />
+            ) : null}
+            {vatRegistered && totals.vatAmount > 0 ? (
+              <TotalsRow label={`VAT (${ratePct}%) on taxable fees`} fils={totals.vatAmount} />
+            ) : null}
+            <div className="mt-3 flex items-baseline justify-between border-t border-accent-border pt-3">
+              <span className="text-[15px] font-[550] text-foreground">Net total</span>
+              <span className="mono text-[22px] leading-7 font-semibold text-primary">
+                <span className="mr-1.5 text-[13px] font-normal text-text-tertiary">AED</span>
+                {formatAed(totals.grandTotal)}
+              </span>
+            </div>
+            <p className="mt-2 text-[12px] leading-4 text-text-tertiary">
+              Display only — totals are recomputed and sealed server-side at issue.
             </p>
           </div>
-          <div>
-            <FieldLabel htmlFor="inv-notes">Notes (printed)</FieldLabel>
-            <textarea
-              id="inv-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
-            />
-          </div>
-          <div>
-            <FieldLabel htmlFor="inv-terms">Payment terms (printed)</FieldLabel>
-            <textarea
-              id="inv-terms"
-              value={terms}
-              onChange={(e) => setTerms(e.target.value)}
-              rows={2}
-              className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
-            />
-          </div>
-        </div>
 
-        <div className="w-full max-w-sm rounded-[12px] border border-border bg-surface p-5">
-          {totals.subtotalGovt > 0 ? (
-            <TotalsRow label="Government fees (passthrough)" fils={totals.subtotalGovt} />
-          ) : null}
-          {totals.subtotalService > 0 ? (
-            <TotalsRow
-              label={`Service fees${vatRegistered ? " (taxable)" : ""}`}
-              fils={totals.subtotalService}
-            />
-          ) : null}
-          {totals.extrasVatable > 0 ? (
-            <TotalsRow label="Other charges (taxable)" fils={totals.extrasVatable} />
-          ) : null}
-          {totals.extrasNonVatable > 0 ? (
-            <TotalsRow label="Other charges (non-taxable)" fils={totals.extrasNonVatable} />
-          ) : null}
-          {vatRegistered && totals.vatAmount > 0 ? (
-            <TotalsRow label={`VAT (${ratePct}%) on taxable fees`} fils={totals.vatAmount} />
-          ) : null}
-          <div className="mt-3 flex items-baseline justify-between border-t border-border-strong pt-3">
-            <span className="text-[15px] font-[550] text-foreground">Net total</span>
-            <span className="mono text-[22px] leading-7 font-semibold text-foreground">
-              <span className="mr-1.5 text-[13px] font-normal text-text-tertiary">AED</span>
-              {formatAed(totals.grandTotal)}
-            </span>
+          {/* Record-on-issue payment (owner request) */}
+          <div className="mt-4 border-t border-border pt-4">
+            {methods.length === 0 ? (
+              <p className="text-[12px] leading-4 text-text-tertiary">
+                Add a payment method in Settings to record payment when you issue.
+              </p>
+            ) : (
+              <>
+                <label className="flex cursor-pointer items-center gap-2 text-[13px] leading-[19px] text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={markPaid}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setMarkPaid(on);
+                      if (on && !payAmount) setPayAmount(filsToInput(totals.grandTotal));
+                    }}
+                    className="size-4 accent-[var(--accent)]"
+                  />
+                  Client is paying now — record the payment on issue
+                </label>
+                {markPaid ? (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <FieldLabel htmlFor="pay-amt">Amount (AED)</FieldLabel>
+                      <Input
+                        id="pay-amt"
+                        value={payAmount}
+                        onChange={(e) => setPayAmount(e.target.value)}
+                        inputMode="decimal"
+                        placeholder={filsToInput(totals.grandTotal) || "0.00"}
+                        className="mono w-full text-right text-[13px]"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel htmlFor="pay-method">Method</FieldLabel>
+                      <select
+                        id="pay-method"
+                        value={payMethodId}
+                        onChange={(e) => setPayMethodId(e.target.value)}
+                        className="h-9 w-full rounded-[8px] border border-border-strong bg-surface px-2 text-[13px] text-foreground focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] focus-visible:outline-none dark:bg-bg-sunken"
+                      >
+                        {methods.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-span-2">
+                      <FieldLabel htmlFor="pay-date">Received on</FieldLabel>
+                      <Input
+                        id="pay-date"
+                        type="date"
+                        value={payReceivedOn}
+                        onChange={(e) => setPayReceivedOn(e.target.value)}
+                        className="mono w-48 text-[13px]"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
-          <p className="mt-2 text-[12px] leading-4 text-text-tertiary">
-            Display only — totals are recomputed and sealed server-side at issue.
-          </p>
-        </div>
+        </StepCard>
       </div>
 
-      {error ? (
-        <p className="mt-4 text-right text-[13px] leading-[19px] text-error">{error}</p>
-      ) : null}
-      <div className="mt-5 flex justify-end gap-3">
+      {error ? <p className="text-right text-[13px] leading-[19px] text-error">{error}</p> : null}
+      <div className="flex items-center justify-end gap-3">
+        {savedAt ? (
+          <span className="mono mr-1 text-[13px] text-text-tertiary">{savedAt}</span>
+        ) : null}
         <Button variant="outline" onClick={saveDraft} disabled={saving}>
-          {saving ? "Saving…" : "Save draft"}
+          <Save /> {saving ? "Saving…" : "Save as draft"}
         </Button>
         {/* The screen's only blue button. */}
         <Button onClick={startIssue} disabled={saving}>
-          Issue invoice
+          Issue invoice <ChevronRight />
         </Button>
       </div>
 
@@ -832,12 +1114,54 @@ export function InvoiceEditor({
               Keep editing
             </Button>
             <Button onClick={confirmIssue} disabled={confirming}>
-              {confirming ? "Issuing…" : "Confirm and issue"}
+              {confirming
+                ? "Issuing…"
+                : markPaid
+                  ? "Issue, record payment & print"
+                  : "Issue & print"}
             </Button>
           </div>
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+// Numbered step card — the owner-mockup's Bill-to / Items / Details /
+// Summary containers. Blue index badge + title, optional right-side action.
+function StepCard({
+  n,
+  title,
+  subtitle,
+  actions,
+  children,
+}: {
+  n: number;
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[14px] border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-accent">
+            {n}
+          </span>
+          <h2 className="text-[15px] font-semibold text-foreground">
+            {title}
+            {subtitle ? (
+              <span className="ml-1.5 text-[13px] font-normal text-text-tertiary">
+                ({subtitle})
+              </span>
+            ) : null}
+          </h2>
+        </div>
+        {actions}
+      </div>
+      {children}
+    </section>
   );
 }
 

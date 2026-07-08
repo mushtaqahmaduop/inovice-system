@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceEditor, type PickerCustomer, type PickerService } from "../invoice-editor";
+import { fetchRecentLines } from "@/lib/invoices/recent-lines";
 
 // Dates per PREMIUM_EXECUTION_GUIDE §2.3 — "07 Jul 2026", mono, business
 // timezone (the server clock is UTC on Vercel).
@@ -28,41 +29,50 @@ function fmtDraftDate(iso: string) {
 export default async function NewInvoicePage() {
   await requireUser();
   const supabase = await createClient();
-  const [{ data: settings }, { data: customers }, { data: services }, { data: drafts }] =
-    await Promise.all([
-      supabase
-        .from("settings")
-        .select(
-          "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, tagline, trn, address, phone, email, bank_details"
-        )
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("customers")
-        .select("id, name, type, trn, phone, address")
-        .is("deleted_at", null)
-        .order("name"),
-      supabase
-        .from("services")
-        .select("id, name, unit, govt_fee, service_fee")
-        .is("deleted_at", null)
-        .eq("is_active", true)
-        .order("name"),
-      supabase
-        .from("invoices")
-        .select("id, created_at, notes, customers(name)")
-        .eq("status", "draft")
-        .order("created_at", { ascending: false })
-        .limit(8),
-    ]);
+  const [
+    { data: settings },
+    { data: customers },
+    { data: services },
+    { data: methods },
+    { data: drafts },
+  ] = await Promise.all([
+    supabase
+      .from("settings")
+      .select(
+        "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, tagline, trn, address, phone, email, bank_details"
+      )
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("customers")
+      .select("id, name, type, trn, phone, address")
+      .is("deleted_at", null)
+      .order("name"),
+    supabase
+      .from("services")
+      .select("id, name, unit, govt_fee, service_fee")
+      .is("deleted_at", null)
+      .eq("is_active", true)
+      .order("name"),
+    supabase.from("payment_methods").select("id, label").eq("is_active", true).order("position"),
+    supabase
+      .from("invoices")
+      .select("id, created_at, notes, customers(name)")
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
+  const recent = await fetchRecentLines(supabase);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+    <div className="mx-auto max-w-5xl px-5 py-6 md:px-8">
       <InvoiceEditor
         vatRegistered={settings?.vat_registered ?? true}
         vatRateBp={settings?.vat_rate_bp ?? 500}
         customers={(customers ?? []) as PickerCustomer[]}
         services={(services ?? []) as PickerService[]}
+        methods={(methods ?? []).map((m) => ({ id: m.id, label: m.label }))}
+        recent={recent}
         defaultNotes={settings?.invoice_notes_default ?? ""}
         defaultTerms={settings?.invoice_terms_default ?? ""}
         existing={null}
