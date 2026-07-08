@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { X, Info, BookOpen, Minus, Plus, Trash2, Save } from "lucide-react";
+import {
+  X,
+  Info,
+  BookOpen,
+  Minus,
+  Plus,
+  Trash2,
+  Save,
+  Clock,
+  Columns3,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldLabel } from "@/components/ui/field";
@@ -37,6 +48,10 @@ export type PickerService = {
   service_fee: number;
 };
 export type PayMethod = { id: string; label: string };
+// Recently-used line items (owner "Get from recent") — sourced from recent
+// invoice_lines, deduped by description. No service_id link exists, so
+// "recent services" means the lines actually put on recent invoices.
+export type RecentLine = { description: string; govtFee: number; serviceFee: number };
 export type ExistingDraft = {
   id: string;
   customerId: string;
@@ -81,6 +96,7 @@ export function InvoiceEditor({
   customers,
   services,
   methods,
+  recent = [],
   defaultNotes,
   defaultTerms,
   existing,
@@ -91,6 +107,7 @@ export function InvoiceEditor({
   customers: PickerCustomer[];
   services: PickerService[];
   methods: PayMethod[];
+  recent?: RecentLine[];
   defaultNotes: string;
   defaultTerms: string;
   existing: ExistingDraft | null;
@@ -143,6 +160,9 @@ export function InvoiceEditor({
   const [walkInPhone, setWalkInPhone] = useState("");
   const [svcOpen, setSvcOpen] = useState(false);
   const [svcQuery, setSvcQuery] = useState("");
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recentQuery, setRecentQuery] = useState("");
+  const [colsOpen, setColsOpen] = useState(false);
   const [newColLabel, setNewColLabel] = useState("");
   const [newColVatable, setNewColVatable] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -188,6 +208,12 @@ export function InvoiceEditor({
     const q = svcQuery.trim().toLowerCase();
     return services.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 10);
   }, [services, svcQuery]);
+
+  const recentMatches = useMemo(() => {
+    const q = recentQuery.trim().toLowerCase();
+    const base = q ? recent.filter((r) => r.description.toLowerCase().includes(q)) : recent;
+    return base.slice(0, 10);
+  }, [recent, recentQuery]);
 
   function setCell(key: number, col: CellKey, value: string) {
     setLines((ls) =>
@@ -239,6 +265,21 @@ export function InvoiceEditor({
     ]);
     setSvcOpen(false);
     setSvcQuery("");
+  }
+  function addFromRecent(r: RecentLine) {
+    setLines((ls) => [
+      ...ls.filter(
+        (l) => l.description.trim() !== "" || Object.values(l.fees).some((v) => v?.trim())
+      ),
+      {
+        key: nextKey++,
+        description: r.description,
+        qty: "1",
+        fees: { govt: filsToInput(r.govtFee), service: filsToInput(r.serviceFee) },
+      },
+    ]);
+    setRecentOpen(false);
+    setRecentQuery("");
   }
 
   async function quickCreateWalkIn() {
@@ -594,53 +635,137 @@ export function InvoiceEditor({
         n={2}
         title="Invoice items"
         actions={
-          <Button variant="outline" size="sm" onClick={() => setSvcOpen((v) => !v)}>
-            <BookOpen /> Get from catalogue
-          </Button>
+          <div className="relative flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSvcOpen((v) => !v);
+                setRecentOpen(false);
+                setColsOpen(false);
+              }}
+            >
+              <BookOpen /> Get from service catalogue
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setRecentOpen((v) => !v);
+                setSvcOpen(false);
+                setColsOpen(false);
+              }}
+            >
+              <Clock /> Get from recent
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setColsOpen((v) => !v);
+                setSvcOpen(false);
+                setRecentOpen(false);
+              }}
+            >
+              <Columns3 /> Columns
+              {columns.length > 0 ? (
+                <span className="mono ml-1 rounded-full bg-bg-sunken px-1.5 text-[11px] text-text-secondary">
+                  {columns.length}
+                </span>
+              ) : null}
+            </Button>
+
+            {/* Get-from-recent popover — recently-used line items. */}
+            {recentOpen ? (
+              <div className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
+                <input
+                  value={recentQuery}
+                  onChange={(e) => setRecentQuery(e.target.value)}
+                  placeholder="Search recent items…"
+                  className="h-10 w-full border-b border-border bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-text-tertiary"
+                  autoFocus
+                />
+                <div className="max-h-64 overflow-y-auto">
+                  {recentMatches.map((r, i) => (
+                    <button
+                      key={`${r.description}-${i}`}
+                      type="button"
+                      onClick={() => addFromRecent(r)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{r.description}</span>
+                      <span className="mono text-[12px] text-text-tertiary">
+                        {formatAed(r.govtFee)} + {formatAed(r.serviceFee)}
+                      </span>
+                    </button>
+                  ))}
+                  {recentMatches.length === 0 ? (
+                    <p className="px-3 py-3 text-[13px] text-text-secondary">
+                      {recent.length === 0 ? "No recent items yet." : "No matches."}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Columns popover — fee-column manager (D-24). */}
+            {colsOpen ? (
+              <div className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised p-3 shadow-[var(--shadow-popover)]">
+                <p className={`mb-2 ${captionClass}`}>Fee columns</p>
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  <FeeColumnChip label="Govt fee" vat="0% VAT" />
+                  <FeeColumnChip
+                    label="Service fee"
+                    vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
+                  />
+                  {columns.map((c) => (
+                    <FeeColumnChip
+                      key={c.id}
+                      label={c.label}
+                      vat={c.vatable && vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
+                      onRemove={() => removeColumn(c.id)}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newColLabel}
+                    onChange={(e) => setNewColLabel(e.target.value)}
+                    placeholder="Courier, stamp…"
+                    aria-label="New fee column label"
+                    className="h-8 flex-1 text-[13px]"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addColumn();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addColumn}
+                    disabled={!newColLabel.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {vatRegistered ? (
+                  <label className="mt-2 flex items-center gap-1.5 text-[13px] text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={newColVatable}
+                      onChange={(e) => setNewColVatable(e.target.checked)}
+                      className="size-3.5 accent-[var(--accent)]"
+                    />
+                    Apply {ratePct}% VAT to this column
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         }
       >
-        {/* Fee-column manager (D-24) — the real "Columns" control. */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className={captionClass}>Fee columns</span>
-          <FeeColumnChip label="Govt fee" vat="0% VAT" />
-          <FeeColumnChip label="Service fee" vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"} />
-          {columns.map((c) => (
-            <FeeColumnChip
-              key={c.id}
-              label={c.label}
-              vat={c.vatable && vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
-              onRemove={() => removeColumn(c.id)}
-            />
-          ))}
-          <span className="flex items-center gap-2">
-            <Input
-              value={newColLabel}
-              onChange={(e) => setNewColLabel(e.target.value)}
-              placeholder="Courier, stamp…"
-              aria-label="New fee column label"
-              className="h-8 w-36 text-[13px]"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addColumn();
-                }
-              }}
-            />
-            <label className="flex items-center gap-1.5 text-[13px] text-text-secondary">
-              <input
-                type="checkbox"
-                checked={newColVatable}
-                onChange={(e) => setNewColVatable(e.target.checked)}
-                className="size-3.5 accent-[var(--accent)]"
-              />
-              VAT
-            </label>
-            <Button variant="outline" size="sm" onClick={addColumn} disabled={!newColLabel.trim()}>
-              Add column
-            </Button>
-          </span>
-        </div>
-
         {/* Line grid — quiet cells, §2.7 deliberate column widths */}
         <div className="overflow-x-auto rounded-[10px] border border-border">
           <table className="w-full border-collapse text-left">
@@ -789,28 +914,40 @@ export function InvoiceEditor({
                 className="mono w-48 text-[13px]"
               />
               <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-                Defaults to today at issue.
+                Defaults to today if left blank.
               </p>
             </div>
-            <div>
-              <FieldLabel htmlFor="inv-notes">Notes (printed)</FieldLabel>
-              <textarea
-                id="inv-notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
-              />
-            </div>
-            <div>
-              <FieldLabel htmlFor="inv-terms">Payment terms (printed)</FieldLabel>
-              <textarea
-                id="inv-terms"
-                value={terms}
-                onChange={(e) => setTerms(e.target.value)}
-                rows={2}
-                className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <FieldLabel htmlFor="inv-notes">Notes (printed)</FieldLabel>
+                  <span className="mono text-[11px] text-text-tertiary">{notes.length} / 250</span>
+                </div>
+                <textarea
+                  id="inv-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value.slice(0, 250))}
+                  maxLength={250}
+                  rows={3}
+                  placeholder="Add any notes…"
+                  className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
+                />
+              </div>
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <FieldLabel htmlFor="inv-terms">Payment terms (printed)</FieldLabel>
+                  <span className="mono text-[11px] text-text-tertiary">{terms.length} / 250</span>
+                </div>
+                <textarea
+                  id="inv-terms"
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value.slice(0, 250))}
+                  maxLength={250}
+                  rows={3}
+                  placeholder="e.g. Due in 7 days"
+                  className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
+                />
+              </div>
             </div>
           </div>
         </StepCard>
@@ -924,7 +1061,7 @@ export function InvoiceEditor({
         </Button>
         {/* The screen's only blue button. */}
         <Button onClick={startIssue} disabled={saving}>
-          Issue invoice
+          Issue invoice <ChevronRight />
         </Button>
       </div>
 

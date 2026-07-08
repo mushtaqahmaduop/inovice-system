@@ -8,6 +8,7 @@ import {
   type PickerCustomer,
   type PickerService,
 } from "../../invoice-editor";
+import { fetchRecentLines } from "@/lib/invoices/recent-lines";
 
 // Resume a draft (task 4.1b). Sealed invoices are not editable — this page
 // shows a lock notice instead of the editor (their real detail view is
@@ -89,6 +90,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
       .order("position"),
   ]);
 
+  const recent = await fetchRecentLines(supabase);
   const columnList = cols ?? [];
   const colIndexById = new Map(columnList.map((c, i) => [c.id, i]));
 
@@ -120,6 +122,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         customers={(customers ?? []) as PickerCustomer[]}
         services={(services ?? []) as PickerService[]}
         methods={(methods ?? []).map((m) => ({ id: m.id, label: m.label }))}
+        recent={recent}
         defaultNotes={settings?.invoice_notes_default ?? ""}
         defaultTerms={settings?.invoice_terms_default ?? ""}
         existing={existing}

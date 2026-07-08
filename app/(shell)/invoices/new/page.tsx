@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceEditor, type PickerCustomer, type PickerService } from "../invoice-editor";
+import { fetchRecentLines } from "@/lib/invoices/recent-lines";
 
 // Dates per PREMIUM_EXECUTION_GUIDE §2.3 — "07 Jul 2026", mono, business
 // timezone (the server clock is UTC on Vercel).
@@ -61,6 +62,7 @@ export default async function NewInvoicePage() {
       .order("created_at", { ascending: false })
       .limit(8),
   ]);
+  const recent = await fetchRecentLines(supabase);
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-6 md:px-8">
@@ -70,6 +72,7 @@ export default async function NewInvoicePage() {
         customers={(customers ?? []) as PickerCustomer[]}
         services={(services ?? []) as PickerService[]}
         methods={(methods ?? []).map((m) => ({ id: m.id, label: m.label }))}
+        recent={recent}
         defaultNotes={settings?.invoice_notes_default ?? ""}
         defaultTerms={settings?.invoice_terms_default ?? ""}
         existing={null}
