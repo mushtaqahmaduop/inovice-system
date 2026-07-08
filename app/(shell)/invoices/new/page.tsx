@@ -28,41 +28,48 @@ function fmtDraftDate(iso: string) {
 export default async function NewInvoicePage() {
   await requireUser();
   const supabase = await createClient();
-  const [{ data: settings }, { data: customers }, { data: services }, { data: drafts }] =
-    await Promise.all([
-      supabase
-        .from("settings")
-        .select(
-          "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, tagline, trn, address, phone, email, bank_details"
-        )
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("customers")
-        .select("id, name, type, trn, phone, address")
-        .is("deleted_at", null)
-        .order("name"),
-      supabase
-        .from("services")
-        .select("id, name, unit, govt_fee, service_fee")
-        .is("deleted_at", null)
-        .eq("is_active", true)
-        .order("name"),
-      supabase
-        .from("invoices")
-        .select("id, created_at, notes, customers(name)")
-        .eq("status", "draft")
-        .order("created_at", { ascending: false })
-        .limit(8),
-    ]);
+  const [
+    { data: settings },
+    { data: customers },
+    { data: services },
+    { data: methods },
+    { data: drafts },
+  ] = await Promise.all([
+    supabase
+      .from("settings")
+      .select(
+        "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, tagline, trn, address, phone, email, bank_details"
+      )
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("customers")
+      .select("id, name, type, trn, phone, address")
+      .is("deleted_at", null)
+      .order("name"),
+    supabase
+      .from("services")
+      .select("id, name, unit, govt_fee, service_fee")
+      .is("deleted_at", null)
+      .eq("is_active", true)
+      .order("name"),
+    supabase.from("payment_methods").select("id, label").eq("is_active", true).order("position"),
+    supabase
+      .from("invoices")
+      .select("id, created_at, notes, customers(name)")
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+    <div className="mx-auto max-w-5xl px-5 py-6 md:px-8">
       <InvoiceEditor
         vatRegistered={settings?.vat_registered ?? true}
         vatRateBp={settings?.vat_rate_bp ?? 500}
         customers={(customers ?? []) as PickerCustomer[]}
         services={(services ?? []) as PickerService[]}
+        methods={(methods ?? []).map((m) => ({ id: m.id, label: m.label }))}
         defaultNotes={settings?.invoice_notes_default ?? ""}
         defaultTerms={settings?.invoice_terms_default ?? ""}
         existing={null}

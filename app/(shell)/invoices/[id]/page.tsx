@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceDoc, type DocLine } from "@/components/invoice/invoice-doc";
 import { PrintButton } from "./print-button";
+import { PrintOnLoad } from "./print-on-load";
 import { VoidControls } from "./void-controls";
 import { PaymentsPanel, type PaymentRow, type MethodOption } from "./payments-panel";
 import { EventTimeline, type EventRow } from "./event-timeline";
@@ -12,9 +13,16 @@ import { EventTimeline, type EventRow } from "./event-timeline";
 // SEALED columns and frozen children — nothing is recomputed from current
 // Settings (CLAUDE.md §3.3). Drafts redirect to their editor. Ctrl+P (or
 // the Print button) produces the minimal readable A4 page ([#23a]).
-export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InvoicePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ print?: string }>;
+}) {
   const ctx = await requireUser();
   const { id } = await params;
+  const { print } = await searchParams;
   const supabase = await createClient();
 
   const { data: invoice } = await supabase
@@ -131,6 +139,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 print:max-w-none print:p-0">
       <style>{pageStyle}</style>
+      {print === "1" && invoice.status === "issued" ? <PrintOnLoad invoiceId={invoice.id} /> : null}
       <div className="mb-4 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-2.5">
           <p className="mono text-[14px] font-semibold text-foreground">{invoice.invoice_number}</p>
