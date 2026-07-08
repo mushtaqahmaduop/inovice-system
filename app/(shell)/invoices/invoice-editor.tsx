@@ -1,19 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldLabel } from "@/components/ui/field";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
-import { calcInvoiceTotals, toRoman, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
+import { calcInvoiceTotals, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
 
-// Invoice draft editor (tasks 4.1a + 4.1b): line grid with two fixed fee
-// columns (D-10) + dynamic extra columns (D-24), live totals mirroring
-// issue_invoice() (display-only), customer picker with walk-in
-// quick-create ([#7]), catalogue picker (3.3), notes/terms with Settings
-// defaults, draft save/resume through /api/invoices. Issuing is task 4.2.
+// Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Warm Paper /
+// Federal Blue system (redesign slice 6). Document-shaped form per
+// PREMIUM_EXECUTION_GUIDE §4: quiet line grid (borders appear on
+// hover/focus), Tab past the last cell adds a row (§2.6), drafts autosave
+// silently every 20s once they exist, live totals mirror issue_invoice()
+// display-only. Issuing (4.2) stays behind the mandatory preview sheet.
 // Q-04 (extra-column presets) unanswered — columns stay manual-add only.
 
 export type PickerCustomer = {
@@ -61,6 +64,13 @@ function cellInvalid(line: EditorLine, col: CellKey): boolean {
   const raw = line.fees[col];
   return raw !== undefined && raw.trim() !== "" && aedToFils(raw) === null;
 }
+
+// Quiet grid cell — reads as a document until you interact with it.
+const cellInputClass =
+  "h-8 rounded-[6px] border-transparent bg-transparent text-[13px] shadow-none hover:border-border-strong dark:bg-transparent";
+
+const captionClass =
+  "text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase";
 
 export function InvoiceEditor({
   vatRegistered,
@@ -132,6 +142,16 @@ export function InvoiceEditor({
   const [confirming, setConfirming] = useState(false); // one-way until error (R-6/[#23b])
   const [issueError, setIssueError] = useState<string | null>(null);
 
+  // §2.6 — Tab past the last fee cell of the last row adds a new row and
+  // moves focus to its description.
+  const [pendingFocusKey, setPendingFocusKey] = useState<number | null>(null);
+  const descRefs = useRef(new Map<number, HTMLInputElement>());
+  useEffect(() => {
+    if (pendingFocusKey === null) return;
+    descRefs.current.get(pendingFocusKey)?.focus();
+    setPendingFocusKey(null);
+  }, [pendingFocusKey]);
+
   const ratePct = (vatRateBp / 100).toString();
 
   const totals = useMemo(() => {
@@ -163,6 +183,11 @@ export function InvoiceEditor({
   }
   function setLine(key: number, patch: Partial<EditorLine>) {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  }
+  function addLine(focus = false) {
+    const nl = blankLine();
+    setLines((ls) => [...ls, nl]);
+    if (focus) setPendingFocusKey(nl.key);
   }
   function addColumn() {
     const label = newColLabel.trim();
@@ -262,8 +287,8 @@ export function InvoiceEditor({
   }
 
   // Persist the current state (create once, then update). Returns the
-  // draft id or null after surfacing the error.
-  async function persistDraft(): Promise<string | null> {
+  // draft id or null; surfaces the error unless silent (autosave).
+  async function persistDraft(silent = false): Promise<string | null> {
     const res = draftId
       ? await fetch(`/api/invoices/${draftId}`, {
           method: "POST",
@@ -276,7 +301,7 @@ export function InvoiceEditor({
           body: JSON.stringify(payload()),
         });
     if (!res.ok) {
-      setError((await res.json().catch(() => null))?.error ?? "Save failed");
+      if (!silent) setError((await res.json().catch(() => null))?.error ?? "Save failed");
       return null;
     }
     if (draftId) return draftId;
@@ -284,6 +309,9 @@ export function InvoiceEditor({
     setDraftId(id);
     return id;
   }
+
+  const savedStamp = () =>
+    "Saved · " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   async function saveDraft() {
     setError(null);
@@ -294,13 +322,35 @@ export function InvoiceEditor({
     const id = await persistDraft();
     setSaving(false);
     if (!id) return;
+    lastSavedRef.current = JSON.stringify(payload());
     if (wasNew) {
       router.push(`/invoices/${id}/edit?saved=1`);
     } else {
-      setSavedAt(new Date().toLocaleTimeString());
+      setSavedAt(savedStamp());
       router.refresh();
     }
   }
+
+  // §4 — silent autosave every 20s once the draft exists. Never creates a
+  // row on its own, never interrupts the preview/issue flow, never shows
+  // errors (the next manual save will).
+  const lastSavedRef = useRef<string | null>(existing ? null : "__new__");
+  const autosaveRef = useRef<() => void>(() => {});
+  autosaveRef.current = () => {
+    if (!draftId || saving || previewOpen || confirming) return;
+    if (validateForSave()) return;
+    const snapshot = JSON.stringify(payload());
+    if (snapshot === lastSavedRef.current) return;
+    void persistDraft(true).then((id) => {
+      if (!id) return;
+      lastSavedRef.current = snapshot;
+      setSavedAt(savedStamp());
+    });
+  };
+  useEffect(() => {
+    const t = setInterval(() => autosaveRef.current(), 20_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Issue = save the exact current state, then the MANDATORY preview
   // (D-23); sealing only happens from the sheet's Confirm button.
@@ -315,6 +365,7 @@ export function InvoiceEditor({
     const id = await persistDraft();
     setSaving(false);
     if (!id) return;
+    lastSavedRef.current = JSON.stringify(payload());
     setConfirming(false);
     setPreviewOpen(true);
   }
@@ -348,47 +399,61 @@ export function InvoiceEditor({
     );
   };
 
-  const feeCell = (l: EditorLine, col: CellKey, label: string) => (
-    <td key={col} className="px-1.5 py-1">
+  const lastFeeCol: CellKey = columns.length > 0 ? columns[columns.length - 1].id : "service";
+
+  const feeCell = (l: EditorLine, col: CellKey, label: string, isLastLine: boolean) => (
+    <td key={col} className="px-1 py-1">
       <Input
         value={l.fees[col] ?? ""}
         onChange={(e) => setCell(l.key, col, e.target.value)}
         placeholder="0.00"
         inputMode="decimal"
         aria-label={`${label} for line ${l.key}`}
-        className={`mono h-7 w-24 text-right text-[12px] ${cellInvalid(l, col) ? "border-destructive" : ""}`}
+        aria-invalid={cellInvalid(l, col) || undefined}
+        onKeyDown={
+          isLastLine && col === lastFeeCol
+            ? (e) => {
+                if (e.key === "Tab" && !e.shiftKey) {
+                  e.preventDefault();
+                  addLine(true);
+                }
+              }
+            : undefined
+        }
+        className={`mono w-24 text-right ${cellInputClass}`}
       />
     </td>
   );
 
   return (
     <div>
-      <div className="mb-5 flex items-baseline justify-between">
+      {/* Header — the screen's one serif display element (§3.2). */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="mono mb-1 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-            {existing ? "Draft invoice · resume" : "New invoice · draft"}
-          </p>
-          <p className="text-[12px] text-ink-3">
+          <h1 className="serif text-[26px] leading-8 font-semibold text-foreground">
+            {existing ? "Draft invoice" : "New invoice"}
+          </h1>
+          <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
             {vatRegistered
-              ? `VAT applied per column · ${ratePct}%`
-              : "VAT-deregistered — no VAT will be applied"}
-            {" · number allocated only at issue"}
+              ? `VAT ${ratePct}% applies per fee column.`
+              : "VAT-deregistered — no VAT will be applied."}{" "}
+            The invoice number is allocated only at issue.
           </p>
         </div>
-        {savedAt ? <span className="text-[11px] text-success">Saved {savedAt}</span> : null}
+        {savedAt ? <span className="mono text-[13px] text-text-tertiary">{savedAt}</span> : null}
       </div>
 
       {/* Bill to */}
-      <div className="mb-5 border border-hairline bg-surface p-4">
-        <p className="mono mb-3 text-[9px] tracking-[0.16em] text-ink-3 uppercase">Bill to</p>
+      <section className="mb-6 rounded-[12px] border border-border bg-surface p-5">
+        <p className={`mb-3 ${captionClass}`}>Bill to</p>
         {customer ? (
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[13.5px] font-medium text-ink">{customer.name}</p>
-              <p className="text-[11px] text-ink-3">
-                <span className="mono uppercase">
-                  {customer.type === "walk_in" ? "walk-in" : "regular"}
-                </span>
+              <p className="text-[15px] leading-[23px] font-[550] text-foreground">
+                {customer.name}
+              </p>
+              <p className="mt-0.5 text-[13px] leading-[19px] text-text-secondary">
+                {customer.type === "walk_in" ? "Walk-in" : "Regular"}
                 {customer.trn ? (
                   <>
                     {" · TRN "}
@@ -403,7 +468,7 @@ export function InvoiceEditor({
                 ) : null}
               </p>
               {customer.address ? (
-                <p className="text-[11px] text-ink-3">{customer.address}</p>
+                <p className="text-[13px] leading-[19px] text-text-secondary">{customer.address}</p>
               ) : null}
             </div>
             <Button variant="outline" size="sm" onClick={() => setCustomer(null)}>
@@ -411,34 +476,30 @@ export function InvoiceEditor({
             </Button>
           </div>
         ) : walkInMode ? (
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="mb-1 block text-[11px] text-ink-3" htmlFor="wi-name">
-                Walk-in name *
-              </label>
+              <FieldLabel htmlFor="wi-name">Walk-in name</FieldLabel>
               <Input
                 id="wi-name"
                 value={walkInName}
                 onChange={(e) => setWalkInName(e.target.value)}
-                className="h-8 w-52 text-[13px]"
+                className="w-56"
                 autoFocus
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] text-ink-3" htmlFor="wi-phone">
-                Phone
-              </label>
+              <FieldLabel htmlFor="wi-phone">Phone</FieldLabel>
               <Input
                 id="wi-phone"
                 value={walkInPhone}
                 onChange={(e) => setWalkInPhone(e.target.value)}
-                className="h-8 w-40 text-[13px]"
+                className="w-44"
               />
             </div>
             <Button size="sm" onClick={quickCreateWalkIn} disabled={!walkInName.trim()}>
-              Create & use
+              Create and use
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setWalkInMode(false)}>
+            <Button variant="ghost" size="sm" onClick={() => setWalkInMode(false)}>
               Cancel
             </Button>
           </div>
@@ -453,11 +514,13 @@ export function InvoiceEditor({
                 }}
                 onFocus={() => setCustOpen(true)}
                 onBlur={() => setTimeout(() => setCustOpen(false), 150)}
-                placeholder="Type to search customers…"
-                className="h-8 w-72 text-[13px]"
+                placeholder="Search customers…"
+                aria-label="Search customers"
+                className="w-80"
+                autoFocus={!existing}
               />
               {custOpen && custMatches.length > 0 ? (
-                <div className="absolute top-9 left-0 z-30 w-72 border border-hairline-strong bg-surface shadow-lg">
+                <div className="absolute top-11 left-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
                   {custMatches.map((c) => (
                     <button
                       key={c.id}
@@ -467,11 +530,11 @@ export function InvoiceEditor({
                         setCustQuery("");
                         setCustOpen(false);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-ink hover:bg-accent"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
                     >
                       <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                      <span className="mono text-[9px] tracking-[0.08em] text-ink-3 uppercase">
-                        {c.type === "walk_in" ? "walk-in" : "regular"}
+                      <span className="text-[12px] text-text-tertiary">
+                        {c.type === "walk_in" ? "Walk-in" : "Regular"}
                       </span>
                     </button>
                   ))}
@@ -479,49 +542,32 @@ export function InvoiceEditor({
               ) : null}
             </div>
             <Button variant="outline" size="sm" onClick={() => setWalkInMode(true)}>
-              + New walk-in
+              New walk-in
             </Button>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Fee-column manager (D-24) */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="mono text-[9px] tracking-[0.16em] text-ink-3 uppercase">Fee columns</span>
-        <span className="mono border border-hairline bg-surface px-2 py-0.5 text-[11px] text-ink-2">
-          Govt fee <span className="text-[9px] text-ink-3">0% VAT</span>
-        </span>
-        <span className="mono border border-hairline bg-surface px-2 py-0.5 text-[11px] text-ink-2">
-          Service fee{" "}
-          <span className="text-[9px] text-ink-3">
-            {vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
-          </span>
-        </span>
+        <span className={captionClass}>Fee columns</span>
+        <FeeColumnChip label="Govt fee" vat="0% VAT" />
+        <FeeColumnChip label="Service fee" vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"} />
         {columns.map((c) => (
-          <span
+          <FeeColumnChip
             key={c.id}
-            className="mono flex items-center gap-1 border border-hairline bg-surface px-2 py-0.5 text-[11px] text-ink-2"
-          >
-            {c.label}{" "}
-            <span className="text-[9px] text-ink-3">
-              {c.vatable && vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
-            </span>
-            <button
-              type="button"
-              onClick={() => removeColumn(c.id)}
-              aria-label={`Remove column ${c.label}`}
-              className="ml-1 text-ink-3 hover:text-ink"
-            >
-              ×
-            </button>
-          </span>
+            label={c.label}
+            vat={c.vatable && vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
+            onRemove={() => removeColumn(c.id)}
+          />
         ))}
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <Input
             value={newColLabel}
             onChange={(e) => setNewColLabel(e.target.value)}
-            placeholder="Courier, Stamp…"
-            className="h-7 w-32 text-[12px]"
+            placeholder="Courier, stamp…"
+            aria-label="New fee column label"
+            className="h-8 w-36 text-[13px]"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -529,112 +575,107 @@ export function InvoiceEditor({
               }
             }}
           />
-          <label className="flex items-center gap-1 text-[11px] text-ink-3">
+          <label className="flex items-center gap-1.5 text-[13px] text-text-secondary">
             <input
               type="checkbox"
               checked={newColVatable}
               onChange={(e) => setNewColVatable(e.target.checked)}
+              className="size-3.5 accent-[var(--accent)]"
             />
             VAT
           </label>
           <Button variant="outline" size="sm" onClick={addColumn} disabled={!newColLabel.trim()}>
-            + Column
+            Add column
           </Button>
         </span>
       </div>
 
-      {/* Line grid */}
-      <div className="overflow-x-auto border border-hairline bg-surface">
+      {/* Line grid — quiet cells, §2.7 deliberate column widths */}
+      <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-hairline">
-              <th className="mono w-10 px-2 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
-                №
-              </th>
-              <th className="mono px-2 py-2 text-[9px] tracking-[0.14em] text-ink-3 uppercase">
-                Description
-              </th>
-              <th className="mono w-16 px-1.5 py-2 text-right text-[9px] tracking-[0.14em] text-ink-3 uppercase">
-                Qty
-              </th>
-              <th className="mono w-28 px-1.5 py-2 text-right text-[9px] tracking-[0.14em] text-ink-3 uppercase">
-                Govt fee
-              </th>
-              <th className="mono w-28 px-1.5 py-2 text-right text-[9px] tracking-[0.14em] text-ink-3 uppercase">
-                Service fee
-              </th>
+            <tr className="border-b border-border-strong">
+              <th className={`w-10 px-3 py-2.5 ${captionClass}`}>#</th>
+              <th className={`px-2 py-2.5 ${captionClass}`}>Description</th>
+              <th className={`w-14 px-2 py-2.5 text-right ${captionClass}`}>Qty</th>
+              <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Govt fee</th>
+              <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Service fee</th>
               {columns.map((c) => (
-                <th
-                  key={c.id}
-                  className="mono w-28 px-1.5 py-2 text-right text-[9px] tracking-[0.14em] text-ink-3 uppercase"
-                >
+                <th key={c.id} className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>
                   {c.label}
                 </th>
               ))}
-              <th className="mono w-28 px-2 py-2 text-right text-[9px] tracking-[0.14em] text-ink-3 uppercase">
-                Line total
-              </th>
-              <th className="w-8" />
+              <th className={`w-28 px-3 py-2.5 text-right ${captionClass}`}>Line total</th>
+              <th className="w-9" />
             </tr>
           </thead>
           <tbody>
-            {lines.map((l, idx) => (
-              <tr key={l.key} className="border-b border-hairline last:border-b-0">
-                <td className="mono px-2 py-1 text-[11px] text-ink-3">{toRoman(idx + 1)}</td>
-                <td className="px-1.5 py-1">
-                  <Input
-                    value={l.description}
-                    onChange={(e) => setLine(l.key, { description: e.target.value })}
-                    placeholder="Service description…"
-                    aria-label={`Description for line ${idx + 1}`}
-                    className="h-7 min-w-44 text-[12.5px]"
-                  />
-                </td>
-                <td className="px-1.5 py-1">
-                  <Input
-                    value={l.qty}
-                    onChange={(e) => setLine(l.key, { qty: e.target.value })}
-                    inputMode="numeric"
-                    aria-label={`Quantity for line ${idx + 1}`}
-                    className="mono h-7 w-14 text-right text-[12px]"
-                  />
-                </td>
-                {feeCell(l, "govt", "Govt fee")}
-                {feeCell(l, "service", "Service fee")}
-                {columns.map((c) => feeCell(l, c.id, c.label))}
-                <td className="mono px-2 py-1 text-right text-[12.5px] text-ink">
-                  {formatAed(lineTotal(l))}
-                </td>
-                <td className="px-1 py-1 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
-                    disabled={lines.length === 1}
-                    aria-label={`Remove line ${idx + 1}`}
-                    className="text-ink-3 hover:text-ink disabled:opacity-30"
-                  >
-                    ×
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {lines.map((l, idx) => {
+              const isLastLine = idx === lines.length - 1;
+              return (
+                <tr key={l.key} className="border-b border-border last:border-b-0">
+                  <td className="mono px-3 py-1 text-[13px] text-text-tertiary">{idx + 1}</td>
+                  <td className="px-1 py-1">
+                    <Input
+                      ref={(el) => {
+                        if (el) descRefs.current.set(l.key, el);
+                        else descRefs.current.delete(l.key);
+                      }}
+                      value={l.description}
+                      onChange={(e) => setLine(l.key, { description: e.target.value })}
+                      placeholder="Service description…"
+                      aria-label={`Description for line ${idx + 1}`}
+                      className={`min-w-44 ${cellInputClass}`}
+                    />
+                  </td>
+                  <td className="px-1 py-1">
+                    <Input
+                      value={l.qty}
+                      onChange={(e) => setLine(l.key, { qty: e.target.value })}
+                      inputMode="numeric"
+                      aria-label={`Quantity for line ${idx + 1}`}
+                      className={`mono w-14 text-right ${cellInputClass}`}
+                    />
+                  </td>
+                  {feeCell(l, "govt", "Govt fee", isLastLine)}
+                  {feeCell(l, "service", "Service fee", isLastLine)}
+                  {columns.map((c) => feeCell(l, c.id, c.label, isLastLine))}
+                  <td className="mono px-3 py-1 text-right text-[13px] font-medium text-foreground">
+                    {formatAed(lineTotal(l))}
+                  </td>
+                  <td className="px-1 py-1 text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
+                      disabled={lines.length === 1}
+                      aria-label={`Remove line ${idx + 1}`}
+                      title="Remove line"
+                      className="text-text-tertiary hover:text-foreground"
+                    >
+                      <X />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <div className="relative mt-2 flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, blankLine()])}>
-          + Add line
+      <div className="relative mt-3 flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => addLine()}>
+          Add line
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setSvcOpen((v) => !v)}>
+        <Button variant="ghost" size="sm" onClick={() => setSvcOpen((v) => !v)}>
           From service catalogue
         </Button>
         {svcOpen ? (
-          <div className="absolute top-9 left-24 z-30 w-80 border border-hairline-strong bg-surface shadow-lg">
+          <div className="absolute top-10 left-24 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
             <input
               value={svcQuery}
               onChange={(e) => setSvcQuery(e.target.value)}
               placeholder="Search catalogue…"
-              className="h-9 w-full border-b border-hairline bg-transparent px-3 text-[13px] text-ink outline-none placeholder:text-ink-3"
+              className="h-10 w-full border-b border-border bg-transparent px-3 text-[13px] text-foreground outline-none placeholder:text-text-tertiary"
               autoFocus
             />
             <div className="max-h-64 overflow-y-auto">
@@ -643,16 +684,16 @@ export function InvoiceEditor({
                   key={s.id}
                   type="button"
                   onClick={() => addFromCatalogue(s)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-ink hover:bg-accent"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
                 >
                   <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                  <span className="mono text-[10px] text-ink-3">
+                  <span className="mono text-[12px] text-text-tertiary">
                     {formatAed(s.govt_fee)} + {formatAed(s.service_fee)} / {s.unit}
                   </span>
                 </button>
               ))}
               {svcMatches.length === 0 ? (
-                <p className="px-3 py-3 text-[12px] text-ink-3">No catalogue matches.</p>
+                <p className="px-3 py-3 text-[13px] text-text-secondary">No catalogue matches.</p>
               ) : null}
             </div>
           </div>
@@ -660,47 +701,44 @@ export function InvoiceEditor({
       </div>
 
       {/* Meta + totals */}
-      <div className="mt-5 flex flex-wrap items-start justify-between gap-5">
-        <div className="min-w-64 flex-1 space-y-3">
+      <div className="mt-8 flex flex-wrap items-start justify-between gap-6">
+        <div className="min-w-64 flex-1 space-y-4">
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="inv-date">
-              Invoice date (defaults to today at issue)
-            </label>
+            <FieldLabel htmlFor="inv-date">Invoice date</FieldLabel>
             <Input
               id="inv-date"
               type="date"
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
-              className="mono h-8 w-44 text-[12px]"
+              className="mono w-48 text-[13px]"
             />
+            <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+              Defaults to today at issue.
+            </p>
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="inv-notes">
-              Notes (printed)
-            </label>
+            <FieldLabel htmlFor="inv-notes">Notes (printed)</FieldLabel>
             <textarea
               id="inv-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full rounded border border-hairline-strong bg-transparent p-2 text-[12.5px] text-ink outline-none focus:border-ink-3"
+              className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
             />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="inv-terms">
-              Payment terms (printed)
-            </label>
+            <FieldLabel htmlFor="inv-terms">Payment terms (printed)</FieldLabel>
             <textarea
               id="inv-terms"
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               rows={2}
-              className="w-full rounded border border-hairline-strong bg-transparent p-2 text-[12.5px] text-ink outline-none focus:border-ink-3"
+              className="w-full rounded-[8px] border border-border-strong bg-surface p-3 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
             />
           </div>
         </div>
 
-        <div className="w-full max-w-sm border border-hairline bg-surface p-4">
+        <div className="w-full max-w-sm rounded-[12px] border border-border bg-surface p-5">
           {totals.subtotalGovt > 0 ? (
             <TotalsRow label="Government fees (passthrough)" fils={totals.subtotalGovt} />
           ) : null}
@@ -719,35 +757,37 @@ export function InvoiceEditor({
           {vatRegistered && totals.vatAmount > 0 ? (
             <TotalsRow label={`VAT (${ratePct}%) on taxable fees`} fils={totals.vatAmount} />
           ) : null}
-          <div className="mt-2 flex items-baseline justify-between border-t border-hairline-strong pt-2">
-            <span className="text-[12px] font-medium text-ink">Net total</span>
-            <span className="mono text-[16px] font-medium text-ink">
-              AED {formatAed(totals.grandTotal)}
+          <div className="mt-3 flex items-baseline justify-between border-t border-border-strong pt-3">
+            <span className="text-[15px] font-[550] text-foreground">Net total</span>
+            <span className="mono text-[22px] leading-7 font-semibold text-foreground">
+              <span className="mr-1.5 text-[13px] font-normal text-text-tertiary">AED</span>
+              {formatAed(totals.grandTotal)}
             </span>
           </div>
-          <p className="mt-2 text-[10px] leading-relaxed text-ink-4">
+          <p className="mt-2 text-[12px] leading-4 text-text-tertiary">
             Display only — totals are recomputed and sealed server-side at issue.
           </p>
         </div>
       </div>
 
-      {error ? <p className="mt-3 text-right text-[11px] text-warning">{error}</p> : null}
-      <div className="mt-4 flex justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={saveDraft} disabled={saving}>
-          {saving ? "Saving…" : draftId ? "Save draft" : "Save as draft"}
+      {error ? (
+        <p className="mt-4 text-right text-[13px] leading-[19px] text-error">{error}</p>
+      ) : null}
+      <div className="mt-5 flex justify-end gap-3">
+        <Button variant="outline" onClick={saveDraft} disabled={saving}>
+          {saving ? "Saving…" : "Save draft"}
         </Button>
-        <Button size="sm" onClick={startIssue} disabled={saving}>
-          Issue invoice…
+        {/* The screen's only blue button. */}
+        <Button onClick={startIssue} disabled={saving}>
+          Issue invoice
         </Button>
       </div>
 
       {/* Mandatory pre-issue preview (D-23): slide-over, ~48% width,
           Esc/outside-click closes. Sealing happens ONLY from here. */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto p-5 sm:w-[48%] sm:max-w-[48%]">
-          <SheetTitle className="mono mb-3 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-            Preview · confirm to seal
-          </SheetTitle>
+        <SheetContent side="right" className="w-full overflow-y-auto p-6 sm:w-[48%] sm:max-w-[48%]">
+          <SheetTitle className={`mb-4 ${captionClass}`}>Preview — confirm to issue</SheetTitle>
           <InvoiceDoc
             company={company}
             vatRegistered={vatRegistered}
@@ -779,23 +819,20 @@ export function InvoiceEditor({
             notes={notes || null}
             terms={terms || null}
           />
-          <p className="mt-3 text-[11px] leading-relaxed text-ink-3">
-            Issuing allocates the next invoice number and seals this document permanently — totals
-            are recomputed server-side at that moment. Corrections afterwards happen via a new
-            document, never by editing.
+          <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
+            Issuing allocates the next invoice number and this invoice becomes permanent — it cannot
+            be edited afterwards. Totals are recomputed server-side at that moment; corrections
+            happen via a new document.
           </p>
-          {issueError ? <p className="mt-2 text-[11px] text-warning">{issueError}</p> : null}
-          <div className="mt-4 flex justify-end gap-2 pb-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPreviewOpen(false)}
-              disabled={confirming}
-            >
-              Back to editing
+          {issueError ? (
+            <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
+          ) : null}
+          <div className="mt-5 flex justify-end gap-3 pb-2">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={confirming}>
+              Keep editing
             </Button>
-            <Button size="sm" onClick={confirmIssue} disabled={confirming}>
-              {confirming ? "Issuing…" : "Confirm & Issue"}
+            <Button onClick={confirmIssue} disabled={confirming}>
+              {confirming ? "Issuing…" : "Confirm and issue"}
             </Button>
           </div>
         </SheetContent>
@@ -804,11 +841,42 @@ export function InvoiceEditor({
   );
 }
 
+function FeeColumnChip({
+  label,
+  vat,
+  onRemove,
+}: {
+  label: string;
+  vat: string;
+  onRemove?: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-sunken px-3 py-1 text-[13px] leading-[19px] text-foreground">
+      {label}
+      <span className="mono text-[11px] text-text-tertiary">{vat}</span>
+      {onRemove ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove column ${label}`}
+          title={`Remove column ${label}`}
+          className="-mr-1 rounded-full p-0.5 text-text-tertiary transition-colors hover:text-foreground"
+        >
+          <X className="size-3" />
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
 function TotalsRow({ label, fils }: { label: string; fils: number }) {
   return (
-    <div className="flex items-baseline justify-between py-0.5">
-      <span className="text-[12px] text-ink-2">{label}</span>
-      <span className="mono text-[12.5px] text-ink">AED {formatAed(fils)}</span>
+    <div className="flex items-baseline justify-between py-1">
+      <span className="text-[13px] leading-[19px] text-text-secondary">{label}</span>
+      <span className="mono text-[15px] text-foreground">
+        <span className="mr-1 text-[12px] text-text-tertiary">AED</span>
+        {formatAed(fils)}
+      </span>
     </div>
   );
 }
