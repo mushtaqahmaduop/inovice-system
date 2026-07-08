@@ -84,7 +84,7 @@ export function GlobalSearch() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-full border border-border-strong bg-transparent px-3 text-[13px] text-text-secondary transition-colors duration-150 outline-none hover:bg-bg-sunken hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="inline-flex h-9 w-full max-w-[440px] cursor-pointer items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-[13px] text-text-tertiary transition-colors duration-150 outline-none hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label="Search (Ctrl+K)"
       >
         <svg
@@ -92,13 +92,13 @@ export function GlobalSearch() {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.75"
-          className="h-3.5 w-3.5"
+          className="h-4 w-4 shrink-0"
         >
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.5 10.5L14 14" />
         </svg>
-        <span className="hidden sm:inline">Search</span>
-        <kbd className="mono hidden text-[10px] tracking-[0.08em] text-text-tertiary sm:inline">
+        <span className="hidden truncate sm:inline">Search invoices, customers…</span>
+        <kbd className="mono ml-auto hidden shrink-0 rounded border border-border-strong px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-text-tertiary sm:inline">
           Ctrl K
         </kbd>
       </button>

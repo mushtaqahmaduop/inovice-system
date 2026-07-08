@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ChevronsLeft,
+  ChevronsRight,
   FileText,
+  HelpCircle,
   LayoutDashboard,
   List,
   Plus,
@@ -102,32 +105,96 @@ function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; v
   );
 }
 
+// Hexagon brand mark with three ledger rules — an "invoice ledger" glyph.
+function BrandMark() {
+  return (
+    <svg viewBox="0 0 28 28" className="size-7 shrink-0" aria-hidden="true">
+      <polygon points="14,1.5 25.5,8 25.5,20 14,26.5 2.5,20 2.5,8" className="fill-primary" />
+      <path
+        d="M9.5 11h9M9.5 14.5h9M9.5 18h5.5"
+        stroke="white"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
   const counts = useNavCounts(pathname);
 
+  // Desktop collapse to the icon rail (persisted). Below md the sidebar is
+  // always the rail, so the toggle only matters at md+.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem("sidebar:collapsed") === "1");
+    } catch {
+      // localStorage unavailable — default expanded.
+    }
+  }, []);
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("sidebar:collapsed", next ? "1" : "0");
+      } catch {
+        // persistence is best-effort
+      }
+      return next;
+    });
+  }, []);
+
+  // Label visibility: hidden in the rail (mobile) and when collapsed; shown
+  // at md+ only when expanded.
+  const label = collapsed ? "hidden" : "hidden md:block";
+  const labelInline = collapsed ? "hidden" : "hidden md:inline";
+  const rowJustify = collapsed ? "justify-center" : "justify-center md:justify-start";
+
   return (
-    // §4.1: 240px sidebar on --bg-sunken with a right hairline; below md it
-    // collapses to a 64px icon rail — small screens keep navigation.
-    <aside className="sticky top-0 flex h-screen w-16 shrink-0 flex-col border-r border-border bg-bg-sunken md:w-60 print:!hidden">
-      <div className="px-2 pt-5 pb-2 md:px-4">
+    // §4.1: sidebar on --bg-sunken with a right hairline; below md it is a
+    // 64px icon rail, at md+ it expands to 240px unless collapsed.
+    <aside
+      data-collapsed={collapsed}
+      className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-bg-sunken print:!hidden ${
+        collapsed ? "w-16" : "w-16 md:w-60"
+      }`}
+    >
+      <div className="flex items-center gap-2 px-2 pt-5 pb-2 md:px-3">
         <Link
           href="/dashboard"
-          className="flex items-center justify-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring md:justify-start"
+          className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`}
         >
-          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-accent">
-            P
-          </span>
-          <span className="hidden min-w-0 truncate text-[14px] font-semibold tracking-tight text-foreground md:block">
-            Prestige Land
+          <BrandMark />
+          <span className={`min-w-0 flex-1 ${label}`}>
+            <span className="block truncate text-[14px] leading-4 font-semibold tracking-tight text-foreground">
+              Prestige Land
+            </span>
+            <span className="mono block truncate text-[11px] leading-4 text-text-tertiary">
+              Invoice Ledger
+            </span>
           </span>
         </Link>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`hidden size-7 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:inline-flex ${
+            collapsed ? "md:hidden" : ""
+          }`}
+        >
+          <ChevronsLeft className="size-4" strokeWidth={1.75} />
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2">
         {NAV_SECTIONS.filter((s) => !s.adminOnly || role === "admin").map((section) => (
           <div key={section.label} className="mb-3">
-            <p className="mt-3 hidden px-3 pb-1 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase md:block">
+            <p
+              className={`mt-3 px-3 pb-1 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase ${label}`}
+            >
               {section.label}
             </p>
             {section.items
@@ -142,13 +209,15 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                   return (
                     <span
                       key={item.href}
-                      className="flex h-[34px] cursor-default items-center justify-center gap-2.5 rounded-full px-3 text-[14px] text-text-tertiary md:justify-start"
+                      className={`flex h-[34px] cursor-default items-center gap-2.5 rounded-full px-3 text-[14px] text-text-tertiary ${rowJustify}`}
                       aria-disabled="true"
                       title={`${item.label} — arrives with task ${item.task}`}
                     >
                       <NavIcon icon={item.icon} />
-                      <span className="hidden flex-1 md:block">{item.label}</span>
-                      <span className="mono hidden text-[10px] tracking-[0.08em] text-text-tertiary md:inline">
+                      <span className={`flex-1 ${label}`}>{item.label}</span>
+                      <span
+                        className={`mono text-[10px] tracking-[0.08em] text-text-tertiary ${labelInline}`}
+                      >
                         {item.task}
                       </span>
                     </span>
@@ -164,16 +233,22 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                       // §5.5: full-width pill, 34px; active = soft-gray pill
                       // (NOT a blue fill), hover = neutral-soft.
                       active
-                        ? "relative flex h-[34px] items-center justify-center gap-2.5 rounded-full bg-nav-active px-3 text-[14px] font-[550] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring md:justify-start"
-                        : "relative flex h-[34px] items-center justify-center gap-2.5 rounded-full px-3 text-[14px] font-medium text-text-secondary transition-colors duration-150 outline-none hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring md:justify-start"
+                        ? `relative flex h-[34px] items-center gap-2.5 rounded-full bg-nav-active px-3 text-[14px] font-[550] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
+                        : `relative flex h-[34px] items-center gap-2.5 rounded-full px-3 text-[14px] font-medium text-text-secondary transition-colors duration-150 outline-none hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
                     }
                   >
                     <NavIcon icon={item.icon} />
-                    <span className="hidden flex-1 truncate md:block">{item.label}</span>
+                    <span className={`flex-1 truncate ${label}`}>{item.label}</span>
                     {item.countKey ? (
-                      // In the rail the badge rides the icon's corner; at
-                      // md+ it sits in flow at the row's right edge.
-                      <span className="absolute top-0 right-0.5 md:static">
+                      // In the rail/collapsed the badge rides the icon's
+                      // corner; expanded it sits in flow at the row's right.
+                      <span
+                        className={
+                          collapsed
+                            ? "absolute top-0 right-0.5"
+                            : "absolute top-0 right-0.5 md:static"
+                        }
+                      >
                         <CountBadge kind={item.countKey} value={counts[item.countKey]} />
                       </span>
                     ) : null}
@@ -183,6 +258,41 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
           </div>
         ))}
       </nav>
+
+      {/* When collapsed, a lone expand button so the rail is recoverable. */}
+      {collapsed ? (
+        <div className="hidden justify-center p-2 md:flex">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="flex size-9 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <ChevronsRight className="size-4" strokeWidth={1.75} />
+          </button>
+        </div>
+      ) : null}
+
+      <div className="border-t border-border p-2">
+        <a
+          href="https://github.com/mushtaqahmaduop/inovice-system#readme"
+          target="_blank"
+          rel="noreferrer"
+          title="Need help? View documentation"
+          className={`flex h-[34px] items-center gap-2.5 rounded-full px-3 text-text-secondary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${rowJustify}`}
+        >
+          <HelpCircle className="size-4 shrink-0" strokeWidth={1.75} />
+          <span className={`min-w-0 flex-1 ${label}`}>
+            <span className="block text-[13px] leading-4 font-medium text-foreground">
+              Need help?
+            </span>
+            <span className="block truncate text-[12px] leading-4 text-text-tertiary">
+              View documentation
+            </span>
+          </span>
+        </a>
+      </div>
     </aside>
   );
 }
