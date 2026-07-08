@@ -12,6 +12,7 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
+import { MoreVertical, Eye, Printer, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
@@ -20,6 +21,77 @@ import { formatAed } from "@/lib/money";
 import type { InvoiceListRow } from "./page";
 
 const col = createColumnHelper<InvoiceListRow>();
+
+// Per-row actions menu (owner mockup ⋮). Self-contained open state so it
+// doesn't force the memoized column set to rebuild; a full-screen backdrop
+// catches the outside click. The row itself is already click-to-open, so
+// this is a discoverable shortcut to Open / Print.
+function RowMenu({
+  status,
+  onOpen,
+  onPrint,
+}: {
+  status: InvoiceListRow["status"];
+  onOpen: () => void;
+  onPrint: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative flex justify-end" onClick={(e) => e.stopPropagation()}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Row actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <MoreVertical />
+      </Button>
+      {open ? (
+        <>
+          <button
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="fixed inset-0 z-20 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            role="menu"
+            className="absolute top-8 right-0 z-30 w-40 overflow-hidden rounded-[10px] border border-border bg-surface-raised py-1 shadow-[var(--shadow-popover)]"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onOpen();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+            >
+              {status === "draft" ? <Pencil className="size-4" /> : <Eye className="size-4" />}
+              {status === "draft" ? "Edit draft" : "Open"}
+            </button>
+            {status === "issued" ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onPrint();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+              >
+                <Printer className="size-4" /> Print
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 // §2.3: dates in tables are mono and unambiguous — "07 Jul 2026".
 const dateFmt = new Intl.DateTimeFormat("en-GB", {
@@ -113,7 +185,7 @@ export function InvoicesTable({
         header: "Number",
         cell: (c) =>
           c.getValue() ? (
-            <span className="mono text-[13px] font-medium text-foreground">{c.getValue()}</span>
+            <span className="mono text-[13px] font-semibold text-primary">{c.getValue()}</span>
           ) : (
             <span className="text-[13px] text-text-tertiary">Draft</span>
           ),
@@ -157,6 +229,22 @@ export function InvoicesTable({
             <StatusChip variant={chip.variant} title={chip.title}>
               {chip.label}
             </StatusChip>
+          );
+        },
+      }),
+      col.display({
+        id: "actions",
+        header: "",
+        cell: (c) => {
+          const r = c.row.original;
+          return (
+            <RowMenu
+              status={r.status}
+              onOpen={() =>
+                router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`)
+              }
+              onPrint={() => router.push(`/invoices/${r.id}?print=1`)}
+            />
           );
         },
       }),
@@ -323,25 +411,37 @@ export function InvoicesTable({
       </div>
 
       {table.getPageCount() > 1 ? (
-        <div className="mt-3 flex items-center justify-end gap-2">
-          <span className="mono text-[12px] text-text-tertiary">
-            {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
-          </span>
+        <div className="mt-4 flex items-center justify-center gap-1.5">
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             disabled={!table.getCanPreviousPage()}
             onClick={() => table.previousPage()}
+            aria-label="Previous page"
           >
-            Prev
+            <ChevronLeft />
           </Button>
+          {Array.from({ length: table.getPageCount() }, (_, i) => i).map((p) => (
+            <Button
+              key={p}
+              variant={p === table.getState().pagination.pageIndex ? "default" : "outline"}
+              size="icon-sm"
+              onClick={() => table.setPageIndex(p)}
+              aria-label={`Page ${p + 1}`}
+              aria-current={p === table.getState().pagination.pageIndex ? "page" : undefined}
+              className="mono"
+            >
+              {p + 1}
+            </Button>
+          ))}
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             disabled={!table.getCanNextPage()}
             onClick={() => table.nextPage()}
+            aria-label="Next page"
           >
-            Next
+            <ChevronRight />
           </Button>
         </div>
       ) : null}

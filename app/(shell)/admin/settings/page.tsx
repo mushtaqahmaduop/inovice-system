@@ -55,11 +55,9 @@ export default async function SettingsPage() {
           Company details and invoicing defaults.
         </p>
       </header>
-      <div className="max-w-2xl">
+      <div className="max-w-3xl space-y-6">
         <SettingsForm settings={settings as SettingsRow} />
-        <div className="mt-10">
-          <PaymentMethodsManager methods={(methods ?? []) as PaymentMethodRow[]} />
-        </div>
+        <PaymentMethodsManager methods={(methods ?? []) as PaymentMethodRow[]} />
       </div>
     </div>
   );

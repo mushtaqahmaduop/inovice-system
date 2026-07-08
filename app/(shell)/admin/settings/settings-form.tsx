@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldLabel, FieldHint } from "@/components/ui/field";
@@ -29,16 +30,35 @@ type FormValues = {
   dueDaysDefault: string;
 };
 
-const TEXT_FIELDS: { name: keyof FormValues; label: string; hint?: string }[] = [
+// Company & Branding fields. Arabic name is RTL and printed on the bilingual
+// invoice (client confirmed English + Arabic on the printed copy).
+const TEXT_FIELDS: {
+  name: keyof FormValues;
+  label: string;
+  hint?: string;
+  span2?: boolean;
+  rtl?: boolean;
+}[] = [
   { name: "companyName", label: "Company name *" },
-  { name: "companyNameAr", label: "Company name (Arabic)", hint: "pending Q-08" },
-  { name: "tagline", label: "Tagline", hint: "printed under the company name" },
-  { name: "trn", label: "TRN", hint: "kept during deregistration; not printed while unregistered" },
-  { name: "address", label: "Address" },
+  {
+    name: "companyNameAr",
+    label: "Company name (Arabic)",
+    hint: "Printed on bilingual (English + Arabic) invoices.",
+    rtl: true,
+  },
+  { name: "tagline", label: "Tagline", hint: "Displayed under the company name." },
+  { name: "trn", label: "TRN", hint: "Used on invoices and reports as per UAE regulations." },
+  { name: "address", label: "Address", span2: true },
   { name: "phone", label: "Phone" },
   { name: "email", label: "Email" },
-  { name: "bankDetails", label: "Bank details", hint: "invoice footer line" },
+  { name: "bankDetails", label: "Bank details", span2: true },
 ];
+
+const SECTION =
+  "rounded-[14px] border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
+const SECTION_LABEL = "mb-5 text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase";
+const TEXTAREA =
+  "w-full rounded-[8px] border border-border-strong bg-surface p-2.5 text-[13px] leading-[19px] text-foreground transition-colors outline-none placeholder:text-text-tertiary focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken";
 
 export function SettingsForm({ settings }: { settings: SettingsRow }) {
   const router = useRouter();
@@ -113,34 +133,18 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
   const vatOn = form.watch("vatRegistered");
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-      <section className="border border-hairline bg-surface p-6">
-        <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">Company</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {TEXT_FIELDS.map((f) => (
-            <div
-              key={f.name}
-              className={f.name === "address" || f.name === "bankDetails" ? "sm:col-span-2" : ""}
-            >
-              <FieldLabel htmlFor={`s-${f.name}`}>{f.label}</FieldLabel>
-              <Input
-                id={`s-${f.name}`}
-                {...form.register(f.name as "companyName")}
-                className="text-[13px]"
-              />
-              {f.hint ? <FieldHint>{f.hint}</FieldHint> : null}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="border border-hairline bg-surface p-6">
-        <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">VAT</p>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <section className={SECTION}>
+        <p className={SECTION_LABEL}>VAT</p>
         <label className="flex items-start gap-2.5">
-          <input type="checkbox" {...form.register("vatRegistered")} className="mt-0.5" />
+          <input
+            type="checkbox"
+            {...form.register("vatRegistered")}
+            className="mt-0.5 size-4 accent-[var(--accent)]"
+          />
           <span>
-            <span className="block text-[13px] text-ink">VAT registered</span>
-            <span className="block text-[11px] leading-relaxed text-ink-3">
+            <span className="block text-[14px] font-medium text-foreground">VAT registered</span>
+            <span className="block text-[12px] leading-relaxed text-text-tertiary">
               Affects <strong>future</strong> invoices only — every issued invoice keeps the VAT
               state and rate sealed into it at issue time (D-16).
             </span>
@@ -158,8 +162,8 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
         </div>
       </section>
 
-      <section className="border border-hairline bg-surface p-6">
-        <p className="mono mb-5 text-[10px] tracking-[0.15em] text-ink-3 uppercase">Invoicing</p>
+      <section className={SECTION}>
+        <p className={SECTION_LABEL}>Invoices</p>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <FieldLabel htmlFor="s-format">Number format</FieldLabel>
@@ -175,12 +179,12 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
             <select
               id="s-paper"
               {...form.register("paperSize")}
-              className="mono h-9 w-full rounded border border-hairline-strong bg-surface px-2 text-[13px] text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
+              className="mono h-[38px] w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[13px] text-foreground transition-colors outline-none focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] dark:bg-bg-sunken"
             >
               <option value="A4">A4</option>
               <option value="A5">A5</option>
             </select>
-            <FieldHint>per Q-07 — the shop prints A4/A5</FieldHint>
+            <FieldHint>PDF / thermal printers — A4 / A5.</FieldHint>
           </div>
           <div>
             <FieldLabel htmlFor="s-due">Default due days</FieldLabel>
@@ -190,7 +194,7 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
               inputMode="numeric"
               className="mono text-right text-[13px]"
             />
-            <FieldHint>overdue convention (Q-11: 7 days)</FieldHint>
+            <FieldHint>Invoice expiration — 10–120 days (Q-11: 7).</FieldHint>
           </div>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -200,7 +204,7 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
               id="s-notes"
               {...form.register("invoiceNotesDefault")}
               rows={3}
-              className="w-full rounded border border-hairline-strong bg-transparent p-2.5 text-[13px] text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
+              className={TEXTAREA}
             />
           </div>
           <div>
@@ -209,23 +213,38 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
               id="s-terms"
               {...form.register("invoiceTermsDefault")}
               rows={3}
-              className="w-full rounded border border-hairline-strong bg-transparent p-2.5 text-[13px] text-ink transition-colors outline-none focus-visible:border-ring focus-visible:shadow-[var(--shadow-focus)]"
+              className={TEXTAREA}
             />
           </div>
         </div>
-        <FieldHint>Logo upload pending the client&apos;s logo file (Q-02 remainder).</FieldHint>
       </section>
 
-      <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-hairline bg-paper px-1 py-3">
+      <section className={SECTION}>
+        <p className={SECTION_LABEL}>Company &amp; Branding</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {TEXT_FIELDS.map((f) => (
+            <div key={f.name} className={f.span2 ? "sm:col-span-2" : ""}>
+              <FieldLabel htmlFor={`s-${f.name}`}>{f.label}</FieldLabel>
+              <Input
+                id={`s-${f.name}`}
+                {...form.register(f.name as "companyName")}
+                dir={f.rtl ? "rtl" : undefined}
+                className={`text-[13px] ${f.rtl ? "text-right" : ""}`}
+              />
+              {f.hint ? <FieldHint>{f.hint}</FieldHint> : null}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-border bg-background px-1 py-3">
         {form.formState.isDirty && status === "idle" ? (
-          <span className="mono text-[10px] tracking-[0.1em] text-ink-3 uppercase">
-            unsaved changes
-          </span>
+          <span className="text-[12px] text-text-tertiary">Unsaved changes</span>
         ) : null}
-        {status === "saved" ? <span className="text-[11px] text-success">Saved.</span> : null}
-        {serverError ? <span className="text-[11px] text-warning">{serverError}</span> : null}
-        <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Saving…" : "Save settings"}
+        {status === "saved" ? <span className="text-[13px] text-success">Saved.</span> : null}
+        {serverError ? <span className="text-[13px] text-error">{serverError}</span> : null}
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          <Save /> {form.formState.isSubmitting ? "Saving…" : "Save settings"}
         </Button>
       </div>
     </form>
