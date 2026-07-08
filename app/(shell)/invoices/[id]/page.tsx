@@ -132,15 +132,17 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     <div className="mx-auto max-w-3xl px-6 py-8 print:max-w-none print:p-0">
       <style>{pageStyle}</style>
       <div className="mb-4 flex items-center justify-between print:hidden">
-        <div className="flex items-baseline gap-3">
-          <p className="mono text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-            {invoice.invoice_number} · {invoice.status === "issued" ? "sealed" : invoice.status}
-          </p>
+        <div className="flex items-center gap-2.5">
+          <p className="mono text-[14px] font-semibold text-foreground">{invoice.invoice_number}</p>
           {invoice.status === "issued" ? (
-            <span className="mono border border-hairline-strong px-1.5 py-0.5 text-[9px] tracking-[0.14em] text-ink-2 uppercase">
-              ⬒ Sealed — immutable
+            <span className="inline-flex items-center rounded-full border border-accent-border bg-accent-soft px-2.5 py-0.5 text-[12px] font-medium text-primary">
+              Sealed — immutable
             </span>
-          ) : null}
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-danger/40 bg-danger-soft px-2.5 py-0.5 text-[12px] font-medium text-danger">
+              Voided
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           {ctx.role === "admin" && invoice.status === "issued" ? (
@@ -149,7 +151,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <PrintButton invoiceId={invoice.id} />
           <Link
             href="/invoices/new"
-            className="inline-flex h-8 items-center border border-hairline-strong bg-surface px-3 text-xs text-ink-2 hover:text-ink"
+            className="inline-flex h-8 items-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
           >
             New invoice
           </Link>

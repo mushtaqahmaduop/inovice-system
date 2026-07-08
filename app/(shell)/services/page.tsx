@@ -27,7 +27,10 @@ export default async function ServicesPage() {
   const visible = ctx.role === "admin" ? rows : rows.filter((r) => r.deleted_at === null);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
+    <div className="w-full px-5 py-6 md:px-8">
+      <header className="mb-6">
+        <h1 className="text-[22px] leading-7 font-semibold text-foreground">Services</h1>
+      </header>
       <ServicesView rows={visible} isAdmin={ctx.role === "admin"} />
     </div>
   );

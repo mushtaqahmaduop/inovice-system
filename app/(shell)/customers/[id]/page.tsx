@@ -50,42 +50,44 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   const balance = totalInvoiced - totalPaid;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div className="w-full px-5 py-6 md:px-8">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="mono mb-1 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
+          <p className="text-[12px] font-medium tracking-[0.04em] text-text-tertiary uppercase">
             Customer ledger
           </p>
           <h1
-            className={`text-[16px] font-medium tracking-tight text-ink ${customer.deleted_at ? "line-through" : ""}`}
+            className={`mt-1 text-[22px] leading-7 font-semibold text-foreground ${customer.deleted_at ? "line-through" : ""}`}
           >
             {customer.name}
           </h1>
-          <p className="text-[11px] text-ink-3">
-            <span className="mono uppercase">
-              {customer.type === "walk_in" ? "walk-in" : "regular"}
-            </span>
+          <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+            {customer.type === "walk_in" ? "Walk-in" : "Regular"}
             {customer.trn ? (
               <>
-                {" "}
-                · TRN <span className="mono">{customer.trn}</span>
+                {" · TRN "}
+                <span className="mono">{customer.trn}</span>
               </>
             ) : null}
             {customer.phone ? (
               <>
-                {" "}
-                · <span className="mono">{customer.phone}</span>
+                {" · "}
+                <span className="mono">{customer.phone}</span>
               </>
             ) : null}
             {customer.deleted_at ? " · deleted" : null}
           </p>
-          {customer.address ? <p className="text-[11px] text-ink-3">{customer.address}</p> : null}
+          {customer.address ? (
+            <p className="mt-0.5 text-[13px] leading-[19px] text-text-secondary">
+              {customer.address}
+            </p>
+          ) : null}
         </div>
         <Link
           href="/customers"
-          className="mono text-[11px] text-primary underline-offset-2 hover:underline"
+          className="text-[13px] text-primary underline-offset-2 hover:underline"
         >
-          ← all customers
+          ← All customers
         </Link>
       </div>
 

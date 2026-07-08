@@ -48,14 +48,18 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
-      <p className="mono mb-1 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-        Admin · Settings
-      </p>
-      <h1 className="mb-6 text-[15px] font-medium tracking-tight text-ink">Company & invoicing</h1>
-      <SettingsForm settings={settings as SettingsRow} />
-      <div className="mt-10">
-        <PaymentMethodsManager methods={(methods ?? []) as PaymentMethodRow[]} />
+    <div className="w-full px-5 py-6 md:px-8">
+      <header className="mb-6">
+        <h1 className="text-[22px] leading-7 font-semibold text-foreground">Settings</h1>
+        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+          Company details and invoicing defaults.
+        </p>
+      </header>
+      <div className="max-w-2xl">
+        <SettingsForm settings={settings as SettingsRow} />
+        <div className="mt-10">
+          <PaymentMethodsManager methods={(methods ?? []) as PaymentMethodRow[]} />
+        </div>
       </div>
     </div>
   );
