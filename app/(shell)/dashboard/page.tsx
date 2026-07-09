@@ -136,8 +136,8 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="w-full px-5 py-6 md:px-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="w-full px-5 py-4 md:px-8">
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[22px] leading-7 font-semibold text-foreground">Dashboard</h1>
           <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
       </header>
 
       {/* KPI row — the client's named figure leads as a filled accent hero. */}
-      <div className="mb-5 grid gap-4 lg:grid-cols-3">
+      <div className="mb-4 grid gap-4 lg:grid-cols-3">
         <HeroCard total={outstandingTotal} settled={debtors.size === 0} count={debtors.size} />
         <KpiCard
           label="Invoiced this month"
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Cash flow + recent activity */}
-      <div className="mb-5 grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+      <div className="mb-4 grid gap-4 lg:grid-cols-[1.7fr_1fr]">
         <section className="rounded-[14px] border border-border bg-surface p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
