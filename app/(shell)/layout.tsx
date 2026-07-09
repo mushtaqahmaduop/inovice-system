@@ -6,6 +6,7 @@ import { PageTitle } from "@/components/shell/page-title";
 import { GlobalSearch } from "@/components/shell/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
+import { Toaster } from "@/components/ui/toast";
 
 async function signOut() {
   "use server";
@@ -43,6 +44,7 @@ export default async function ShellLayout({ children }: { children: React.ReactN
           <span className="mono">Version 1.0.0</span>
         </footer>
       </div>
+      <Toaster />
     </div>
   );
 }

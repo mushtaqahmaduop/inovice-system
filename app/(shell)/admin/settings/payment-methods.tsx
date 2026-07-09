@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import type { PaymentMethodRow } from "./page";
 
 // Payment methods (D-25/R-2): admin edits rows; nothing is ever deleted —
@@ -13,12 +14,10 @@ import type { PaymentMethodRow } from "./page";
 export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[] }) {
   const router = useRouter();
   const [newLabel, setNewLabel] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function call(url: string, body: unknown) {
     setBusy(true);
-    setError(null);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,15 +28,19 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
       router.refresh();
       return true;
     }
-    setError((await res.json().catch(() => null))?.error ?? "Request failed");
+    toast.error((await res.json().catch(() => null))?.error ?? "Request failed");
     return false;
   }
 
   async function add() {
     if (!newLabel.trim()) return;
     const maxPos = methods.reduce((m, x) => Math.max(m, x.position), 0);
-    if (await call("/api/admin/payment-methods", { label: newLabel.trim(), position: maxPos + 1 }))
+    if (
+      await call("/api/admin/payment-methods", { label: newLabel.trim(), position: maxPos + 1 })
+    ) {
       setNewLabel("");
+      toast.success("Payment method added");
+    }
   }
 
   async function move(idx: number, dir: -1 | 1) {
@@ -89,7 +92,14 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
               variant="outline"
               size="sm"
               disabled={busy}
-              onClick={() => call(`/api/admin/payment-methods/${m.id}`, { isActive: !m.is_active })}
+              onClick={() =>
+                void call(`/api/admin/payment-methods/${m.id}`, { isActive: !m.is_active }).then(
+                  (ok) => {
+                    if (ok)
+                      toast.success(m.is_active ? "Method deactivated" : "Method reactivated");
+                  }
+                )
+              }
             >
               {m.is_active ? "Deactivate" : "Reactivate"}
             </Button>
@@ -119,7 +129,6 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
           Add method
         </Button>
       </div>
-      {error ? <p className="mt-2 text-[13px] text-error">{error}</p> : null}
     </section>
   );
 }

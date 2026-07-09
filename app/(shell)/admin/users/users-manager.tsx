@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { FieldLabel, FieldHint } from "@/components/ui/field";
 
 type Profile = {
@@ -29,7 +30,6 @@ const PAGE_SIZE = 10;
 // dots, and pagination. Every action is re-authorized server-side.
 export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId: string }) {
   const router = useRouter();
-  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ fullName: "", email: "", password: "", role: "staff" });
@@ -39,7 +39,6 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
 
   async function call(path: string, body: unknown) {
     setBusy(true);
-    setError("");
     setNotice("");
     const res = await fetch(path, {
       method: "POST",
@@ -49,7 +48,7 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
     const data = await res.json().catch(() => null);
     setBusy(false);
     if (!res.ok) {
-      setError(data?.error ?? "Request failed.");
+      toast.error(data?.error ?? "Request failed.");
       return false;
     }
     router.refresh();
@@ -70,7 +69,6 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
 
   return (
     <div className="space-y-6">
-      {error && <p className="text-[13px] text-error">{error}</p>}
       {notice && <p className="text-[13px] text-success">{notice}</p>}
 
       {/* New account */}
@@ -233,7 +231,9 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
                             size="sm"
                             disabled={busy}
                             onClick={() =>
-                              call(`/api/admin/users/${p.id}`, { action: "deactivate" })
+                              call(`/api/admin/users/${p.id}`, { action: "deactivate" }).then(
+                                (ok) => ok && toast.success(`${p.full_name} deactivated`)
+                              )
                             }
                           >
                             Deactivate
@@ -244,7 +244,9 @@ export function UsersManager({ profiles, selfId }: { profiles: Profile[]; selfId
                             size="sm"
                             disabled={busy}
                             onClick={() =>
-                              call(`/api/admin/users/${p.id}`, { action: "reactivate" })
+                              call(`/api/admin/users/${p.id}`, { action: "reactivate" }).then(
+                                (ok) => ok && toast.success(`${p.full_name} reactivated`)
+                              )
                             }
                           >
                             Reactivate

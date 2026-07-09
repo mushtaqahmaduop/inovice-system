@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { FieldLabel } from "@/components/ui/field";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
@@ -380,6 +381,7 @@ export function InvoiceEditor({
     setSaving(false);
     if (!id) return;
     lastSavedRef.current = JSON.stringify(payload());
+    toast.success("Draft saved");
     if (wasNew) {
       router.push(`/invoices/${id}/edit?saved=1`);
     } else {
@@ -464,6 +466,9 @@ export function InvoiceEditor({
           }).catch(() => {});
         }
       }
+      toast.success(
+        body?.invoiceNumber ? `Invoice ${body.invoiceNumber} issued` : "Invoice issued"
+      );
       // Owner request: land on the sealed invoice and print it as issued.
       router.push(`/invoices/${draftId}?print=1`);
       return; // stay disabled while navigating

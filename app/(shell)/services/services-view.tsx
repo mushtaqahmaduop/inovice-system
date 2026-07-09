@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { formatAed } from "@/lib/money";
 import { ServiceFormDialog } from "./service-form";
 import type { ServiceRow } from "./page";
@@ -68,7 +69,7 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
   const current = Math.min(page, pageCount);
   const pageRows = visible.slice((current - 1) * perPage, current * perPage);
 
-  async function mutate(id: string, body: unknown) {
+  async function mutate(id: string, body: unknown, successMsg = "Service updated") {
     setBusyId(id);
     const res = await fetch(`/api/services/${id}`, {
       method: "POST",
@@ -76,8 +77,10 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
       body: JSON.stringify(body),
     });
     setBusyId(null);
-    if (res.ok) router.refresh();
-    else window.alert((await res.json().catch(() => null))?.error ?? "Request failed");
+    if (res.ok) {
+      toast.success(successMsg);
+      router.refresh();
+    } else toast.error((await res.json().catch(() => null))?.error ?? "Request failed");
   }
 
   return (
@@ -172,7 +175,11 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
                       size="icon-sm"
                       disabled={busyId === s.id}
                       onClick={() =>
-                        mutate(s.id, { action: "update", data: { isActive: !s.is_active } })
+                        mutate(
+                          s.id,
+                          { action: "update", data: { isActive: !s.is_active } },
+                          s.is_active ? "Service deactivated" : "Service activated"
+                        )
                       }
                       aria-label={s.is_active ? `Deactivate ${s.name}` : `Activate ${s.name}`}
                       title={s.is_active ? "Deactivate" : "Activate"}
@@ -186,7 +193,7 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
                       disabled={busyId === s.id}
                       onClick={() => {
                         if (window.confirm("Remove from catalogue? (Soft delete — restorable.)"))
-                          void mutate(s.id, { action: "soft_delete" });
+                          void mutate(s.id, { action: "soft_delete" }, "Service removed");
                       }}
                       aria-label={`Delete ${s.name}`}
                       title="Delete"
@@ -201,7 +208,7 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
                     variant="outline"
                     size="sm"
                     disabled={busyId === s.id}
-                    onClick={() => mutate(s.id, { action: "restore" })}
+                    onClick={() => mutate(s.id, { action: "restore" }, "Service restored")}
                   >
                     <RotateCcw /> Restore
                   </Button>

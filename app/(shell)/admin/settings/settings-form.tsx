@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { FieldLabel, FieldHint } from "@/components/ui/field";
 import type { SettingsRow } from "./page";
 
@@ -123,6 +124,7 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
     });
     if (res.ok) {
       setStatus("saved");
+      toast.success("Settings saved");
       router.refresh();
     } else {
       setStatus("error");

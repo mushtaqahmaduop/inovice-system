@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { aedToFils, formatAed } from "@/lib/money";
 
 export type PaymentRow = {
@@ -59,7 +60,7 @@ export function PaymentsPanel({
       router.refresh();
       return true;
     }
-    setError((await res.json().catch(() => null))?.error ?? "Request failed");
+    toast.error((await res.json().catch(() => null))?.error ?? "Request failed");
     return false;
   }
 
@@ -87,6 +88,7 @@ export function PaymentsPanel({
     ) {
       setAmount("");
       setReference("");
+      toast.success(`Payment recorded · AED ${formatAed(fils)}`);
     }
   }
 
@@ -147,7 +149,9 @@ export function PaymentsPanel({
                         "Reverse this payment? A negative correction row is added — history is never edited."
                       )
                     )
-                      void call({ type: "reverse", paymentId: p.id });
+                      void call({ type: "reverse", paymentId: p.id }).then((ok) => {
+                        if (ok) toast.success("Payment reversed");
+                      });
                   }}
                 >
                   Reverse
