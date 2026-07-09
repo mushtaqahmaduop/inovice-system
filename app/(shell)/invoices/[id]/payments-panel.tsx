@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
@@ -38,6 +39,7 @@ export function PaymentsPanel({
   paymentStatus: string | null;
 }) {
   const router = useRouter();
+  const [listRef] = useAutoAnimate<HTMLDivElement>();
   const [amount, setAmount] = useState("");
   const [methodId, setMethodId] = useState(methods[0]?.id ?? "");
   const [receivedOn, setReceivedOn] = useState(new Date().toISOString().slice(0, 10));
@@ -123,7 +125,7 @@ export function PaymentsPanel({
       </div>
 
       {payments.length > 0 ? (
-        <div className="mb-4 divide-y divide-hairline border border-hairline">
+        <div ref={listRef} className="mb-4 divide-y divide-hairline border border-hairline">
           {payments.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
               <span className="mono w-24 text-[11.5px] text-ink-3">{p.received_on}</span>

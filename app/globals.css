@@ -260,6 +260,41 @@
   }
 }
 
+/* §8 motion — page content: one orchestrated 250ms fade + 8px rise on route
+   change (no staggered per-card animation). Done in pure CSS, not a library
+   (LIBRARIES_GUIDE §0.1): the keyframe ends at `transform: none`, so it never
+   leaves a lingering transform that would reparent the `fixed inset-0`
+   dialogs. Replayed on navigation by keying the wrapper on the pathname. */
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.page-enter {
+  /* `both`: apply the 0% frame immediately (no first-paint flash of the final
+     state) and hold 100% (transform:none) after, so `fixed` children are safe. */
+  animation: page-rise var(--dur-slow) var(--ease-out) both;
+}
+
+/* §8 — honour the OS "reduce motion" setting everywhere (mirrors the future
+   Settings segmented control). Kills the page rise, auto-animate list moves,
+   NumberFlow rolls, and any transition without touching layout. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Print (task 6.1, D-09) ─────────────────────────────────────────────
    The shell chrome carries Tailwind print:hidden; the document itself is
    components/invoice/invoice-doc.tsx (client's sample layout). A4 is the

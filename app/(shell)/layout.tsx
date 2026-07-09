@@ -6,6 +6,7 @@ import { PageTitle } from "@/components/shell/page-title";
 import { GlobalSearch } from "@/components/shell/global-search";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
+import { PageTransition } from "@/components/shell/page-transition";
 import { Toaster } from "@/components/ui/toast";
 
 async function signOut() {
@@ -38,7 +39,9 @@ export default async function ShellLayout({ children }: { children: React.ReactN
             <UserMenu name={ctx.fullName} role={ctx.role} signOut={signOut} />
           </div>
         </header>
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          <PageTransition>{children}</PageTransition>
+        </main>
         <footer className="flex shrink-0 items-center justify-between border-t border-border px-5 py-4 text-[12px] text-text-tertiary md:px-8 print:hidden">
           <span>© 2026 Prestige Land. All rights reserved.</span>
           <span className="mono">Version 1.0.0</span>
