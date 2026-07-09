@@ -14,6 +14,7 @@ import {
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { formatAed } from "@/lib/money";
+import { AedFlow } from "@/components/ui/aed-flow";
 import { CashFlowChart, type CashFlowPoint } from "@/components/dashboard/cash-flow-chart";
 
 // Dashboard (task 7.1 → redesign slice 7, "premium" look). Full-width, KPI
@@ -157,14 +158,14 @@ export default async function DashboardPage() {
         <HeroCard total={outstandingTotal} settled={debtors.size === 0} count={debtors.size} />
         <KpiCard
           label="Invoiced this month"
-          value={formatAed(monthTotal)}
+          valueFils={monthTotal}
           icon={<Wallet className="size-5" />}
           foot={`${monthRows.length} sealed`}
           trend={pctTrend(monthTotal, lastTotal)}
         />
         <KpiCard
           label="VAT collected this month"
-          value={formatAed(monthVat)}
+          valueFils={monthVat}
           icon={<Percent className="size-5" />}
           trend={pctTrend(monthVat, lastVat)}
         />
@@ -324,7 +325,7 @@ function HeroCard({ total, settled, count }: { total: number; settled: boolean; 
       </p>
       <p className="mt-3 text-[30px] leading-9 font-semibold">
         <span className="mr-1.5 align-middle text-[15px] font-normal text-white/70">AED</span>
-        <span className="mono tracking-tight">{formatAed(total)}</span>
+        <AedFlow fils={total} className="mono tracking-tight" />
       </p>
       <p className="mt-3 text-[13px] text-white/80">
         {settled
@@ -338,13 +339,13 @@ function HeroCard({ total, settled, count }: { total: number; settled: boolean; 
 
 function KpiCard({
   label,
-  value,
+  valueFils,
   icon,
   foot,
   trend,
 }: {
   label: string;
-  value: string;
+  valueFils: number;
   icon: React.ReactNode;
   foot?: string;
   trend: Trend;
@@ -356,7 +357,7 @@ function KpiCard({
       </p>
       <p className="mt-3 text-[26px] leading-8 font-semibold text-foreground">
         <span className="mr-1.5 align-middle text-[14px] font-normal text-text-tertiary">AED</span>
-        <span className="mono tracking-tight">{value}</span>
+        <AedFlow fils={valueFils} className="mono tracking-tight" />
       </p>
       <div className="mt-3 flex items-center gap-2 text-[12px]">
         {trend ? (

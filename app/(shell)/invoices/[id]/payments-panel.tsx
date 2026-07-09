@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { AedFlow } from "@/components/ui/aed-flow";
 import { aedToFils, formatAed } from "@/lib/money";
 
 export type PaymentRow = {
@@ -99,18 +100,23 @@ export function PaymentsPanel({
         <p className="text-[12px] text-ink-2">
           <span className="mono">{paymentStatus ?? "—"}</span>
           {" · paid "}
-          <span className="mono">AED {formatAed(paidTotal)}</span>
+          <span className="mono">
+            AED <AedFlow fils={paidTotal} />
+          </span>
           {" of "}
           <span className="mono">AED {formatAed(grandTotal)}</span>
           {overpaid ? (
             <span className="text-warning">
               {" "}
-              · overpaid by AED {formatAed(paidTotal - grandTotal)}
+              · overpaid by AED <AedFlow fils={paidTotal - grandTotal} className="mono" />
             </span>
           ) : outstanding > 0 ? (
             <>
               {" "}
-              · outstanding <span className="mono">AED {formatAed(outstanding)}</span>
+              · outstanding{" "}
+              <span className="mono">
+                AED <AedFlow fils={outstanding} />
+              </span>
             </>
           ) : null}
         </p>
