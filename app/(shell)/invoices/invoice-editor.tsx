@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import {
   X,
   Info,
@@ -145,6 +146,8 @@ export function InvoiceEditor({
   const [notes, setNotes] = useState(existing ? (existing.notes ?? "") : defaultNotes);
   const [terms, setTerms] = useState(existing ? (existing.terms ?? "") : defaultTerms);
   const [issueDate, setIssueDate] = useState(existing?.issueDate ?? "");
+  // §2.6 — smooth row add/remove in the line-item grid (auto-animate).
+  const [linesRef] = useAutoAnimate<HTMLTableSectionElement>();
 
   // Record-on-issue payment (owner request): a draft carries no payments,
   // so this stays local until issue seals the invoice — confirmIssue then
@@ -790,7 +793,7 @@ export function InvoiceEditor({
                 <th className="w-9" />
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={linesRef}>
               {lines.map((l, idx) => {
                 const isLastLine = idx === lines.length - 1;
                 return (
