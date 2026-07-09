@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -149,6 +149,19 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
   const counts = useNavCounts(pathname);
 
+  // Only the single most-specific matching item is active. A plain
+  // startsWith lit up both "Invoices" (/invoices) and "New invoice"
+  // (/invoices/new) on the editor page — the longest matching href wins.
+  const activeHref = useMemo(() => {
+    const hrefs = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
+    let best = "";
+    for (const href of hrefs) {
+      const matches = pathname === href || pathname.startsWith(href + "/");
+      if (matches && href.length > best.length) best = href;
+    }
+    return best;
+  }, [pathname]);
+
   // Desktop collapse to the icon rail (persisted). Below md the sidebar is
   // always the rail, so the toggle only matters at md+.
   const [collapsed, setCollapsed] = useState(false);
@@ -234,9 +247,7 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
             {section.items
               .filter((item) => !item.adminOnly || role === "admin")
               .map((item) => {
-                const active =
-                  pathname === item.href ||
-                  (item.href !== "/" && pathname.startsWith(item.href + "/"));
+                const active = activeHref !== "" && item.href === activeHref;
                 if (item.task) {
                   // Placeholder — page lands with the tagged task. Inert on
                   // purpose: no dead links in the shell.

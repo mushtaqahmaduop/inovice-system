@@ -145,7 +145,12 @@ export function InvoiceEditor({
   );
   const [notes, setNotes] = useState(existing ? (existing.notes ?? "") : defaultNotes);
   const [terms, setTerms] = useState(existing ? (existing.terms ?? "") : defaultTerms);
-  const [issueDate, setIssueDate] = useState(existing?.issueDate ?? "");
+  // Prefill today's date so the picker shows a concrete day (existing drafts
+  // keep their saved date; a blank one still falls back to today). The user
+  // can change it; the server re-defaults to the issue day only if cleared.
+  const [issueDate, setIssueDate] = useState(
+    existing?.issueDate ?? new Date().toISOString().slice(0, 10)
+  );
   // §2.6 — smooth row add/remove in the line-item grid (auto-animate).
   const [linesRef] = useAutoAnimate<HTMLTableSectionElement>();
 
@@ -922,7 +927,7 @@ export function InvoiceEditor({
                 className="mono w-48 text-[13px]"
               />
               <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-                Defaults to today if left blank.
+                Prefilled with today — change it if the invoice is for another day.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
