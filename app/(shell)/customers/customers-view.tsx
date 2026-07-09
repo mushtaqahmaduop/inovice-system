@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { CustomerFormDialog, type DialogMode } from "./customer-form";
 import type { CustomerRow } from "./page";
 
@@ -183,8 +184,10 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
       body: JSON.stringify({ action }),
     });
     setBusyId(null);
-    if (res.ok) router.refresh();
-    else window.alert((await res.json().catch(() => null))?.error ?? "Request failed");
+    if (res.ok) {
+      toast.success(action === "restore" ? "Client restored" : "Client removed");
+      router.refresh();
+    } else toast.error((await res.json().catch(() => null))?.error ?? "Request failed");
   }
 
   const table = useReactTable({

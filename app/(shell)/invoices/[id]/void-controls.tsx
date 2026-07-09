@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 
 // Void an issued invoice (task 4.4, admin only — the API and the DB
 // function both re-enforce that). Reason is mandatory; optionally spawn a
@@ -14,12 +15,10 @@ export function VoidControls({ invoiceId }: { invoiceId: string }) {
   const [reason, setReason] = useState("");
   const [withReplacement, setWithReplacement] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function voidNow() {
     if (busy || !reason.trim()) return;
     setBusy(true);
-    setError(null);
     const res = await fetch(`/api/invoices/${invoiceId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -31,12 +30,17 @@ export function VoidControls({ invoiceId }: { invoiceId: string }) {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(body?.error ?? "Void failed");
+      toast.error(body?.error ?? "Void failed");
       setBusy(false);
       return;
     }
-    if (body?.replacementId) router.push(`/invoices/${body.replacementId}/edit`);
-    else router.refresh();
+    if (body?.replacementId) {
+      toast.success("Invoice voided · replacement draft opened");
+      router.push(`/invoices/${body.replacementId}/edit`);
+    } else {
+      toast.success("Invoice voided");
+      router.refresh();
+    }
     setOpen(false);
     setBusy(false);
   }
@@ -86,7 +90,6 @@ export function VoidControls({ invoiceId }: { invoiceId: string }) {
           />
           Create a replacement draft (copies the lines, links back)
         </label>
-        {error ? <p className="mt-2 text-[11px] text-warning">{error}</p> : null}
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={busy}>
             Cancel

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { aedToFils, formatAed } from "@/lib/money";
 import type { ServiceRow } from "./page";
 
@@ -55,8 +56,10 @@ export function ServiceFormDialog({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: v.name.trim(), unit: v.unit.trim(), govtFee, serviceFee }),
         });
-    if (res.ok) onSaved();
-    else setServerError((await res.json().catch(() => null))?.error ?? "Request failed");
+    if (res.ok) {
+      toast.success(row ? "Service updated" : "Service added");
+      onSaved();
+    } else setServerError((await res.json().catch(() => null))?.error ?? "Request failed");
   }
 
   return (

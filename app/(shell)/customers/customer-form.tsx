@@ -8,6 +8,7 @@ import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { FieldLabel, FieldError } from "@/components/ui/field";
 import type { CustomerRow } from "./page";
 
@@ -84,8 +85,10 @@ export function CustomerFormDialog({
             type: mode.kind === "walk_in" ? "walk_in" : "regular",
           }),
         });
-    if (res.ok) onSaved();
-    else setServerError((await res.json().catch(() => null))?.error ?? "Request failed");
+    if (res.ok) {
+      toast.success(editing ? "Client updated" : "Client added");
+      onSaved();
+    } else setServerError((await res.json().catch(() => null))?.error ?? "Request failed");
   }
 
   const title =
