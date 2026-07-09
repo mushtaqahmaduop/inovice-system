@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { FieldLabel, FieldError } from "@/components/ui/field";
 import type { CustomerRow } from "./page";
 
@@ -100,46 +101,35 @@ export function CustomerFormDialog({
   const visibleFields = FIELDS.filter((f) => (isWalkIn && mode.kind !== "edit" ? f.walkIn : true));
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-ink/20 px-4 pt-20"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <div className="w-full max-w-md border border-hairline-strong bg-surface p-5 shadow-lg">
-        <p className="mono mb-4 text-[10px] tracking-[0.14em] text-ink-3 uppercase">{title}</p>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          {visibleFields.map((f) => (
-            <div key={f.name}>
-              <FieldLabel htmlFor={`cf-${f.name}`}>
-                {f.label}
-                {f.name === "name" ? " *" : ""}
-              </FieldLabel>
-              <Input
-                id={`cf-${f.name}`}
-                {...form.register(f.name)}
-                className={`text-[13px] ${form.formState.errors[f.name] ? "border-warning" : ""}`}
-                autoFocus={f.name === "name"}
-              />
-              {form.formState.errors[f.name] ? (
-                <FieldError>{form.formState.errors[f.name]?.message}</FieldError>
-              ) : null}
-            </div>
-          ))}
-          {serverError ? <FieldError>{serverError}</FieldError> : null}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Saving…" : "Save"}
-            </Button>
+    <Modal title={title} onClose={onClose} size="md">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {visibleFields.map((f) => (
+          <div key={f.name}>
+            <FieldLabel htmlFor={`cf-${f.name}`}>
+              {f.label}
+              {f.name === "name" ? " *" : ""}
+            </FieldLabel>
+            <Input
+              id={`cf-${f.name}`}
+              {...form.register(f.name)}
+              aria-invalid={form.formState.errors[f.name] ? true : undefined}
+              autoFocus={f.name === "name"}
+            />
+            {form.formState.errors[f.name] ? (
+              <FieldError>{form.formState.errors[f.name]?.message}</FieldError>
+            ) : null}
           </div>
-        </form>
-      </div>
-    </div>
+        ))}
+        {serverError ? <FieldError>{serverError}</FieldError> : null}
+        <ModalFooter>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? "Saving…" : "Save"}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

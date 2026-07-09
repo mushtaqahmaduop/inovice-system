@@ -117,7 +117,7 @@ export function PaymentMethodsManager({ methods }: { methods: PaymentMethodRow[]
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
           placeholder="New method name…"
-          className="h-10 w-64 text-[13px]"
+          className="w-64"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
