@@ -14,8 +14,8 @@ export default async function UsersPage() {
     .order("created_at", { ascending: true });
 
   return (
-    <div className="w-full px-5 py-6 md:px-8">
-      <header className="mb-6">
+    <div className="w-full px-5 py-5 md:px-8">
+      <header className="mb-5">
         <nav className="mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
           <span>Admin</span>
           <ChevronRight className="size-3" />
