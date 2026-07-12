@@ -31,7 +31,8 @@ export default async function InvoicePage({
       `id, status, invoice_number, issue_date, customer_snapshot,
        vat_registered_snapshot, vat_rate_bp_snapshot,
        subtotal_govt, subtotal_service, subtotal_extras, vat_amount, grand_total,
-       notes, terms, issued_at, void_reason, issued_by, replaces_invoice_id`
+       notes, terms, issued_at, void_reason, issued_by, replaces_invoice_id,
+       display_currency, exchange_rate_e6`
     )
     .eq("id", id)
     .maybeSingle();
