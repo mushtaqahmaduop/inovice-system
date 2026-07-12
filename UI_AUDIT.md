@@ -88,6 +88,15 @@ states, styled 404s all exist) — the redesign restyles rather than invents:
 4. `tailwind.config.ts` instructions → adapted to Tailwind v4 CSS-first
    `@theme` (this repo has no config file by design).
 5. "Quotations" nav item (§5.5) → omitted; no such feature exists.
+6. Punch-list **#14** (editor → "document-shaped ≤760px form") → **SUPERSEDED
+   2026-07-12 by the owner's own New-Invoice mockup (`nev inovice.png`)**,
+   which is full-width with a two-column Details/Summary grid — the same
+   full-width decision the owner made for the dashboard. The generic guide's
+   ≤760px rule predates the owner mockups; the mockup wins. The editor stays
+   full-width; the real gap vs the mockup was the sub-page topbar title +
+   breadcrumb ("Invoices › New Invoice"), which is what got built instead.
+   Punch-list **#15** (issue-preview drawer spec + Vaul bottom sheet) was
+   delivered separately in redesign slice 17 (vaul responsive sheet).
 
 ## Build order from here (guide §1.2)
 
