@@ -75,6 +75,7 @@
 - Issue-time snapshots (D-16): `vat_registered_snapshot boolean null`, `vat_rate_bp_snapshot integer null`
 - Server-computed totals (fils): `subtotal_govt bigint`, `subtotal_service bigint`, `subtotal_extras bigint`, `vat_amount bigint`, `grand_total bigint`
 - `notes text null`, `terms text null` [#11] — editable while draft, frozen after
+- **Foreign-currency display layer (D-27):** `display_currency text not null default 'AED'`, `exchange_rate_e6 bigint null` (AED per 1 foreign unit × 1e6; `check (exchange_rate_e6 is null or > 0)`). **Presentation only, NOT money-of-record** — the invoice is priced and sealed in AED fils; the document renders foreign = AED ÷ rate with the AED equivalent shown. Editable while draft, frozen after issue (added to the §4.1 draft→draft allow-list in migration 0011; `issue_invoice()` is unchanged — it never reads or writes them). No foreign amount is stored; it is always derived from the sealed AED total, so it cannot drift.
 - `replaces_invoice_id uuid null references invoices` [#11] — links a replacement invoice to the voided original
 - **No stored payment status** [#8] — derived at read time (§6)
 - `created_by uuid references profiles`, `issued_by uuid null`, `issued_at timestamptz null`, `voided_by uuid null`, `voided_at timestamptz null`, `void_reason text null`

@@ -59,6 +59,7 @@ export const settings = pgTable("settings", {
   vatRateBp: integer("vat_rate_bp").notNull().default(500), // basis points
   invoiceNumberFormat: text("invoice_number_format").notNull().default("INV-{NN}"), // D-12
   paperSize: text("paper_size").notNull().default("A4"), // pending Q-07
+  defaultCurrency: text("default_currency").notNull().default("AED"), // display currency for new invoices (AED-anchored)
   invoiceNotesDefault: text("invoice_notes_default"),
   invoiceTermsDefault: text("invoice_terms_default"),
   dueDaysDefault: integer("due_days_default"), // overdue convention until Q-11
@@ -137,6 +138,13 @@ export const invoices = pgTable(
     grandTotal: fils("grand_total"),
     notes: text("notes"), // editable while draft, frozen after [#11]
     terms: text("terms"),
+    // Foreign-currency DISPLAY layer (AED-anchored). The invoice is priced and
+    // sealed in AED fils; these only drive a display-only foreign rendering of
+    // the printed/previewed document. Editable while draft, frozen after issue
+    // (transition trigger §4.1). NEVER a money store — foreign amounts are
+    // derived from the sealed AED total + this rate, never stored.
+    displayCurrency: text("display_currency").notNull().default("AED"),
+    exchangeRateE6: bigint("exchange_rate_e6", { mode: "number" }), // AED per 1 unit × 1e6; NULL for AED
     replacesInvoiceId: uuid("replaces_invoice_id").references((): AnyPgColumn => invoices.id), // links replacement to the voided original [#11]
     createdBy: uuid("created_by").references(() => profiles.id),
     issuedBy: uuid("issued_by").references(() => profiles.id),
@@ -148,6 +156,10 @@ export const invoices = pgTable(
   },
   (t) => [
     check("invoices_status_check", sql`${t.status} in ('draft','issued','voided')`),
+    check(
+      "invoices_exchange_rate_positive",
+      sql`${t.exchangeRateE6} is null or ${t.exchangeRateE6} > 0`
+    ),
     unique("invoices_number_year_seq_unique").on(t.numberYear, t.numberSeq),
     index("invoices_status_idx").on(t.status),
     index("invoices_customer_id_idx").on(t.customerId),

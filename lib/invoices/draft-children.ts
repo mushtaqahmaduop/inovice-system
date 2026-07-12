@@ -8,7 +8,7 @@ import type { DraftInvoiceInput } from "@/lib/validation/invoice";
 export async function insertChildren(
   supabase: SupabaseClient,
   invoiceId: string,
-  data: DraftInvoiceInput
+  data: Pick<DraftInvoiceInput, "columns" | "lines">
 ): Promise<string | null> {
   let columnIds: string[] = [];
   if (data.columns.length > 0) {
