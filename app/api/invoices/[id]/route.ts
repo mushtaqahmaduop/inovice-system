@@ -114,7 +114,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ]);
     const colIndexById = new Map((cols ?? []).map((c, i) => [c.id, i]));
     const childErr = await insertChildren(supabase, replacement.id, {
-      customerId: voidedRow.customer_id,
       columns: (cols ?? []).map((c) => ({ label: c.label, vatable: c.vatable })),
       lines: (lines ?? []).map((l) => ({
         description: l.description,
@@ -144,6 +143,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   if (parsed.data.action === "issue") {
+    // A foreign-currency invoice must carry a positive exchange rate before it
+    // can be sealed — the rate is frozen at issue and drives the AED-equivalent
+    // shown on the (FTA) document. AED invoices need no rate. This is a display
+    // prerequisite, not a money-correctness one (the sealed AED math is
+    // untouched), so it lives here rather than inside issue_invoice().
+    const { data: pre } = await supabase
+      .from("invoices")
+      .select("display_currency, exchange_rate_e6")
+      .eq("id", id)
+      .maybeSingle();
+    if (
+      pre &&
+      pre.display_currency !== "AED" &&
+      !(pre.exchange_rate_e6 && pre.exchange_rate_e6 > 0)
+    ) {
+      return NextResponse.json(
+        { error: "Set the exchange rate before issuing a foreign-currency invoice." },
+        { status: 422 }
+      );
+    }
+
     // Task 4.2: the ONLY path from draft to issued — a single RPC statement
     // calling the SECURITY DEFINER issue_invoice() (CLAUDE.md §3.1). No
     // BEGIN from the app, no math in application memory feeding the seal.
@@ -221,6 +241,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       issue_date: d.issueDate ?? null,
       notes: d.notes ?? null,
       terms: d.terms ?? null,
+      display_currency: d.displayCurrency,
+      exchange_rate_e6: d.displayCurrency === "AED" ? null : (d.exchangeRateE6 ?? null),
     })
     .eq("id", id);
   if (updErr) {

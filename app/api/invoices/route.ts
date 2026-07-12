@@ -32,6 +32,11 @@ export async function POST(request: Request) {
       issue_date: parsed.data.issueDate ?? null,
       notes: parsed.data.notes ?? null,
       terms: parsed.data.terms ?? null,
+      display_currency: parsed.data.displayCurrency,
+      // AED invoices never carry a rate; foreign ones may still be rate-less
+      // while drafting (the issue path enforces a positive rate before sealing).
+      exchange_rate_e6:
+        parsed.data.displayCurrency === "AED" ? null : (parsed.data.exchangeRateE6 ?? null),
       created_by: guard.ctx.userId,
     })
     .select("id")

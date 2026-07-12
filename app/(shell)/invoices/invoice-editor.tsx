@@ -16,12 +16,19 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SelectNative } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { FieldLabel } from "@/components/ui/field";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
+import {
+  SUPPORTED_CURRENCIES,
+  isForeignCurrency,
+  parseRateToE6,
+  formatForeign,
+  formatRateFromE6,
+} from "@/lib/currency";
 import { calcInvoiceTotals, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
 
 // Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Cool White /
@@ -60,6 +67,8 @@ export type ExistingDraft = {
   issueDate: string | null;
   notes: string | null;
   terms: string | null;
+  displayCurrency: string | null;
+  exchangeRateE6: number | null;
   columns: { label: string; vatable: boolean }[];
   lines: {
     description: string;
@@ -145,6 +154,17 @@ export function InvoiceEditor({
   );
   const [notes, setNotes] = useState(existing ? (existing.notes ?? "") : defaultNotes);
   const [terms, setTerms] = useState(existing ? (existing.terms ?? "") : defaultTerms);
+  // Foreign-currency DISPLAY layer (D-27). AED stays the sealed record of truth;
+  // a foreign currency + manually-entered rate only change how the document
+  // renders. Drafts may carry a currency with a blank rate mid-edit; the issue
+  // path refuses to seal a foreign invoice without a positive rate.
+  const [displayCurrency, setDisplayCurrency] = useState(existing?.displayCurrency ?? "AED");
+  const [rateInput, setRateInput] = useState(
+    existing?.exchangeRateE6 ? formatRateFromE6(existing.exchangeRateE6) : ""
+  );
+  const isForeign = isForeignCurrency(displayCurrency);
+  const rateE6 = isForeign ? parseRateToE6(rateInput) : null;
+  const rateInvalid = isForeign && rateInput.trim() !== "" && rateE6 === null;
   // Prefill today's date so the picker shows a concrete day (existing drafts
   // keep their saved date; a blank one still falls back to today). The user
   // can change it; the server re-defaults to the issue day only if cleared.
@@ -328,6 +348,9 @@ export function InvoiceEditor({
       issueDate: issueDate || null,
       notes,
       terms,
+      displayCurrency,
+      // AED carries no rate; a foreign draft may still be rate-less mid-edit.
+      exchangeRateE6: displayCurrency === "AED" ? null : rateE6,
       columns: columns.map((c) => ({ label: c.label, vatable: c.vatable })),
       lines: lines.map((l) => ({
         description: l.description.trim(),
@@ -428,6 +451,10 @@ export function InvoiceEditor({
     if (problem) return setError(problem);
     const meaningful = lines.some((l) => l.description.trim() !== "" || lineTotal(l) > 0);
     if (!meaningful) return setError("Add at least one line with a description or amount.");
+    // A foreign-currency invoice cannot be sealed without a positive rate (D-27);
+    // catch it here so the owner fixes it before the preview rather than at seal.
+    if (isForeign && !rateE6)
+      return setError(`Enter the AED-per-${displayCurrency} exchange rate before issuing.`);
     if (markPaid) {
       const fils = aedToFils(payAmount);
       if (fils === null || fils <= 0)
@@ -930,6 +957,50 @@ export function InvoiceEditor({
                 Prefilled with today — change it if the invoice is for another day.
               </p>
             </div>
+            {/* Foreign-currency display layer (D-27). AED stays the record; a
+                foreign currency renders the document in that currency from the
+                sealed AED total, with the AED equivalent + rate also shown. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor="inv-currency">Invoice currency</FieldLabel>
+                <SelectNative
+                  id="inv-currency"
+                  value={displayCurrency}
+                  onChange={(e) => setDisplayCurrency(e.target.value)}
+                  className="w-48 text-[13px]"
+                >
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} — {c.name}
+                    </option>
+                  ))}
+                </SelectNative>
+                <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+                  Amounts are always priced and recorded in AED.
+                </p>
+              </div>
+              {isForeign ? (
+                <div>
+                  <FieldLabel htmlFor="inv-rate">
+                    Exchange rate (AED per 1 {displayCurrency})
+                  </FieldLabel>
+                  <Input
+                    id="inv-rate"
+                    value={rateInput}
+                    onChange={(e) => setRateInput(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 3.6725"
+                    aria-invalid={rateInvalid}
+                    className="mono w-48 text-right text-[13px]"
+                  />
+                  <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+                    {rateInvalid
+                      ? "Enter a positive rate (max 6 decimals)."
+                      : `Required before issuing. Use the supply-date rate.`}
+                  </p>
+                </div>
+              ) : null}
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <div className="flex items-baseline justify-between">
@@ -992,8 +1063,23 @@ export function InvoiceEditor({
                 {formatAed(totals.grandTotal)}
               </span>
             </div>
+            {isForeign && rateE6 ? (
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-[12px] leading-4 text-text-tertiary">
+                  Shown on the document as ({displayCurrency})
+                </span>
+                <span className="mono text-[13px] font-[550] text-foreground">
+                  <span className="mr-1.5 text-[11px] font-normal text-text-tertiary">
+                    {displayCurrency}
+                  </span>
+                  {formatForeign(totals.grandTotal, rateE6)}
+                </span>
+              </div>
+            ) : null}
             <p className="mt-2 text-[12px] leading-4 text-text-tertiary">
-              Display only — totals are recomputed and sealed server-side at issue.
+              {isForeign
+                ? `Recorded in AED — the ${displayCurrency} figure is derived at the rate above.`
+                : "Display only — totals are recomputed and sealed server-side at issue."}
             </p>
           </div>
 
@@ -1113,6 +1199,8 @@ export function InvoiceEditor({
             }}
             notes={notes || null}
             terms={terms || null}
+            displayCurrency={displayCurrency}
+            exchangeRateE6={rateE6}
           />
           <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
             Issuing allocates the next invoice number and this invoice becomes permanent — it cannot

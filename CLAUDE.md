@@ -43,6 +43,7 @@ This file contains hard rules for every Claude Code session. Read PROJECT_PLAN.m
 - **VAT rate and VAT-registration state are snapshotted onto the invoice at issue time.** Never compute an issued invoice's VAT from current Settings.
 - The Settings VAT toggle (registered / deregistered) affects **future** invoices only.
 - All monetary values: store as **integers in fils (AED minor unit) as `bigint` — the only permitted representation**. Never floating point, never `numeric`, never mixed representations. Display with JetBrains Mono.
+- **Foreign currency is a DISPLAY layer only (D-27), never a money store.** `display_currency` + `exchange_rate_e6` on an invoice drive a derived foreign rendering of the document; the invoice is always priced, sealed, reported, and paid in AED fils. Foreign amounts are computed from the sealed AED total + the snapshotted rate, never stored. This does not weaken the fils=AED invariant — it presents on top of it.
 
 ### 3.4 Payments & events
 - Payments live in a **`payments` table** (one row per payment). There is no `paid_amount` column to mutate. Invoice payment status (`unpaid` / `partial` / `paid`) is derived from the sum of payments vs invoice total.

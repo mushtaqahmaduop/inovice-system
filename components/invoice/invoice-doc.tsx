@@ -1,4 +1,5 @@
 import { formatAed } from "@/lib/money";
+import { formatForeign, formatRateFromE6, isForeignCurrency } from "@/lib/currency";
 
 // The invoice document — REPLICATES THE CLIENT'S OWN SAMPLE LAYOUT exactly
 // (DECISIONS.md Q-02 update 2026-07-05, supersedes the earlier Stamped Paper
@@ -68,6 +69,8 @@ export function InvoiceDoc({
   terms,
   paymentStatus,
   voidReason,
+  displayCurrency = "AED",
+  exchangeRateE6 = null,
 }: {
   company: DocCompany;
   vatRegistered: boolean;
@@ -83,11 +86,23 @@ export function InvoiceDoc({
   terms: string | null;
   paymentStatus?: string | null;
   voidReason?: string | null;
+  /** Foreign-currency DISPLAY layer (D-27). AED (default) renders unchanged; a
+   *  foreign currency shows amounts derived from the sealed AED total, with the
+   *  AED equivalent + rate shown for the total/VAT (AED stays the record). */
+  displayCurrency?: string;
+  exchangeRateE6?: number | null;
   /** kept for call-site compatibility; the sample layout has no issued-by block */
   issuedByName?: string | null;
   issuedAt?: string | null;
 }) {
   const title = vatRegistered ? "Tax Invoice" : "Invoice";
+  // AED-anchored: when a foreign currency + rate are set, money figures render
+  // in that currency (derived from the sealed AED fils); otherwise plain AED.
+  const foreign = isForeignCurrency(displayCurrency) && !!exchangeRateE6 && exchangeRateE6 > 0;
+  const money = (fils: number) =>
+    foreign ? formatForeign(fils, exchangeRateE6 as number) : formatAed(fils);
+  const cur = foreign ? displayCurrency : "AED";
+  const rateStr = foreign ? `1 ${displayCurrency} = ${formatRateFromE6(exchangeRateE6 as number)} AED` : "";
   const lineAmount = (l: DocLine) =>
     l.qty * (l.govtFee + l.serviceFee + l.extraFees.reduce((s, v) => s + v, 0));
   const paidLabel =
@@ -185,6 +200,12 @@ export function InvoiceDoc({
               <td className="pr-4 text-right font-bold">Invoice date:</td>
               <td className="mono text-right">{fmtDate(issueDate)}</td>
             </tr>
+            {foreign ? (
+              <tr>
+                <td className="pr-4 text-right font-bold">Currency:</td>
+                <td className="mono text-right">{cur}</td>
+              </tr>
+            ) : null}
             <tr>
               <td className="pr-4 text-right font-bold">Paid / Not Paid :</td>
               <td className="text-right">{paidLabel}</td>
@@ -220,17 +241,17 @@ export function InvoiceDoc({
               <td className={td}>{l.description || "—"}</td>
               <td className={`${td} mono text-center`}>{l.qty}</td>
               <td className={`${td} mono text-right`}>
-                {l.govtFee > 0 ? formatAed(l.qty * l.govtFee) : ""}
+                {l.govtFee > 0 ? money(l.qty * l.govtFee) : ""}
               </td>
               <td className={`${td} mono text-right`}>
-                {l.serviceFee > 0 ? formatAed(l.qty * l.serviceFee) : ""}
+                {l.serviceFee > 0 ? money(l.qty * l.serviceFee) : ""}
               </td>
               {columns.map((_, i) => (
                 <td key={i} className={`${td} mono text-right`}>
-                  {(l.extraFees[i] ?? 0) > 0 ? formatAed(l.qty * (l.extraFees[i] ?? 0)) : ""}
+                  {(l.extraFees[i] ?? 0) > 0 ? money(l.qty * (l.extraFees[i] ?? 0)) : ""}
                 </td>
               ))}
-              <td className={`${td} mono text-right font-semibold`}>{formatAed(lineAmount(l))}</td>
+              <td className={`${td} mono text-right font-semibold`}>{money(lineAmount(l))}</td>
             </tr>
           ))}
         </tbody>
@@ -242,30 +263,56 @@ export function InvoiceDoc({
           <tbody>
             <tr>
               <td className="pr-6 text-right font-bold">Subtotal:</td>
-              <td className="mono w-28 text-right">{formatAed(totals.subtotalGovt)}</td>
+              <td className="mono w-28 text-right">{money(totals.subtotalGovt)}</td>
             </tr>
             <tr>
               <td className="pr-6 text-right font-bold">Service Fee:</td>
-              <td className="mono text-right">{formatAed(totals.subtotalService)}</td>
+              <td className="mono text-right">{money(totals.subtotalService)}</td>
             </tr>
             {totals.subtotalExtras > 0 ? (
               <tr>
                 <td className="pr-6 text-right font-bold">Other Charges:</td>
-                <td className="mono text-right">{formatAed(totals.subtotalExtras)}</td>
+                <td className="mono text-right">{money(totals.subtotalExtras)}</td>
               </tr>
             ) : null}
             {vatRegistered && totals.vatAmount > 0 ? (
               <tr>
                 <td className="pr-6 text-right font-bold">VAT ({ratePct}%):</td>
-                <td className="mono text-right">{formatAed(totals.vatAmount)}</td>
+                <td className="mono text-right">{money(totals.vatAmount)}</td>
               </tr>
             ) : null}
             <tr>
-              <td className="pt-1 pr-6 text-right text-[14px] font-bold">Total Amount AED :</td>
+              <td className="pt-1 pr-6 text-right text-[14px] font-bold">Total Amount {cur} :</td>
               <td className="mono pt-1 text-right text-[14px] font-bold">
-                {formatAed(totals.grandTotal)}
+                {money(totals.grandTotal)}
               </td>
             </tr>
+            {/* FTA: a foreign-currency invoice must state the rate and the AED
+                equivalent of the tax + total. AED remains the record of truth. */}
+            {foreign ? (
+              <>
+                <tr>
+                  <td className="pt-2 pr-6 text-right text-[10.5px] text-[#444]">Exchange rate:</td>
+                  <td className="mono pt-2 text-right text-[10.5px] text-[#444]">{rateStr}</td>
+                </tr>
+                {vatRegistered && totals.vatAmount > 0 ? (
+                  <tr>
+                    <td className="pr-6 text-right text-[10.5px] text-[#444]">VAT (AED):</td>
+                    <td className="mono text-right text-[10.5px] text-[#444]">
+                      {formatAed(totals.vatAmount)}
+                    </td>
+                  </tr>
+                ) : null}
+                <tr>
+                  <td className="pr-6 text-right text-[11px] font-bold text-[#444]">
+                    Total (AED equivalent):
+                  </td>
+                  <td className="mono text-right text-[11px] font-bold text-[#444]">
+                    {formatAed(totals.grandTotal)}
+                  </td>
+                </tr>
+              </>
+            ) : null}
           </tbody>
         </table>
       </div>

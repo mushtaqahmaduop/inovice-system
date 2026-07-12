@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SUPPORTED_CURRENCY_CODES } from "@/lib/currency";
 
 // Draft invoice wire format (task 4.1b). All money is INTEGER FILS (§3.3);
 // the client converts AED at the edge (lib/money.ts). Extra-column cell
@@ -41,6 +42,11 @@ export const draftInvoiceSchema = z
       .nullish(),
     columns: z.array(extraColumn).max(6),
     lines: z.array(line).min(1, "At least one line").max(100),
+    // Foreign-currency DISPLAY layer (AED-anchored). Drafts may carry a currency
+    // with the rate still blank (mid-edit) — the presence of a positive rate on
+    // a foreign invoice is enforced at the ISSUE path, not on every draft save.
+    displayCurrency: z.enum(SUPPORTED_CURRENCY_CODES).default("AED"),
+    exchangeRateE6: z.number().int().positive().max(1_000_000_000_000).nullish(),
   })
   .superRefine((v, ctx) => {
     for (const [li, l] of v.lines.entries()) {
