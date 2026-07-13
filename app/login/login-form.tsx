@@ -101,7 +101,7 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
   if (step === "password") {
     return (
       <form onSubmit={submitPassword} className="space-y-4">
-        {error && <p className="text-sm text-warning">{error}</p>}
+        {error && <p className="text-sm text-error">{error}</p>}
         <div>
           <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input
@@ -134,12 +134,12 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
   const isRecovery = step === "recovery";
   return (
     <form onSubmit={isRecovery ? submitRecovery : submitTotp} className="space-y-4">
-      <p className="text-sm leading-relaxed text-ink-2">
+      <p className="text-sm leading-relaxed text-text-secondary">
         {isRecovery
           ? "Enter one of your saved recovery codes. It will be consumed, and you will re-enroll a new authenticator."
           : "Enter the 6-digit code from your authenticator app."}
       </p>
-      {error && <p className="text-sm text-warning">{error}</p>}
+      {error && <p className="text-sm text-error">{error}</p>}
       <div>
         <FieldLabel htmlFor="otp-code">
           {isRecovery ? "Recovery code" : "Authenticator code"}
@@ -166,7 +166,7 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
       </Button>
       <button
         type="button"
-        className="w-full text-center text-xs text-ink-3 underline-offset-2 hover:underline"
+        className="w-full text-center text-xs text-text-tertiary underline-offset-2 hover:underline"
         onClick={() => setStep(isRecovery ? "totp" : "recovery")}
       >
         {isRecovery ? "Back to authenticator code" : "Lost your authenticator? Use a recovery code"}

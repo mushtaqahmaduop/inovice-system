@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SelectNative } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { FieldLabel, FieldError } from "@/components/ui/field";
 import { AedFlow } from "@/components/ui/aed-flow";
 import { aedToFils, formatAed } from "@/lib/money";
 
@@ -96,10 +97,10 @@ export function PaymentsPanel({
   }
 
   return (
-    <div className="mt-6 border border-hairline bg-surface p-4 print:hidden">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <p className="mono text-[9px] tracking-[0.16em] text-ink-3 uppercase">Payments</p>
-        <p className="text-[12px] text-ink-2">
+    <div className="mt-6 rounded-[14px] border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:hidden">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-foreground">Payments</h2>
+        <p className="text-[12px] text-text-secondary">
           <span className="mono">{paymentStatus ?? "—"}</span>
           {" · paid "}
           <span className="mono">
@@ -125,17 +126,20 @@ export function PaymentsPanel({
       </div>
 
       {payments.length > 0 ? (
-        <div ref={listRef} className="mb-4 divide-y divide-hairline border border-hairline">
+        <div
+          ref={listRef}
+          className="mb-4 divide-y divide-border overflow-hidden rounded-[10px] border border-border"
+        >
           {payments.map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
-              <span className="mono w-24 text-[11.5px] text-ink-3">{p.received_on}</span>
+            <div key={p.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+              <span className="mono w-24 text-[11.5px] text-text-tertiary">{p.received_on}</span>
               <span
-                className={`mono w-28 text-right text-[12.5px] ${p.amount < 0 ? "text-warning" : "text-ink"}`}
+                className={`mono w-28 text-right text-[12.5px] ${p.amount < 0 ? "text-warning" : "text-foreground"}`}
               >
                 {p.amount < 0 ? "−" : ""}AED {formatAed(Math.abs(p.amount))}
               </span>
-              <span className="text-[11.5px] text-ink-2">{p.method_label}</span>
-              <span className="min-w-0 flex-1 truncate text-[11px] text-ink-3">
+              <span className="text-[11.5px] text-text-secondary">{p.method_label}</span>
+              <span className="min-w-0 flex-1 truncate text-[11px] text-text-tertiary">
                 {p.reference ?? ""}
               </span>
               {p.reverses_payment_id ? (
@@ -143,7 +147,7 @@ export function PaymentsPanel({
                   reversal
                 </span>
               ) : p.reversed ? (
-                <span className="mono text-[9px] tracking-[0.1em] text-ink-4 uppercase line-through">
+                <span className="mono text-[9px] tracking-[0.1em] text-text-tertiary uppercase line-through">
                   reversed
                 </span>
               ) : (
@@ -169,73 +173,55 @@ export function PaymentsPanel({
           ))}
         </div>
       ) : (
-        <p className="mb-4 text-[12px] text-ink-3">No payments recorded yet.</p>
+        <p className="mb-4 text-[12px] text-text-tertiary">No payments recorded yet.</p>
       )}
 
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-wrap items-end gap-3 border-t border-border pt-4">
         <div>
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="pay-amount">
-            Amount (AED)
-          </label>
+          <FieldLabel htmlFor="pay-amount">Amount (AED)</FieldLabel>
           <Input
             id="pay-amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
             placeholder={outstanding > 0 ? formatAed(outstanding).replace(/,/g, "") : "0.00"}
-            className="mono h-8 w-32 text-right text-[12.5px]"
+            className="mono w-32 text-right"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="pay-method">
-            Method
-          </label>
-          <select
+          <FieldLabel htmlFor="pay-method">Method</FieldLabel>
+          <SelectNative
             id="pay-method"
             value={methodId}
             onChange={(e) => setMethodId(e.target.value)}
-            className="h-8 rounded border border-hairline-strong bg-surface px-2 text-[12px] text-ink"
+            className="w-40"
           >
             {methods.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.label}
               </option>
             ))}
-          </select>
+          </SelectNative>
         </div>
         <div>
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="pay-date">
-            Received on
-          </label>
+          <FieldLabel htmlFor="pay-date">Received on</FieldLabel>
           <Input
             id="pay-date"
             type="date"
             value={receivedOn}
             onChange={(e) => setReceivedOn(e.target.value)}
-            className="mono h-8 w-40 text-[11.5px]"
+            className="mono w-40"
           />
         </div>
         <div className="min-w-40 flex-1">
-          <label className="mb-1 block text-[11px] text-ink-3" htmlFor="pay-ref">
-            Reference (optional)
-          </label>
-          <Input
-            id="pay-ref"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            className="h-8 text-[12px]"
-          />
+          <FieldLabel htmlFor="pay-ref">Reference (optional)</FieldLabel>
+          <Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
         </div>
-        <Button
-          size="sm"
-          onClick={record}
-          disabled={busy || !methodId}
-          className="w-full sm:w-auto"
-        >
+        <Button onClick={record} disabled={busy || !methodId} className="w-full sm:w-auto">
           {busy ? "Saving…" : "Record payment"}
         </Button>
       </div>
-      {error ? <p className="mt-2 text-[11px] text-warning">{error}</p> : null}
+      {error ? <FieldError>{error}</FieldError> : null}
     </div>
   );
 }

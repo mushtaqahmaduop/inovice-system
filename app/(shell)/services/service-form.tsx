@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { Modal, ModalFooter } from "@/components/ui/modal";
+import { FieldLabel, FieldError } from "@/components/ui/field";
 import { aedToFils, formatAed } from "@/lib/money";
 import type { ServiceRow } from "./page";
 
@@ -63,67 +65,46 @@ export function ServiceFormDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-ink/20 px-4 pt-24"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={row ? "Edit service" : "Add service"}
-    >
-      <div className="w-full max-w-sm border border-hairline-strong bg-surface p-5 shadow-lg">
-        <p className="mono mb-4 text-[10px] tracking-[0.14em] text-ink-3 uppercase">
-          {row ? "Edit service" : "Add service"}
-        </p>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="sv-name">
-              Name *
-            </label>
-            <Input id="sv-name" {...form.register("name")} className="h-8 text-[13px]" autoFocus />
+    <Modal title={row ? "Edit service" : "Add service"} onClose={onClose} size="sm">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <FieldLabel htmlFor="sv-name">Name *</FieldLabel>
+          <Input id="sv-name" {...form.register("name")} autoFocus />
+        </div>
+        <div>
+          <FieldLabel htmlFor="sv-unit">Unit (person, page, doc…)</FieldLabel>
+          <Input id="sv-unit" {...form.register("unit")} />
+        </div>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <FieldLabel htmlFor="sv-govt">Govt fee (AED)</FieldLabel>
+            <Input
+              id="sv-govt"
+              {...form.register("govtFeeAed")}
+              inputMode="decimal"
+              className="mono text-right"
+            />
           </div>
-          <div>
-            <label className="mb-1 block text-[11px] text-ink-3" htmlFor="sv-unit">
-              Unit (person, page, doc…)
-            </label>
-            <Input id="sv-unit" {...form.register("unit")} className="h-8 text-[13px]" />
+          <div className="flex-1">
+            <FieldLabel htmlFor="sv-svc">Service fee (AED)</FieldLabel>
+            <Input
+              id="sv-svc"
+              {...form.register("serviceFeeAed")}
+              inputMode="decimal"
+              className="mono text-right"
+            />
           </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-[11px] text-ink-3" htmlFor="sv-govt">
-                Govt fee (AED)
-              </label>
-              <Input
-                id="sv-govt"
-                {...form.register("govtFeeAed")}
-                inputMode="decimal"
-                className="mono h-8 text-[13px]"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-[11px] text-ink-3" htmlFor="sv-svc">
-                Service fee (AED)
-              </label>
-              <Input
-                id="sv-svc"
-                {...form.register("serviceFeeAed")}
-                inputMode="decimal"
-                className="mono h-8 text-[13px]"
-              />
-            </div>
-          </div>
-          {serverError ? <p className="text-[11px] text-warning">{serverError}</p> : null}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </div>
+        {serverError ? <FieldError>{serverError}</FieldError> : null}
+        <ModalFooter>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? "Saving…" : "Save"}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }
