@@ -82,18 +82,19 @@ export function EnrollMfa() {
     setBusy(false);
   }
 
-  if (phase === "loading") return <p className="text-sm text-ink-3">Preparing enrollment…</p>;
-  if (phase === "error") return <p className="text-sm text-warning">{error}</p>;
+  if (phase === "loading")
+    return <p className="text-sm text-text-tertiary">Preparing enrollment…</p>;
+  if (phase === "error") return <p className="text-sm text-danger">{error}</p>;
 
   if (phase === "codes") {
     return (
       <div className="space-y-4">
-        <p className="text-sm leading-relaxed text-ink-2">
+        <p className="text-sm leading-relaxed text-text-secondary">
           Authenticator enrolled. These <strong>one-time recovery codes</strong> are shown{" "}
           <strong>only now</strong>. Print them or store them in a password manager — a lost
           authenticator without a recovery code means a manual operator recovery.
         </p>
-        <div className="mono grid grid-cols-2 gap-x-6 gap-y-1.5 border border-hairline bg-paper p-4 text-[13px] tracking-wider text-ink">
+        <div className="mono grid grid-cols-2 gap-x-6 gap-y-1.5 border border-border bg-background p-4 text-[13px] tracking-wider text-foreground">
           {recoveryCodes.map((c) => (
             <span key={c}>{c}</span>
           ))}
@@ -107,7 +108,7 @@ export function EnrollMfa() {
 
   return (
     <form onSubmit={verify} className="space-y-4">
-      <p className="text-sm leading-relaxed text-ink-2">
+      <p className="text-sm leading-relaxed text-text-secondary">
         Scan the QR code with an authenticator app (Google Authenticator, 1Password, Authy…), then
         enter the 6-digit code it shows.
       </p>
@@ -116,10 +117,10 @@ export function EnrollMfa() {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={qr} alt="TOTP enrollment QR code" className="mx-auto h-44 w-44 bg-white p-2" />
       )}
-      <p className="mono text-center text-[11px] break-all text-ink-3">
+      <p className="mono text-center text-[11px] break-all text-text-tertiary">
         Can’t scan? Enter manually: {secret}
       </p>
-      {error && <p className="text-sm text-warning">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <Input
         aria-label="Authenticator code"
         className="mono tracking-[0.2em]"

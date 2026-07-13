@@ -385,7 +385,7 @@ export function GlobalSearch() {
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-ink/20 px-4 pt-24"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/20 px-4 pt-24"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
           }}

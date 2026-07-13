@@ -109,7 +109,7 @@ export function PaymentsPanel({
           {" of "}
           <span className="mono">AED {formatAed(grandTotal)}</span>
           {overpaid ? (
-            <span className="text-warning">
+            <span className="text-danger">
               {" "}
               · overpaid by AED <AedFlow fils={paidTotal - grandTotal} className="mono" />
             </span>
@@ -134,7 +134,7 @@ export function PaymentsPanel({
             <div key={p.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
               <span className="mono w-24 text-[11.5px] text-text-tertiary">{p.received_on}</span>
               <span
-                className={`mono w-28 text-right text-[12.5px] ${p.amount < 0 ? "text-warning" : "text-foreground"}`}
+                className={`mono w-28 text-right text-[12.5px] ${p.amount < 0 ? "text-danger" : "text-foreground"}`}
               >
                 {p.amount < 0 ? "−" : ""}AED {formatAed(Math.abs(p.amount))}
               </span>
@@ -143,7 +143,7 @@ export function PaymentsPanel({
                 {p.reference ?? ""}
               </span>
               {p.reverses_payment_id ? (
-                <span className="mono text-[9px] tracking-[0.1em] text-warning uppercase">
+                <span className="mono text-[9px] tracking-[0.1em] text-danger uppercase">
                   reversal
                 </span>
               ) : p.reversed ? (

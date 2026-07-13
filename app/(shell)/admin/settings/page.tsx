@@ -42,7 +42,7 @@ export default async function SettingsPage() {
   if (!settings) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-10">
-        <p className="text-sm text-warning">Settings row missing — run the seed.</p>
+        <p className="text-sm text-danger">Settings row missing — run the seed.</p>
       </div>
     );
   }

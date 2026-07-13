@@ -102,7 +102,9 @@ export function InvoiceDoc({
   const money = (fils: number) =>
     foreign ? formatForeign(fils, exchangeRateE6 as number) : formatAed(fils);
   const cur = foreign ? displayCurrency : "AED";
-  const rateStr = foreign ? `1 ${displayCurrency} = ${formatRateFromE6(exchangeRateE6 as number)} AED` : "";
+  const rateStr = foreign
+    ? `1 ${displayCurrency} = ${formatRateFromE6(exchangeRateE6 as number)} AED`
+    : "";
   const lineAmount = (l: DocLine) =>
     l.qty * (l.govtFee + l.serviceFee + l.extraFees.reduce((s, v) => s + v, 0));
   const paidLabel =
@@ -122,7 +124,7 @@ export function InvoiceDoc({
   const td = "border border-[#333] px-2 py-1.5 text-[12px]";
 
   return (
-    <div className="print-doc relative border border-hairline bg-white p-8 text-[#111] print:border-0 print:p-0">
+    <div className="print-doc relative border border-border bg-white p-8 text-[#111] print:border-0 print:p-0">
       {/* Screen-only seal — the printed document stays the client's exact
           sample layout; on screen the stamp makes immutability physical. */}
       {status === "issued" ? (

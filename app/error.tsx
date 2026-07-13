@@ -17,20 +17,22 @@ export default function RootError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper px-6">
-      <div className="w-full max-w-sm border border-warning bg-surface p-6 text-center">
-        <p className="mono mb-2 text-[10px] tracking-[0.16em] text-warning uppercase">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm border border-danger bg-surface p-6 text-center">
+        <p className="mono mb-2 text-[10px] tracking-[0.16em] text-danger uppercase">
           Processing error
         </p>
-        <p className="mb-4 text-[13px] leading-relaxed text-ink-2">
+        <p className="mb-4 text-[13px] leading-relaxed text-text-secondary">
           The page could not be prepared. Nothing was written — it is safe to try again.
         </p>
         {error.digest ? (
-          <p className="mono mb-4 text-[10px] tracking-[0.08em] text-ink-3">REF {error.digest}</p>
+          <p className="mono mb-4 text-[10px] tracking-[0.08em] text-text-tertiary">
+            REF {error.digest}
+          </p>
         ) : null}
         <button
           onClick={() => reset()}
-          className="mono border border-hairline-strong bg-surface px-4 py-1.5 text-[11px] tracking-[0.08em] text-ink uppercase hover:bg-surface-2"
+          className="mono border border-border-strong bg-surface px-4 py-1.5 text-[11px] tracking-[0.08em] text-foreground uppercase hover:bg-bg-sunken"
         >
           Try again
         </button>

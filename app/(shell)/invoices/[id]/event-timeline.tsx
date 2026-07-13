@@ -48,8 +48,8 @@ function detail(e: EventRow): string | null {
 
 export function EventTimeline({ events }: { events: EventRow[] }) {
   return (
-    <div className="mt-6 border border-hairline bg-surface p-4 print:hidden">
-      <p className="mono mb-3 text-[9px] tracking-[0.16em] text-ink-3 uppercase">
+    <div className="mt-6 border border-border bg-surface p-4 print:hidden">
+      <p className="mono mb-3 text-[9px] tracking-[0.16em] text-text-tertiary uppercase">
         History — every change, permanently
       </p>
       <ol className="space-y-0">
@@ -62,18 +62,18 @@ export function EventTimeline({ events }: { events: EventRow[] }) {
                   e.event_type === "issued"
                     ? "bg-primary"
                     : e.event_type === "voided"
-                      ? "bg-warning"
-                      : "bg-ink-4"
+                      ? "bg-danger"
+                      : "bg-text-tertiary"
                 }`}
               />
-              {i < events.length - 1 ? <span className="mt-1 w-px flex-1 bg-hairline" /> : null}
+              {i < events.length - 1 ? <span className="mt-1 w-px flex-1 bg-border" /> : null}
             </span>
             <div className="min-w-0 flex-1 pb-1">
-              <p className="text-[12.5px] text-ink">
+              <p className="text-[12.5px] text-foreground">
                 {LABELS[e.event_type] ?? e.event_type}
-                {detail(e) ? <span className="text-ink-2"> · {detail(e)}</span> : null}
+                {detail(e) ? <span className="text-text-secondary"> · {detail(e)}</span> : null}
               </p>
-              <p className="mono text-[10px] text-ink-3">
+              <p className="mono text-[10px] text-text-tertiary">
                 {new Date(e.created_at).toISOString().slice(0, 16).replace("T", " ")} UTC
                 {e.actor_name ? ` · ${e.actor_name}` : " · system"}
               </p>
@@ -81,7 +81,7 @@ export function EventTimeline({ events }: { events: EventRow[] }) {
           </li>
         ))}
         {events.length === 0 ? (
-          <li className="text-[12px] text-ink-3">No events recorded.</li>
+          <li className="text-[12px] text-text-tertiary">No events recorded.</li>
         ) : null}
       </ol>
     </div>
