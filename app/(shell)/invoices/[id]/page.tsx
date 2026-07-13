@@ -68,7 +68,9 @@ export default async function InvoicePage({
   ] = await Promise.all([
     supabase
       .from("settings")
-      .select("company_name, tagline, trn, address, phone, email, bank_details, paper_size")
+      .select(
+        "company_name, company_name_ar, tagline, trn, address, phone, email, bank_details, paper_size"
+      )
       .limit(1)
       .maybeSingle(),
     supabase
@@ -196,6 +198,7 @@ export default async function InvoicePage({
       <InvoiceDoc
         company={{
           name: settings?.company_name ?? "",
+          nameAr: settings?.company_name_ar ?? null,
           tagline: settings?.tagline ?? null,
           trn: settings?.trn ?? null,
           address: settings?.address ?? null,

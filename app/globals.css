@@ -147,6 +147,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-arabic: var(--font-arabic);
   --font-heading: var(--font-serif);
   --font-serif: var(--font-serif);
   --color-surface: var(--surface);
