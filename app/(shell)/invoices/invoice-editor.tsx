@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input, SelectNative } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { FieldLabel } from "@/components/ui/field";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
 import {
@@ -1164,66 +1164,65 @@ export function InvoiceEditor({
         </Button>
       </div>
 
-      {/* Mandatory pre-issue preview (D-23): slide-over, ~48% width,
-          Esc/outside-click closes. Sealing happens ONLY from here. */}
-      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto p-6 sm:w-[48%] sm:max-w-[48%]">
-          <SheetTitle className={`mb-4 ${captionClass}`}>Preview — confirm to issue</SheetTitle>
-          <InvoiceDoc
-            company={company}
-            vatRegistered={vatRegistered}
-            ratePct={ratePct}
-            number={null}
-            status="draft"
-            issueDate={issueDate || null}
-            billTo={{
-              name: customer?.name ?? "—",
-              trn: customer?.trn,
-              phone: customer?.phone,
-              address: customer?.address,
-            }}
-            columns={columns.map((c) => ({ label: c.label, vatable: c.vatable }))}
-            lines={lines.map((l) => ({
-              description: l.description,
-              qty: Math.max(1, Math.floor(Number(l.qty) || 1)),
-              govtFee: cellFils(l, "govt"),
-              serviceFee: cellFils(l, "service"),
-              extraFees: columns.map((c) => cellFils(l, c.id)),
-            }))}
-            totals={{
-              subtotalGovt: totals.subtotalGovt,
-              subtotalService: totals.subtotalService,
-              subtotalExtras: totals.subtotalExtras,
-              vatAmount: totals.vatAmount,
-              grandTotal: totals.grandTotal,
-            }}
-            notes={notes || null}
-            terms={terms || null}
-            displayCurrency={displayCurrency}
-            exchangeRateE6={rateE6}
-          />
-          <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
-            Issuing allocates the next invoice number and this invoice becomes permanent — it cannot
-            be edited afterwards. Totals are recomputed server-side at that moment; corrections
-            happen via a new document.
-          </p>
-          {issueError ? (
-            <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
-          ) : null}
-          <div className="mt-5 flex justify-end gap-3 pb-2">
-            <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={confirming}>
-              Keep editing
-            </Button>
-            <Button onClick={confirmIssue} disabled={confirming}>
-              {confirming
-                ? "Issuing…"
-                : markPaid
-                  ? "Issue, record payment & print"
-                  : "Issue & print"}
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Mandatory pre-issue preview (D-23): a slide-over on desktop, a
+          drag-to-close bottom-sheet on phones (§2.5). Esc/outside-click/drag
+          closes. Sealing happens ONLY from here. */}
+      <ResponsiveSheet
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Preview — confirm to issue"
+      >
+        <p className={`mb-4 ${captionClass}`}>Preview — confirm to issue</p>
+        <InvoiceDoc
+          company={company}
+          vatRegistered={vatRegistered}
+          ratePct={ratePct}
+          number={null}
+          status="draft"
+          issueDate={issueDate || null}
+          billTo={{
+            name: customer?.name ?? "—",
+            trn: customer?.trn,
+            phone: customer?.phone,
+            address: customer?.address,
+          }}
+          columns={columns.map((c) => ({ label: c.label, vatable: c.vatable }))}
+          lines={lines.map((l) => ({
+            description: l.description,
+            qty: Math.max(1, Math.floor(Number(l.qty) || 1)),
+            govtFee: cellFils(l, "govt"),
+            serviceFee: cellFils(l, "service"),
+            extraFees: columns.map((c) => cellFils(l, c.id)),
+          }))}
+          totals={{
+            subtotalGovt: totals.subtotalGovt,
+            subtotalService: totals.subtotalService,
+            subtotalExtras: totals.subtotalExtras,
+            vatAmount: totals.vatAmount,
+            grandTotal: totals.grandTotal,
+          }}
+          notes={notes || null}
+          terms={terms || null}
+          displayCurrency={displayCurrency}
+          exchangeRateE6={rateE6}
+        />
+        <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
+          Issuing allocates the next invoice number and this invoice becomes permanent — it cannot
+          be edited afterwards. Totals are recomputed server-side at that moment; corrections happen
+          via a new document.
+        </p>
+        {issueError ? (
+          <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
+        ) : null}
+        <div className="mt-5 flex justify-end gap-3 pb-2">
+          <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={confirming}>
+            Keep editing
+          </Button>
+          <Button onClick={confirmIssue} disabled={confirming}>
+            {confirming ? "Issuing…" : markPaid ? "Issue, record payment & print" : "Issue & print"}
+          </Button>
+        </div>
+      </ResponsiveSheet>
     </div>
   );
 }
