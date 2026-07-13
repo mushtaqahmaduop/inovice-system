@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
 // DESIGN_SYSTEM_CLAUDE_BLUE §3.1: Inter for UI, Source Serif 4 for display
@@ -23,6 +23,16 @@ const sourceSerif = Source_Serif_4({
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  display: "block",
+});
+
+// Q-08 bilingual print: the Arabic mirror of the printed invoice sets its runs
+// in IBM Plex Sans Arabic. Self-hosted at build time like the others; display
+// "block" so the printed Arabic never captures a fallback glyph (R-8a).
+const plexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
   display: "block",
 });
 
@@ -53,7 +63,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#16181d" media="(prefers-color-scheme: dark)" />
       </head>
       <body
-        className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} ${plexArabic.variable} antialiased`}
       >
         {children}
       </body>
