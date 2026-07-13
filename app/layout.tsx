@@ -48,6 +48,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+        {/* §5 polish — browser chrome (mobile address bar) matches --bg per mode. */}
+        <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#16181d" media="(prefers-color-scheme: dark)" />
       </head>
       <body
         className={`${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} antialiased`}

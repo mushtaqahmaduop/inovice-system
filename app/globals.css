@@ -11,10 +11,10 @@
    neutral set to match the owner's own screen mockups (2026-07-08).
    Accent (Federal Blue), success, warn and danger are unchanged; only
    the neutral ramp (bg / surface / text / border / shadow) moved from
-   warm brown to cool slate. The old Stamped Paper names
-   (--paper/--ink/--hairline/--warning…) remain below as ALIASES so
-   every existing screen re-skins immediately; screens migrate to the
-   new names slice by slice, then the aliases are deleted.
+   warm brown to cool slate. The old Stamped Paper aliases
+   (--paper/--ink/--hairline/--warning…) have now been fully retired —
+   every screen references the canonical tokens directly
+   (bg/text/border/bg-sunken/neutral-soft/danger…).
    --danger (burnt orange) is OVERDUE ONLY; form errors use --error.
    Components use tokens only — no hardcoded hex (CLAUDE.md §5).
    ──────────────────────────────────────────────────────────── */
@@ -63,53 +63,40 @@
   --dur-med: 200ms;
   --dur-slow: 300ms;
 
-  /* ── Stamped Paper ALIASES (delete when all screens migrated) ── */
-  --paper: var(--bg);
-  --surface-2: var(--bg-sunken);
-  --surface-3: var(--neutral-soft);
-  --ink: var(--text);
-  --ink-2: var(--text-secondary);
-  --ink-3: var(--text-tertiary);
-  --ink-4: var(--text-tertiary);
-  --hairline: var(--border);
-  --hairline-strong: var(--border-strong);
-  --accent-action: var(--accent);
-  --accent-action-hover: var(--accent-hover);
-  --warning: var(--danger);
-  --warning-soft: var(--danger-soft);
+  /* §4.4 focus ring — 3px accent glow (Input/Button focus-visible) */
   --shadow-focus: 0 0 0 3px rgba(29, 78, 216, 0.15);
 
   /* shadcn semantic mapping */
-  --background: var(--paper);
-  --foreground: var(--ink);
+  --background: var(--bg);
+  --foreground: var(--text);
   --card: var(--surface);
-  --card-foreground: var(--ink);
+  --card-foreground: var(--text);
   --popover: var(--surface);
-  --popover-foreground: var(--ink);
-  --primary: var(--accent-action);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
   --primary-foreground: #ffffff;
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--ink);
-  --muted: var(--surface-2);
-  --muted-foreground: var(--ink-3);
-  --accent-foreground: var(--ink);
+  --secondary: var(--bg-sunken);
+  --secondary-foreground: var(--text);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--text-tertiary);
+  --accent-foreground: var(--text);
   --destructive: var(--error);
   --input: var(--border-strong);
   --ring: var(--ring-color);
-  --chart-1: var(--accent-action);
-  --chart-2: var(--ink-2);
-  --chart-3: var(--ink-3);
+  --chart-1: var(--accent);
+  --chart-2: var(--text-secondary);
+  --chart-3: var(--text-tertiary);
   --chart-4: var(--success);
-  --chart-5: var(--warning);
+  --chart-5: var(--danger);
   --radius: 0.75rem; /* §4.3 md — cards, menus; sm/lg set explicitly below */
   --sidebar: var(--surface);
-  --sidebar-foreground: var(--ink-2);
-  --sidebar-primary: var(--accent-action);
+  --sidebar-foreground: var(--text-secondary);
+  --sidebar-primary: var(--accent);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--surface-2);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--hairline);
-  --sidebar-ring: var(--accent-action);
+  --sidebar-accent: var(--bg-sunken);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--accent);
 }
 
 .dark {
@@ -162,21 +149,8 @@
   --font-mono: var(--font-mono);
   --font-heading: var(--font-serif);
   --font-serif: var(--font-serif);
-  --color-paper: var(--paper);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-ink-4: var(--ink-4);
-  --color-hairline: var(--hairline);
-  --color-hairline-strong: var(--hairline-strong);
-  --color-accent-action: var(--accent-action);
-  --color-accent-action-hover: var(--accent-action-hover);
   --color-accent-soft: var(--accent-soft);
-  --color-warning: var(--warning);
-  --color-warning-soft: var(--warning-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -195,6 +169,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   /* Naming collision, resolved: the DESIGN_SYSTEM's `--accent` is Federal
@@ -251,6 +226,32 @@
   }
   .serif {
     font-family: var(--font-serif);
+  }
+  /* §5 polish — text selection uses the soft accent wash, not the browser
+     default blue (which clashes with Federal Blue). */
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+  /* §5 polish — thin, neutral-toned scrollbars (Firefox + WebKit). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border: 3px solid var(--surface);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
   /* D-21: JetBrains Mono for ALL numerics — amounts, invoice numbers, dates in tables */
   .num,
