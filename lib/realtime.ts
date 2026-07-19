@@ -12,6 +12,16 @@
 export const INVOICES_CHANNEL = "invoices";
 export const INVOICES_CHANGED_EVENT = "changed";
 
+// Presence (online-employees widget). Unlike INVOICES_CHANNEL this is a
+// genuine client-side Realtime Presence channel, not broadcast-refetch —
+// "who's online" only exists as live socket state, there's no table to
+// query it from. Exactly one subscriber may own this channel, same
+// constraint as the nav-counts channel below (realtime-js reuses one
+// channel instance per topic on the singleton browser client; a second
+// subscriber's unmount would tear it down under the first) — see
+// components/shell/presence-provider.tsx.
+export const PRESENCE_CHANNEL = "presence:online";
+
 export async function broadcastInvoicesChanged(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
