@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { formatAed } from "@/lib/money";
 import { formatForeign, formatRateFromE6, isForeignCurrency } from "@/lib/currency";
+import { Segmented } from "@/components/ui/segmented";
 
 // The invoice document — REPLICATES THE CLIENT'S OWN SAMPLE LAYOUT exactly
 // (DECISIONS.md Q-02 update 2026-07-05, supersedes the earlier Stamped Paper
@@ -9,14 +13,16 @@ import { formatForeign, formatRateFromE6, isForeignCurrency } from "@/lib/curren
 // / [extras] / Amount), the totals stacked bottom-right, Terms & Conditions
 // at the foot. Black-on-white in BOTH themes so screen matches print.
 //
-// Q-08 bilingual print (client batch-4, 2026-07-09): the printed copy carries
-// BOTH languages — the English document first, then a full Arabic MIRROR of the
-// same document (dir="rtl", labels translated, IBM Plex Sans Arabic). The two
-// sections share one render (`Section`), parameterised by a label dictionary +
-// direction, so figures/dates/values are byte-identical across both languages.
-// Directional spacing/alignment uses LOGICAL utilities (text-start/-end, pe-*)
-// so the same markup mirrors correctly under rtl. Money & dates stay in Latin
-// numerals in both copies (UAE FTA convention; keeps the copies tied).
+// Language (DECISIONS.md D-28, revised 2026-07-19): defaults to English;
+// Arabic is a toggle — rendered instead of English, not alongside it. Both
+// languages still share one render (`Section`), parameterised by a label
+// dictionary + direction, so figures/dates/values are byte-identical
+// whichever is selected. Directional spacing/alignment uses LOGICAL
+// utilities (text-start/-end, pe-*) so the same markup mirrors correctly
+// under rtl. Money & dates stay in Latin numerals in both languages (UAE
+// FTA convention). The toggle is print:hidden and controls print output
+// too, since it changes what's actually in the DOM — no separate print-only
+// language logic needed.
 //
 // Rules that still bind inside this layout: sealed values are rendered
 // verbatim (never recomputed); "Tax Invoice" title + TRN appear ONLY when
@@ -202,6 +208,8 @@ export function InvoiceDoc({
   issuedByName?: string | null;
   issuedAt?: string | null;
 }) {
+  const [language, setLanguage] = useState<"en" | "ar">("en");
+
   // AED-anchored: when a foreign currency + rate are set, money figures render
   // in that currency (derived from the sealed AED fils); otherwise plain AED.
   const foreign = isForeignCurrency(displayCurrency) && !!exchangeRateE6 && exchangeRateE6 > 0;
@@ -452,35 +460,39 @@ export function InvoiceDoc({
   );
 
   return (
-    <div className="print-doc relative border border-border bg-white p-8 text-[#111] print:border-0 print:p-0">
-      {/* Screen-only seal — the printed document stays the client's exact
-          sample layout; on screen the stamp makes immutability physical. */}
-      {status === "issued" ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-10 right-10 rotate-[-1.5deg] border border-[#111]/60 px-3 py-1.5 outline outline-offset-3 outline-[#111]/60 select-none print:hidden"
-        >
-          <p className="mono text-[11px] font-bold tracking-[0.22em] text-[#111]/70 uppercase">
-            · Sealed ·
-          </p>
-        </div>
-      ) : null}
-
-      {/* English document */}
-      {Section(EN, "ltr", company.name, false)}
-
-      {/* Divider, then the Arabic mirror of the same document (Q-08) */}
-      <div
-        aria-hidden="true"
-        className="my-9 flex items-center gap-3 text-[9px] tracking-[0.2em] text-[#999] uppercase"
-      >
-        <span className="h-px flex-1 bg-[#ccc]" />
-        النسخة العربية · Arabic copy
-        <span className="h-px flex-1 bg-[#ccc]" />
+    <div>
+      {/* Language toggle — controls preview AND print, since it changes
+          what's actually in the DOM below. Defaults to English. */}
+      <div className="mb-3 flex justify-end print:hidden">
+        <Segmented
+          aria-label="Invoice language"
+          value={language}
+          onChange={setLanguage}
+          options={[
+            { value: "en", label: "English" },
+            { value: "ar", label: "العربية" },
+          ]}
+        />
       </div>
 
-      {/* Arabic document — nameAr falls back to the Latin name until provided */}
-      {Section(AR, "rtl", company.nameAr || company.name, true)}
+      <div className="print-doc relative border border-border bg-white p-8 text-[#111] print:border-0 print:p-0">
+        {/* Screen-only seal — the printed document stays the client's exact
+            sample layout; on screen the stamp makes immutability physical. */}
+        {status === "issued" ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-10 right-10 rotate-[-1.5deg] border border-[#111]/60 px-3 py-1.5 outline outline-offset-3 outline-[#111]/60 select-none print:hidden"
+          >
+            <p className="mono text-[11px] font-bold tracking-[0.22em] text-[#111]/70 uppercase">
+              · Sealed ·
+            </p>
+          </div>
+        ) : null}
+
+        {language === "en"
+          ? Section(EN, "ltr", company.name, false)
+          : Section(AR, "rtl", company.nameAr || company.name, true)}
+      </div>
     </div>
   );
 }

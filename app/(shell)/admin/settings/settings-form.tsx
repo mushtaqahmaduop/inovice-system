@@ -31,8 +31,9 @@ type FormValues = {
   dueDaysDefault: string;
 };
 
-// Company & Branding fields. Arabic name is RTL and printed on the bilingual
-// invoice (client confirmed English + Arabic on the printed copy).
+// Company & Branding fields. Arabic name is RTL — used when a staff member
+// toggles an invoice to Arabic (DECISIONS.md D-28, revised 2026-07-19:
+// English is the default, Arabic is an explicit per-invoice choice).
 const TEXT_FIELDS: {
   name: keyof FormValues;
   label: string;
