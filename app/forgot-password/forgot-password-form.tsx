@@ -16,10 +16,15 @@ type Step = "email" | "code";
 // /update-password's aal1→aal2 TOTP-challenge handling still applies
 // unchanged for admin accounts.
 //
-// The email step always advances to "code" regardless of whether the
-// address matched an account — accounts are admin-provisioned, not
-// self-signup (D-19), so confirming/denying an email's existence here is
-// an enumeration risk we don't need to take on.
+// The email step advances to "code" regardless of whether the address
+// matched an account — accounts are admin-provisioned, not self-signup
+// (D-19), so confirming/denying an email's existence here is an
+// enumeration risk we don't need to take on. Supabase itself doesn't leak
+// that either: resetPasswordForEmail no-ops (no error) for an unknown
+// address. The errors it DOES return — rate limiting, bad email format,
+// SMTP misconfiguration — aren't an enumeration risk and hiding them just
+// makes "the email never arrived" impossible to diagnose, so those are
+// surfaced instead of swallowed.
 export function ForgotPasswordForm() {
   const supabase = createClient();
   const [step, setStep] = useState<Step>("email");
@@ -32,8 +37,12 @@ export function ForgotPasswordForm() {
     e.preventDefault();
     setBusy(true);
     setError("");
-    await supabase.auth.resetPasswordForEmail(email.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
     setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
     setStep("code");
   }
 
