@@ -8,17 +8,22 @@ import { FieldLabel } from "@/components/ui/field";
 
 type Step = "password" | "totp" | "recovery";
 
+const REASON_MESSAGES: Record<string, string> = {
+  inactive: "This account has been deactivated.",
+  "reset-link-invalid": "That reset link is invalid or has expired. Request a new one below.",
+};
+
 // Two-step login: password, then — when the account has an enrolled TOTP
 // factor — the code challenge. Arriving with ?mfa=1 (middleware redirect for
 // an aal1 session) jumps straight to the challenge. The recovery branch
 // consumes a one-time code and routes back through /mfa-setup.
-export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inactive: boolean }) {
+export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?: string }) {
   const supabase = createClient();
   const [step, setStep] = useState<Step>(startAtMfa ? "totp" : "password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState(inactive ? "This account has been deactivated." : "");
+  const [error, setError] = useState(reason ? (REASON_MESSAGES[reason] ?? "") : "");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -127,6 +132,12 @@ export function LoginForm({ startAtMfa, inactive }: { startAtMfa: boolean; inact
         <Button type="submit" className="w-full" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
+        <a
+          href="/forgot-password"
+          className="block text-center text-xs text-text-tertiary underline-offset-2 hover:underline"
+        >
+          Forgot password?
+        </a>
       </form>
     );
   }
