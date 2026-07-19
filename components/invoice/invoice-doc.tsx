@@ -92,7 +92,7 @@ type Labels = {
 const EN: Labels = {
   invoice: "Invoice",
   taxInvoice: "Tax Invoice",
-  billedTo: "Billed to",
+  billedTo: "Bill to",
   addressPrefix: "Address:",
   trn: "TRN",
   invoiceNumber: "Invoice number:",
@@ -261,12 +261,20 @@ export function InvoiceDoc({
           </div>
           <div className="mt-1.5 space-y-0.5 text-[10.5px] leading-snug">
             {company.phone
-              ? company.phone.split("·").map((p, i) => (
-                  <p key={i} className="mono" dir="ltr">
-                    {p.trim()}
-                    {i === 0 && company.email ? ` | ${company.email}` : ""}
-                  </p>
-                ))
+              ? (() => {
+                  // Multiple stations, one line each — phone and email are
+                  // each "·"-separated in Settings and paired positionally
+                  // (station 1's phone with station 1's email, etc.). A
+                  // phone with no matching email index just prints alone.
+                  const phones = company.phone.split("·").map((p) => p.trim());
+                  const emails = (company.email ?? "").split("·").map((e) => e.trim());
+                  return phones.map((p, i) => (
+                    <p key={i} className="mono" dir="ltr">
+                      {p}
+                      {emails[i] ? ` | ${emails[i]}` : ""}
+                    </p>
+                  ));
+                })()
               : null}
           </div>
         </div>
