@@ -6,6 +6,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Button } from "@/components/ui/button";
 import { Input, SelectNative } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FieldLabel, FieldError } from "@/components/ui/field";
 import { AedFlow } from "@/components/ui/aed-flow";
 import { aedToFils, formatAed } from "@/lib/money";
@@ -40,6 +41,7 @@ export function PaymentsPanel({
   paymentStatus: string | null;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [listRef] = useAutoAnimate<HTMLDivElement>();
   const [amount, setAmount] = useState("");
   const [methodId, setMethodId] = useState(methods[0]?.id ?? "");
@@ -76,9 +78,11 @@ export function PaymentsPanel({
     }
     if (
       fils > outstanding &&
-      !window.confirm(
-        `This exceeds the outstanding AED ${formatAed(Math.max(outstanding, 0))} — record an overpayment?`
-      )
+      !(await confirm({
+        title: "Record an overpayment?",
+        description: `This exceeds the outstanding AED ${formatAed(Math.max(outstanding, 0))}.`,
+        confirmLabel: "Record overpayment",
+      }))
     )
       return;
     if (
@@ -155,11 +159,14 @@ export function PaymentsPanel({
                   variant="outline"
                   size="sm"
                   disabled={busy}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      window.confirm(
-                        "Reverse this payment? A negative correction row is added — history is never edited."
-                      )
+                      await confirm({
+                        title: "Reverse this payment?",
+                        description: "A negative correction row is added — history is never edited.",
+                        confirmLabel: "Reverse",
+                        tone: "danger",
+                      })
                     )
                       void call({ type: "reverse", paymentId: p.id }).then((ok) => {
                         if (ok) toast.success("Payment reversed");

@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { CustomerFormDialog, type DialogMode } from "./customer-form";
 import type { CustomerRow } from "./page";
 
@@ -55,6 +56,7 @@ function initials(name: string) {
 // back via router.refresh().
 export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin: boolean }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [globalFilter, setGlobalFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "regular" | "walk_in">("all");
   const [showDeleted, setShowDeleted] = useState(false);
@@ -174,7 +176,12 @@ export function CustomersView({ rows, isAdmin }: { rows: CustomerRow[]; isAdmin:
   async function mutate(id: string, action: "soft_delete" | "restore") {
     if (
       action === "soft_delete" &&
-      !window.confirm("Remove this customer? (Soft delete — an admin can restore.)")
+      !(await confirm({
+        title: "Remove this customer?",
+        description: "Soft delete — an admin can restore.",
+        confirmLabel: "Remove",
+        tone: "danger",
+      }))
     )
       return;
     setBusyId(id);
