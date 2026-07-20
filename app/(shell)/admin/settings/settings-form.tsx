@@ -50,8 +50,16 @@ const TEXT_FIELDS: {
   { name: "tagline", label: "Tagline", hint: "Displayed under the company name." },
   { name: "trn", label: "TRN", hint: "Used on invoices and reports as per UAE regulations." },
   { name: "address", label: "Address", span2: true },
-  { name: "phone", label: "Phone" },
-  { name: "email", label: "Email" },
+  {
+    name: "phone",
+    label: "Phone",
+    hint: "Multiple stations? Separate numbers with · (e.g. +971 50 986 0956 · +971 50 714 2037).",
+  },
+  {
+    name: "email",
+    label: "Email",
+    hint: "Paired with phone numbers in the same order, also separated by ·.",
+  },
   { name: "bankDetails", label: "Bank details", span2: true },
 ];
 

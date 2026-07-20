@@ -37,7 +37,7 @@ export default async function DashboardPage() {
   const monShort = now.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
   const todayDay = now.getUTCDate();
 
-  const [{ data: issued }, { data: payments }, { data: events }, { data: profiles }] =
+  const [{ data: issued }, { data: payments }, { data: events }, { data: profiles }, { count: draftCount }] =
     await Promise.all([
       supabase
         .from("invoice_list")
@@ -52,10 +52,17 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false })
         .limit(7),
       supabase.from("profiles").select("id, full_name"),
+      supabase.from("invoice_list").select("id", { count: "exact", head: true }).eq("status", "draft"),
     ]);
 
   const rows = issued ?? [];
   const pays = payments ?? [];
+  const drafts = draftCount ?? 0;
+  const unpaidRows = rows.filter((r) => r.payment_status !== "paid");
+  const unpaidTotal = unpaidRows.reduce(
+    (s, r) => s + ((r.grand_total ?? 0) - (r.paid_total ?? 0)),
+    0
+  );
   const custName = (r: (typeof rows)[number]) =>
     (r.customer_snapshot as { name?: string } | null)?.name ?? "—";
 
@@ -153,6 +160,37 @@ export default async function DashboardPage() {
           <ChevronDown className="size-4 text-text-tertiary" />
         </span>
       </header>
+
+      {/* Unpaid / drafts banner — surfaces what needs action before the KPI
+          row buries it in figures. Hidden entirely when both are zero. */}
+      {unpaidRows.length > 0 || drafts > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-warn/30 bg-warn-soft px-4 py-3">
+          {unpaidRows.length > 0 ? (
+            <Link
+              href="/invoices?filter=unpaid"
+              className="inline-flex items-center gap-2 text-[13px] font-medium text-foreground hover:underline"
+            >
+              <CircleDollarSign className="size-4 text-warn" />
+              {unpaidRows.length} unpaid {unpaidRows.length === 1 ? "invoice" : "invoices"} ·{" "}
+              {formatAed(unpaidTotal)} AED outstanding
+            </Link>
+          ) : null}
+          {unpaidRows.length > 0 && drafts > 0 ? (
+            <span className="text-text-tertiary" aria-hidden="true">
+              ·
+            </span>
+          ) : null}
+          {drafts > 0 ? (
+            <Link
+              href="/invoices?filter=draft"
+              className="inline-flex items-center gap-2 text-[13px] font-medium text-foreground hover:underline"
+            >
+              <PencilLine className="size-4 text-warn" />
+              {drafts} open {drafts === 1 ? "draft" : "drafts"}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* KPI row — the client's named figure leads as a filled accent hero. */}
       <div className="mb-4 grid gap-4 lg:grid-cols-3">
