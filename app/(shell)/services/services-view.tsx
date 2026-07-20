@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatAed } from "@/lib/money";
 import { ServiceFormDialog } from "./service-form";
 import type { ServiceRow } from "./page";
@@ -47,6 +48,7 @@ const PER_PAGE_OPTIONS = [6, 12, 24];
 
 export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: boolean }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [query, setQuery] = useState("");
   const [showDeleted, setShowDeleted] = useState(false);
   const [dialog, setDialog] = useState<{ row: ServiceRow | null } | null>(null);
@@ -191,8 +193,15 @@ export function ServicesView({ rows, isAdmin }: { rows: ServiceRow[]; isAdmin: b
                       variant="outline"
                       size="icon-sm"
                       disabled={busyId === s.id}
-                      onClick={() => {
-                        if (window.confirm("Remove from catalogue? (Soft delete — restorable.)"))
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: "Remove from catalogue?",
+                            description: "Soft delete — restorable.",
+                            confirmLabel: "Remove",
+                            tone: "danger",
+                          })
+                        )
                           void mutate(s.id, { action: "soft_delete" }, "Service removed");
                       }}
                       aria-label={`Delete ${s.name}`}

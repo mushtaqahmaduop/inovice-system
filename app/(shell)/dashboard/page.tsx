@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatAed } from "@/lib/money";
 import { AedFlow } from "@/components/ui/aed-flow";
 import { CashFlowChart, type CashFlowPoint } from "@/components/dashboard/cash-flow-chart";
+import { OnlineEmployees } from "@/components/dashboard/online-employees";
 
 // Dashboard (task 7.1 → redesign slice 7, "premium" look). Full-width, KPI
 // row led by the client's one named figure — "who owes us" — as a filled
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
   const monShort = now.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
   const todayDay = now.getUTCDate();
 
-  const [{ data: issued }, { data: payments }, { data: events }, { data: profiles }] =
+  const [{ data: issued }, { data: payments }, { data: events }, { data: profiles }, { count: draftCount }] =
     await Promise.all([
       supabase
         .from("invoice_list")
@@ -51,10 +52,17 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false })
         .limit(7),
       supabase.from("profiles").select("id, full_name"),
+      supabase.from("invoice_list").select("id", { count: "exact", head: true }).eq("status", "draft"),
     ]);
 
   const rows = issued ?? [];
   const pays = payments ?? [];
+  const drafts = draftCount ?? 0;
+  const unpaidRows = rows.filter((r) => r.payment_status !== "paid");
+  const unpaidTotal = unpaidRows.reduce(
+    (s, r) => s + ((r.grand_total ?? 0) - (r.paid_total ?? 0)),
+    0
+  );
   const custName = (r: (typeof rows)[number]) =>
     (r.customer_snapshot as { name?: string } | null)?.name ?? "—";
 
@@ -153,6 +161,37 @@ export default async function DashboardPage() {
         </span>
       </header>
 
+      {/* Unpaid / drafts banner — surfaces what needs action before the KPI
+          row buries it in figures. Hidden entirely when both are zero. */}
+      {unpaidRows.length > 0 || drafts > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-warn/30 bg-warn-soft px-4 py-3">
+          {unpaidRows.length > 0 ? (
+            <Link
+              href="/invoices?filter=unpaid"
+              className="inline-flex items-center gap-2 text-[13px] font-medium text-foreground hover:underline"
+            >
+              <CircleDollarSign className="size-4 text-warn" />
+              {unpaidRows.length} unpaid {unpaidRows.length === 1 ? "invoice" : "invoices"} ·{" "}
+              {formatAed(unpaidTotal)} AED outstanding
+            </Link>
+          ) : null}
+          {unpaidRows.length > 0 && drafts > 0 ? (
+            <span className="text-text-tertiary" aria-hidden="true">
+              ·
+            </span>
+          ) : null}
+          {drafts > 0 ? (
+            <Link
+              href="/invoices?filter=draft"
+              className="inline-flex items-center gap-2 text-[13px] font-medium text-foreground hover:underline"
+            >
+              <PencilLine className="size-4 text-warn" />
+              {drafts} open {drafts === 1 ? "draft" : "drafts"}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* KPI row — the client's named figure leads as a filled accent hero. */}
       <div className="mb-4 grid gap-4 lg:grid-cols-3">
         <HeroCard total={outstandingTotal} settled={debtors.size === 0} count={debtors.size} />
@@ -171,8 +210,12 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Cash flow + recent activity */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+      {/* Cash flow + recent activity (+ online employees, admin only) */}
+      <div
+        className={`mb-4 grid gap-4 ${
+          ctx.role === "admin" ? "lg:grid-cols-[1.4fr_1fr_1fr]" : "lg:grid-cols-[1.7fr_1fr]"
+        }`}
+      >
         <section className="rounded-[14px] border border-border bg-surface p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -225,6 +268,8 @@ export default async function DashboardPage() {
             ) : null}
           </ul>
         </section>
+
+        {ctx.role === "admin" ? <OnlineEmployees /> : null}
       </div>
 
       {/* Top customers */}
