@@ -3,16 +3,21 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Server-side route guard (task 2.1). Every rule here is enforced on the
 // request path — the UI merely mirrors it. Rules:
-// - No verified user            → only /login is reachable.
+// - No verified user            → only /login, /forgot-password and the
+//   /auth/callback recovery-link handler are reachable.
 // - Deactivated / no profile    → signed out, back to /login (is_active is
 //   ALSO enforced by RLS app_role(); this check just fails fast).
 // - role=admin, no TOTP factor  → hard-locked to /mfa-setup (R-9.2): a fresh
 //   admin cannot reach ANY app route before enrolling.
-// - role=admin, factor, aal1    → locked to /login?mfa=1 (challenge step).
+// - role=admin, factor, aal1    → locked to /login?mfa=1 (challenge step),
+//   except /update-password: a password-recovery session for an MFA'd
+//   admin is aal1 by construction, so it gets its own escape hatch to reach
+//   the reset form — the form itself demands the TOTP step before it will
+//   actually write the new password (see update-password-form.tsx).
 // - role=staff                  → /admin/* is never reachable.
 // Admin-only surface = everything under /admin.
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth/callback"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -91,7 +96,10 @@ export async function updateSession(request: NextRequest) {
     }
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.currentLevel !== "aal2") {
-      // Enrolled but this session never passed the TOTP challenge.
+      // Enrolled but this session never passed the TOTP challenge — unless
+      // they're here to reset a forgotten password, which necessarily
+      // starts at aal1 even for an MFA'd admin.
+      if (path === "/update-password") return supabaseResponse;
       return isPublic ? supabaseResponse : redirect("/login?mfa=1");
     }
   } else if (path === "/admin" || path.startsWith("/admin/")) {

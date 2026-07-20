@@ -35,7 +35,7 @@ export default async function LoginPage({
           Authorized accounts only — there is no self-signup.
         </p>
 
-        <LoginForm startAtMfa={params.mfa === "1"} inactive={params.reason === "inactive"} />
+        <LoginForm startAtMfa={params.mfa === "1"} reason={params.reason} />
 
         <p className="mt-8 border-t border-border pt-4 text-center text-[12px] text-text-tertiary">
           Every action is recorded to the ledger.
