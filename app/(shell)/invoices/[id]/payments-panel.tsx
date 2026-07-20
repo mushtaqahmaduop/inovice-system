@@ -11,6 +11,7 @@ import { FieldLabel, FieldError } from "@/components/ui/field";
 import { StatusChip, type ChipVariant } from "@/components/ui/status-chip";
 import { AedFlow } from "@/components/ui/aed-flow";
 import { aedToFils, formatAed } from "@/lib/money";
+import { todayInDubai } from "@/lib/date";
 
 export type PaymentRow = {
   id: string;
@@ -46,7 +47,7 @@ export function PaymentsPanel({
   const [listRef] = useAutoAnimate<HTMLDivElement>();
   const [amount, setAmount] = useState("");
   const [methodId, setMethodId] = useState(methods[0]?.id ?? "");
-  const [receivedOn, setReceivedOn] = useState(new Date().toISOString().slice(0, 10));
+  const [receivedOn, setReceivedOn] = useState(todayInDubai);
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

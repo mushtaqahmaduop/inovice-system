@@ -4,6 +4,7 @@ import { requireUserApi } from "@/lib/auth/api-guards";
 import { createClient } from "@/lib/supabase/server";
 import { paymentActionSchema } from "@/lib/validation/payment";
 import { broadcastInvoicesChanged } from "@/lib/realtime";
+import { todayInDubai } from "@/lib/date";
 
 // Payments on an invoice (task 5.1). Staff and admin both record and
 // reverse (RLS §5: payments are INSERT for both; reversals ARE inserts).
@@ -98,14 +99,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       invoice_id: id,
       amount: -original.amount,
       method_id: original.method_id,
-      received_on: new Date().toISOString().slice(0, 10),
+      received_on: todayInDubai(),
       reference: `reversal of payment ${original.id}`,
       reverses_payment_id: original.id,
       recorded_by: guard.ctx.userId,
     })
     .select("id")
     .single();
-  if (revErr) return NextResponse.json({ error: revErr.message }, { status: 500 });
+  if (revErr) {
+    // The `select` above is racy: two concurrent reversals of the same payment
+    // can both pass the "already reversed?" check. The DB's partial unique index
+    // on reverses_payment_id (migration 0012) is the real guard — it makes the
+    // loser fail with 23505, which is the same user-facing outcome as the
+    // pre-check: this payment is already reversed.
+    const status = revErr.code === "23505" ? 409 : 500;
+    const message = revErr.code === "23505" ? "This payment is already reversed." : revErr.message;
+    return NextResponse.json({ error: message }, { status });
+  }
 
   await supabase.from("invoice_events").insert({
     invoice_id: id,

