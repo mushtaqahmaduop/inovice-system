@@ -20,10 +20,15 @@ export const settingsUpdateSchema = z.object({
   tagline: optionalTrimmed(300),
   trn: optionalTrimmed(20), // kept during deregistration, just not printed (F-4b)
   address: optionalTrimmed(500),
-  phone: optionalTrimmed(50),
-  email: optionalTrimmed(254).refine((v) => v === null || /^\S+@\S+\.\S+$/.test(v), {
-    message: "Invalid email",
-  }),
+  // Phone and email are one-or-more contact "stations" joined with " · "
+  // (station N's phone pairs with station N's email on the printed invoice).
+  // The form edits them as paired rows; the wire format stays the middot-
+  // joined string the invoice doc already splits on.
+  phone: optionalTrimmed(200),
+  email: optionalTrimmed(500).refine(
+    (v) => v === null || v.split("·").every((e) => /^\S+@\S+\.\S+$/.test(e.trim())),
+    { message: "Every email must be a valid address" }
+  ),
   bankDetails: optionalTrimmed(500),
   vatRegistered: z.boolean(), // D-16 — future invoices only
   vatRateBp: z.number().int().min(0).max(10000), // basis points; 500 = 5%
