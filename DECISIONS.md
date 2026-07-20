@@ -74,7 +74,12 @@
   - Contacts: `+971 50 986 0956` / `+971 50 714 2037`; emails `pristigeland@gmail.com` / `Prestigelandtyping@gmail.com`
   - Address: `Bawabat Al Sharq St., Civic Center Al Jimi, Al Ain, United Arab Emirates`
   - Sample numbering style observed: `INV-1001` (our format is Settings-configurable, D-12 — admin can match it)
-  - **STILL OPEN:** exact legal name (emails imply "Prestige Land Typing" — confirm spelling), TRN (none on the sample — ties into Q-03), and the **logo file**: the sample's purple logo reads "James Sharp Photography" — clearly the invoice TEMPLATE's placeholder, not the business logo. Do NOT copy it. Need the real logo as a file before 6.1.
+  - **STILL OPEN (2026-07-05):** exact legal name (emails imply "Prestige Land Typing" — confirm spelling), TRN (none on the sample — ties into Q-03), and the **logo file**: the sample's purple logo reads "James Sharp Photography" — clearly the invoice TEMPLATE's placeholder, not the business logo. Do NOT copy it. Need the real logo as a file before 6.1.
+  **✅ CLOSED 2026-07-08 (via Mushtaq, batch 3):**
+  - **Legal/display name = "Prestige Land Typing Center"** (also captured in the Q-11–17 UPDATE below).
+  - **Logo is no longer a client deliverable — Mushtaq is producing it himself.** The client is not sending a logo file, so this stops being a blocker on the client. Until Mushtaq's final asset lands, the printed invoice + shell render a **placeholder lockup** (navy "PL" monogram + gold crown, "Prestige Land / Typing Center" + tagline — shipped in redesign slice 11, PR #54); the printed doc's header block is a neutral placeholder that swaps for the real logo when provided. 6.1 shipped on this placeholder basis (PR #41).
+  - **TRN** value still not supplied, but not blocking — deregistered launch mode (D-16 / Q-03) prints no TRN.
+  → With the logo reclassified as an owner-produced asset, **there is no remaining client-side blocker on Q-02.**
 - **Q-03** VAT deregistration status/date — launch in registered or deregistered mode? → blocks Settings defaults (not schema).
   **✅ ANSWERED 2026-07-05 (client, 2nd batch): registered WITH a TRN, but deregistration applied and initially approved; per the authority's guidance they do NOT issue tax (TRN-based) invoices during the process.** → Launch in **deregistered mode**: `vat_registered=false` (0% VAT, no TRN printed — F-4b keeps the TRN stored once provided). The exact TRN value itself was still not supplied; not blocking since it isn't printed.
 - **Q-04** Which extra charge types recur (courier, stamp, photocopy…) and their default VAT-ability. → blocks extra-columns presets (feature itself is locked, D-11).
@@ -102,7 +107,8 @@
   - **Domain: not required** → production stays on the vercel.app URL (D-04 revisited: no client domain purchase).
   - **Training: Mr Sahil** is the handover attendee (7.5 walkthrough).
   **STILL OPEN after both batches: the logo file and the exact legal name (Q-02 remainder) — the only true blockers left, both for 6.1.**
-  **UPDATE 2026-07-05 (Mushtaq, 3rd instruction): legal/display name = "Prestige Land Typing Center"; invoices must show NO 5% VAT (deregistered launch mode already does this); and the printed invoice must use the CLIENT'S SAMPLE LAYOUT EXACTLY — this supersedes the earlier "details only, not layout" note. The invoice document component now replicates that layout (logo block placeholder until the real file arrives). Remaining open item: the logo file only.**
+  **UPDATE 2026-07-05 (Mushtaq, 3rd instruction): legal/display name = "Prestige Land Typing Center"; invoices must show NO 5% VAT (deregistered launch mode already does this); and the printed invoice must use the CLIENT'S SAMPLE LAYOUT EXACTLY — this supersedes the earlier "details only, not layout" note. The invoice document component now replicates that layout (logo block placeholder until the real file arrives).**
+  **UPDATE 2026-07-08 (Mushtaq, batch 3): both remaining items resolved — legal name confirmed above, and the logo is now OWNER-PRODUCED (client not supplying one), so it is no longer a client blocker (see Q-02 CLOSED note). Net: no client-side open items remain on the Q-02 / print-header track; 6.1 is fully unblocked and shipped.**
 
 **Rule:** if the client's answers contradict a locked decision, stop and raise it with Mushtaq — do not silently change a D-item.
 
