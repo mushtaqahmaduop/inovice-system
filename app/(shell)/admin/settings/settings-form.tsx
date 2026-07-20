@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Save } from "lucide-react";
+import { Save, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
@@ -51,18 +51,31 @@ const TEXT_FIELDS: {
   { name: "tagline", label: "Tagline", hint: "Displayed under the company name." },
   { name: "trn", label: "TRN", hint: "Used on invoices and reports as per UAE regulations." },
   { name: "address", label: "Address", span2: true },
-  {
-    name: "phone",
-    label: "Phone",
-    hint: "Multiple stations? Separate numbers with · (e.g. +971 50 986 0956 · +971 50 714 2037).",
-  },
-  {
-    name: "email",
-    label: "Email",
-    hint: "Paired with phone numbers in the same order, also separated by ·.",
-  },
   { name: "bankDetails", label: "Bank details", span2: true },
 ];
+
+// Phone/email are stored as " · "-joined strings (station N's phone pairs
+// with station N's email on the invoice). The form edits them as ordered
+// pairs so no one has to type a middot; row order = print priority.
+type Station = { phone: string; email: string };
+
+function splitStations(phone: string, email: string): Station[] {
+  const phones = phone ? phone.split("·").map((p) => p.trim()) : [];
+  const emails = email ? email.split("·").map((e) => e.trim()) : [];
+  const n = Math.max(phones.length, emails.length);
+  const rows: Station[] = [];
+  for (let i = 0; i < n; i++) rows.push({ phone: phones[i] ?? "", email: emails[i] ?? "" });
+  return rows.length ? rows : [{ phone: "", email: "" }];
+}
+
+// Drop fully-empty rows, then join each column with " · " in row order.
+function joinStations(rows: Station[]): { phone: string; email: string } {
+  const kept = rows.filter((r) => r.phone.trim() !== "" || r.email.trim() !== "");
+  return {
+    phone: kept.map((r) => r.phone.trim()).join(" · "),
+    email: kept.map((r) => r.email.trim()).join(" · "),
+  };
+}
 
 const SECTION =
   "rounded-[14px] border border-border bg-surface p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
@@ -142,6 +155,28 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
   }
 
   const vatOn = form.watch("vatRegistered");
+
+  // Station rows drive the phone/email form values. Writing back through
+  // setValue with shouldDirty keeps the "Unsaved changes" indicator and the
+  // submit path (which reads v.phone / v.email) working unchanged.
+  const [stations, setStations] = useState<Station[]>(() =>
+    splitStations(settings.phone ?? "", settings.email ?? "")
+  );
+
+  function updateStations(next: Station[]) {
+    setStations(next);
+    const { phone, email } = joinStations(next);
+    form.setValue("phone", phone, { shouldDirty: true });
+    form.setValue("email", email, { shouldDirty: true });
+  }
+
+  const setStation = (i: number, patch: Partial<Station>) =>
+    updateStations(stations.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  const addStation = () => updateStations([...stations, { phone: "", email: "" }]);
+  const removeStation = (i: number) =>
+    updateStations(
+      stations.length === 1 ? [{ phone: "", email: "" }] : stations.filter((_, idx) => idx !== i)
+    );
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -245,6 +280,61 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
               {f.hint ? <FieldHint>{f.hint}</FieldHint> : null}
             </div>
           ))}
+        </div>
+
+        {/* Contact stations — paired phone + email, in print priority order.
+            Replaces the old middot-delimited single fields (owner request). */}
+        <div className="mt-6">
+          <div className="mb-1 flex items-center justify-between">
+            <FieldLabel htmlFor="station-0-phone">Contact stations</FieldLabel>
+            <span className="text-[11px] text-text-tertiary">
+              Topmost prints first on the invoice
+            </span>
+          </div>
+          <div className="space-y-2">
+            {stations.map((s, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="mono mt-2.5 w-4 shrink-0 text-[11px] text-text-tertiary">
+                  {i + 1}
+                </span>
+                <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                  <Input
+                    id={`station-${i}-phone`}
+                    value={s.phone}
+                    onChange={(e) => setStation(i, { phone: e.target.value })}
+                    inputMode="tel"
+                    placeholder="+971 50 986 0956"
+                    className="text-[13px]"
+                  />
+                  <Input
+                    id={`station-${i}-email`}
+                    value={s.email}
+                    onChange={(e) => setStation(i, { email: e.target.value })}
+                    type="email"
+                    placeholder="name@example.com"
+                    className="text-[13px]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeStation(i)}
+                  aria-label={`Remove station ${i + 1}`}
+                  title="Remove station"
+                  className="mt-1 rounded-[8px] p-1.5 text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-danger"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addStation}
+            className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+          >
+            <Plus className="size-4" /> Add station
+          </button>
+          <FieldHint>Each station pairs a phone with the email beside it on the invoice.</FieldHint>
         </div>
       </section>
 
