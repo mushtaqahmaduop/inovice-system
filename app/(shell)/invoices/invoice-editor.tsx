@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, SelectNative } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import { FieldLabel } from "@/components/ui/field";
+import { FieldLabel, FieldHint } from "@/components/ui/field";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
@@ -1116,6 +1116,9 @@ export function InvoiceEditor({
                         placeholder={filsToInput(totals.grandTotal) || "0.00"}
                         className="mono w-full text-right text-[13px]"
                       />
+                      <FieldHint>
+                        Edit this — enter less than the total for a part payment.
+                      </FieldHint>
                     </div>
                     <div>
                       <FieldLabel htmlFor="pay-method">Method</FieldLabel>
@@ -1142,6 +1145,24 @@ export function InvoiceEditor({
                         className="mono w-48 text-[13px]"
                       />
                     </div>
+                    {/* Live read-out so a part payment is unmistakable. */}
+                    {(() => {
+                      const paid = aedToFils(payAmount);
+                      if (paid === null || paid <= 0) return null;
+                      const remaining = totals.grandTotal - paid;
+                      if (remaining <= 0)
+                        return (
+                          <p className="col-span-2 text-[12px] leading-4 text-success">
+                            Paid in full — nothing will be outstanding.
+                          </p>
+                        );
+                      return (
+                        <p className="col-span-2 text-[12px] leading-4 text-warn">
+                          Part payment — AED {formatAed(remaining)} of AED{" "}
+                          {formatAed(totals.grandTotal)} will remain outstanding.
+                        </p>
+                      );
+                    })()}
                   </div>
                 ) : null}
               </>

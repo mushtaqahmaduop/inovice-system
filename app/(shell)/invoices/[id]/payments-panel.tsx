@@ -8,6 +8,7 @@ import { Input, SelectNative } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FieldLabel, FieldError } from "@/components/ui/field";
+import { StatusChip, type ChipVariant } from "@/components/ui/status-chip";
 import { AedFlow } from "@/components/ui/aed-flow";
 import { aedToFils, formatAed } from "@/lib/money";
 
@@ -52,6 +53,16 @@ export function PaymentsPanel({
 
   const outstanding = grandTotal - paidTotal;
   const overpaid = paidTotal > grandTotal;
+
+  // Human-readable status pill (owner: the raw "partial/unpaid" word wasn't a
+  // clear clue). Amounts below still spell out exactly what's left.
+  const statusPill: { variant: ChipVariant; label: string } = overpaid
+    ? { variant: "warning", label: "Overpaid" }
+    : paymentStatus === "paid"
+      ? { variant: "success", label: "Paid in full" }
+      : paymentStatus === "partial"
+        ? { variant: "warning", label: "Partially paid" }
+        : { variant: "neutral", label: "Unpaid" };
 
   async function call(body: unknown) {
     setBusy(true);
@@ -104,9 +115,9 @@ export function PaymentsPanel({
     <div className="mt-6 rounded-[14px] border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:hidden">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-semibold text-foreground">Payments</h2>
-        <p className="text-[12px] text-text-secondary">
-          <span className="mono">{paymentStatus ?? "—"}</span>
-          {" · paid "}
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-text-secondary">
+          <StatusChip variant={statusPill.variant}>{statusPill.label}</StatusChip>
+          {" paid "}
           <span className="mono">
             AED <AedFlow fils={paidTotal} />
           </span>
@@ -163,7 +174,8 @@ export function PaymentsPanel({
                     if (
                       await confirm({
                         title: "Reverse this payment?",
-                        description: "A negative correction row is added — history is never edited.",
+                        description:
+                          "A negative correction row is added — history is never edited.",
                         confirmLabel: "Reverse",
                         tone: "danger",
                       })
