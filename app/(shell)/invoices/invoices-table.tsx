@@ -134,7 +134,14 @@ function rowChip(
       title: overpaid ? `Overpaid: AED ${formatAed(r.paid_total)} received` : undefined,
     };
   }
-  if (r.payment_status === "partial") return { variant: "ink", label: "Sealed · partial" };
+  if (r.payment_status === "partial") {
+    const outstanding = (r.grand_total ?? 0) - r.paid_total;
+    return {
+      variant: "warning",
+      label: "Part-paid",
+      title: `Paid AED ${formatAed(r.paid_total)} · AED ${formatAed(outstanding)} outstanding`,
+    };
+  }
   return { variant: "ink", label: "Sealed" };
 }
 
@@ -180,10 +187,7 @@ export function InvoicesTable({
         if (filter === "issued" && r.status !== "issued") return false;
         if (filter === "paid" && !(r.status === "issued" && r.payment_status === "paid"))
           return false;
-        if (
-          filter === "unpaid" &&
-          !(r.status === "issued" && r.payment_status !== "paid")
-        )
+        if (filter === "unpaid" && !(r.status === "issued" && r.payment_status !== "paid"))
           return false;
         if (filter === "overdue" && !isOverdue(r)) return false;
         if (fromDate && (r.issue_date ?? r.created_at.slice(0, 10)) < fromDate) return false;
