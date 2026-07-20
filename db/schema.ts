@@ -20,6 +20,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
   unique,
   check,
   type AnyPgColumn,
@@ -245,6 +246,12 @@ export const payments = pgTable(
   (t) => [
     check("payments_amount_nonzero_check", sql`${t.amount} <> 0`),
     index("payments_invoice_id_idx").on(t.invoiceId), // derived-status join depends on this
+    // A payment may be reversed at most once — closes the reversal double-submit
+    // race (the app pre-check is racy). Partial: only reversal rows carry a
+    // reverses_payment_id. Trigger + DDL in migration 0012.
+    uniqueIndex("payments_one_reversal_per_original")
+      .on(t.reversesPaymentId)
+      .where(sql`${t.reversesPaymentId} IS NOT NULL`),
   ]
 );
 

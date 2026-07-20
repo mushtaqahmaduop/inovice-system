@@ -22,6 +22,7 @@ import { FieldLabel, FieldHint } from "@/components/ui/field";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
 import { aedToFils, formatAed } from "@/lib/money";
+import { todayInDubai } from "@/lib/date";
 import {
   SUPPORTED_CURRENCIES,
   isForeignCurrency,
@@ -168,9 +169,7 @@ export function InvoiceEditor({
   // Prefill today's date so the picker shows a concrete day (existing drafts
   // keep their saved date; a blank one still falls back to today). The user
   // can change it; the server re-defaults to the issue day only if cleared.
-  const [issueDate, setIssueDate] = useState(
-    existing?.issueDate ?? new Date().toISOString().slice(0, 10)
-  );
+  const [issueDate, setIssueDate] = useState(existing?.issueDate ?? todayInDubai());
   // §2.6 — smooth row add/remove in the line-item grid (auto-animate).
   const [linesRef] = useAutoAnimate<HTMLTableSectionElement>();
 
@@ -180,7 +179,7 @@ export function InvoiceEditor({
   const [markPaid, setMarkPaid] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethodId, setPayMethodId] = useState(methods[0]?.id ?? "");
-  const [payReceivedOn, setPayReceivedOn] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payReceivedOn, setPayReceivedOn] = useState(todayInDubai);
 
   const [custQuery, setCustQuery] = useState("");
   const [custOpen, setCustOpen] = useState(false);
@@ -482,28 +481,47 @@ export function InvoiceEditor({
     const body = await res.json().catch(() => null);
     if (res.ok) {
       // R-6: alreadyIssued is SUCCESS — show the issued invoice either way.
-      // Record-on-issue payment: the invoice is now sealed, so the ledger
-      // will accept it. Best-effort — if it fails, the sealed page still
-      // loads and the payment can be recorded there manually.
+      const issuedLabel = body?.invoiceNumber ? `Invoice ${body.invoiceNumber}` : "Invoice";
+      // Record-on-issue payment: the invoice is now sealed, so the ledger will
+      // accept it. This POST is a SEPARATE request from the seal — if it fails
+      // (transient 5xx, a deactivated payment method, a network blip) the
+      // invoice is sealed UNPAID. We must NOT report a clean success in that
+      // case, or the operator prints an "issued & paid" invoice whose payment
+      // was never recorded. So: await it, check res.ok, and on failure surface
+      // a persistent error telling them to record it on the invoice page.
       if (markPaid) {
         const fils = aedToFils(payAmount);
         if (fils && fils > 0 && payMethodId) {
-          await fetch(`/api/invoices/${draftId}/payments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "record",
-              amount: fils,
-              methodId: payMethodId,
-              receivedOn: payReceivedOn,
-              reference: null,
-            }),
-          }).catch(() => {});
+          let payOk = false;
+          try {
+            const payRes = await fetch(`/api/invoices/${draftId}/payments`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: "record",
+                amount: fils,
+                methodId: payMethodId,
+                receivedOn: payReceivedOn,
+                reference: null,
+              }),
+            });
+            payOk = payRes.ok;
+          } catch {
+            payOk = false;
+          }
+          if (!payOk) {
+            toast.error(
+              `${issuedLabel} was issued, but the payment was NOT recorded — open the invoice and record it there.`,
+              { duration: Infinity }
+            );
+            // The sealed invoice still loads; land on it so the payment can be
+            // recorded immediately (skip auto-print — it isn't paid).
+            router.push(`/invoices/${draftId}`);
+            return; // stay disabled while navigating
+          }
         }
       }
-      toast.success(
-        body?.invoiceNumber ? `Invoice ${body.invoiceNumber} issued` : "Invoice issued"
-      );
+      toast.success(`${issuedLabel} issued`);
       // Owner request: land on the sealed invoice and print it as issued.
       router.push(`/invoices/${draftId}?print=1`);
       return; // stay disabled while navigating
