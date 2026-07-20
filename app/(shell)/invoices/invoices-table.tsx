@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   createColumnHelper,
   flexRender,
@@ -101,12 +101,15 @@ const dateFmt = new Intl.DateTimeFormat("en-GB", {
 });
 const fmtDate = (iso: string | null) => (iso ? dateFmt.format(new Date(iso + "T00:00:00Z")) : "—");
 
-type Filter = "all" | "draft" | "issued" | "paid" | "overdue" | "voided";
+type Filter = "all" | "draft" | "issued" | "unpaid" | "paid" | "overdue" | "voided";
+
+const FILTER_VALUES: Filter[] = ["all", "draft", "issued", "unpaid", "paid", "overdue", "voided"];
 
 const EMPTY_COPY: Record<Filter, string> = {
   all: "No invoices yet — create your first one.",
   draft: "No open drafts.",
   issued: "No sealed invoices yet.",
+  unpaid: "Nothing unpaid — you're all collected.",
   paid: "No paid invoices yet.",
   overdue: "No overdue invoices — nice.",
   voided: "No voided invoices.",
@@ -143,8 +146,15 @@ export function InvoicesTable({
   dueDaysDefault: number | null;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Deep-link entry point — e.g. the dashboard's unpaid banner links to
+  // /invoices?filter=unpaid. Any unrecognized value falls back to "all"
+  // rather than rendering an empty, confusing table.
+  const initialFilter = searchParams.get("filter");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(
+    FILTER_VALUES.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
+  );
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -169,6 +179,11 @@ export function InvoicesTable({
         if (filter === "voided" && r.status !== "voided") return false;
         if (filter === "issued" && r.status !== "issued") return false;
         if (filter === "paid" && !(r.status === "issued" && r.payment_status === "paid"))
+          return false;
+        if (
+          filter === "unpaid" &&
+          !(r.status === "issued" && r.payment_status !== "paid")
+        )
           return false;
         if (filter === "overdue" && !isOverdue(r)) return false;
         if (fromDate && (r.issue_date ?? r.created_at.slice(0, 10)) < fromDate) return false;
@@ -289,6 +304,7 @@ export function InvoicesTable({
             { value: "all", label: "All" },
             { value: "draft", label: "Draft" },
             { value: "issued", label: "Sealed" },
+            { value: "unpaid", label: "Unpaid" },
             { value: "paid", label: "Paid" },
             { value: "overdue", label: "Overdue" },
             { value: "voided", label: "Voided" },
