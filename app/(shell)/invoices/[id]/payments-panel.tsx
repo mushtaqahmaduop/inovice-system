@@ -59,10 +59,10 @@ export function PaymentsPanel({
   const statusPill: { variant: ChipVariant; label: string } = overpaid
     ? { variant: "warning", label: "Overpaid" }
     : paymentStatus === "paid"
-      ? { variant: "success", label: "Paid in full" }
+      ? { variant: "success", label: "Paid" }
       : paymentStatus === "partial"
-        ? { variant: "warning", label: "Partially paid" }
-        : { variant: "neutral", label: "Unpaid" };
+        ? { variant: "warning", label: "Partially Paid" }
+        : { variant: "neutral", label: "Not Paid" };
 
   async function call(body: unknown) {
     setBusy(true);
@@ -116,6 +116,7 @@ export function PaymentsPanel({
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-semibold text-foreground">Payments</h2>
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-text-secondary">
+          <span className="text-text-tertiary">Payment Status:</span>
           <StatusChip variant={statusPill.variant}>{statusPill.label}</StatusChip>
           {" paid "}
           <span className="mono">

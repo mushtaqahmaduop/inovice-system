@@ -231,6 +231,7 @@ export default async function InvoicePage({
         issuedByName={(issuer as { full_name: string } | null)?.full_name ?? null}
         issuedAt={invoice.issued_at}
         paymentStatus={listRow?.payment_status ?? null}
+        paidTotal={listRow?.paid_total ?? 0}
         voidReason={invoice.void_reason}
       />
 

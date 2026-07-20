@@ -76,6 +76,8 @@ type Labels = {
   paidHeading: string;
   atIssue: string;
   paid: Record<PayKey, string>;
+  amountPaid: string;
+  balanceDue: string;
   colItem: string;
   colDescription: string;
   colQty: string;
@@ -104,9 +106,11 @@ const EN: Labels = {
   invoiceNumber: "Invoice number:",
   invoiceDate: "Invoice date:",
   currency: "Currency:",
-  paidHeading: "Paid / Not Paid :",
+  paidHeading: "Payment Status :",
   atIssue: "— at issue —",
   paid: { paid: "Paid", partial: "Partially Paid", unpaid: "Not Paid" },
+  amountPaid: "Amount Paid:",
+  balanceDue: "Balance Due:",
   colItem: "Item #",
   colDescription: "Description",
   colQty: "Qty",
@@ -135,9 +139,11 @@ const AR: Labels = {
   invoiceNumber: "رقم الفاتورة:",
   invoiceDate: "تاريخ الفاتورة:",
   currency: "العملة:",
-  paidHeading: "مدفوعة / غير مدفوعة :",
+  paidHeading: "حالة الدفع :",
   atIssue: "— عند الإصدار —",
   paid: { paid: "مدفوعة", partial: "مدفوعة جزئياً", unpaid: "غير مدفوعة" },
+  amountPaid: "المبلغ المدفوع:",
+  balanceDue: "المبلغ المتبقي:",
   colItem: "م",
   colDescription: "الوصف",
   colQty: "الكمية",
@@ -181,6 +187,7 @@ export function InvoiceDoc({
   notes,
   terms,
   paymentStatus,
+  paidTotal = 0,
   voidReason,
   displayCurrency = "AED",
   exchangeRateE6 = null,
@@ -198,6 +205,9 @@ export function InvoiceDoc({
   notes: string | null;
   terms: string | null;
   paymentStatus?: string | null;
+  /** AED fils already received — drives the Amount Paid / Balance Due rows
+   *  shown on a partial or unpaid issued invoice. */
+  paidTotal?: number;
   voidReason?: string | null;
   /** Foreign-currency DISPLAY layer (D-27). AED (default) renders unchanged; a
    *  foreign currency shows amounts derived from the sealed AED total, with the
@@ -229,6 +239,11 @@ export function InvoiceDoc({
         : paymentStatus === "partial"
           ? "partial"
           : "unpaid";
+  // Arrears: on a partial or unpaid issued invoice, spell out what was paid
+  // and what remains. AED fils in, rendered in the display currency.
+  const paidFils = status === "issued" ? paidTotal : 0;
+  const outstandingFils = totals.grandTotal - paidFils;
+  const showArrears = payKey === "partial" || payKey === "unpaid";
   const addressLines = (company.address ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -261,12 +276,13 @@ export function InvoiceDoc({
           {/* Logo placeholder — swaps for the real logo file when provided */}
           <div className="inline-block bg-[#1a1a1a] px-5 py-3">
             <p className="text-[16px] leading-tight font-semibold text-white">{companyName}</p>
-            {company.tagline ? (
-              <p className="mt-0.5 text-[8px] tracking-[0.22em] text-white/80 uppercase">
-                {company.tagline}
-              </p>
-            ) : null}
           </div>
+          {/* Tagline sits under the name block and above the contact lines. */}
+          {company.tagline ? (
+            <p className="mt-1.5 text-[9px] tracking-[0.2em] text-[#333] uppercase">
+              {company.tagline}
+            </p>
+          ) : null}
           <div className="mt-1.5 space-y-0.5 text-[10.5px] leading-snug">
             {company.phone
               ? (() => {
@@ -445,6 +461,21 @@ export function InvoiceDoc({
                   <td className="mono text-end text-[11px] font-bold text-[#444]">
                     {formatAed(totals.grandTotal)}
                   </td>
+                </tr>
+              </>
+            ) : null}
+            {/* Arrears — only on a partial or unpaid issued invoice. */}
+            {showArrears ? (
+              <>
+                {paidFils > 0 ? (
+                  <tr>
+                    <td className="pt-2 pe-6 text-end font-bold">{L.amountPaid}</td>
+                    <td className="mono pt-2 text-end">{money(paidFils)}</td>
+                  </tr>
+                ) : null}
+                <tr>
+                  <td className="pe-6 text-end text-[14px] font-bold">{L.balanceDue}</td>
+                  <td className="mono text-end text-[14px] font-bold">{money(outstandingFils)}</td>
                 </tr>
               </>
             ) : null}
