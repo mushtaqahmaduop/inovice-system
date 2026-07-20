@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
 import { PageTransition } from "@/components/shell/page-transition";
 import { Toaster } from "@/components/ui/toast";
+import { PresenceProvider } from "@/components/shell/presence-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
 async function signOut() {
@@ -25,32 +26,34 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   const ctx = await requireUser();
 
   return (
-    <ConfirmProvider>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar role={ctx.role} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3 md:gap-4 md:px-6 print:hidden">
-            <div className="flex min-w-0 shrink-0 items-baseline gap-3">
-              <PageTitle />
-            </div>
-            <div className="flex flex-1 justify-end md:justify-center">
-              <GlobalSearch />
-            </div>
-            <div className="flex shrink-0 items-center gap-2.5">
-              <ThemeToggle />
-              <UserMenu name={ctx.fullName} role={ctx.role} signOut={signOut} />
-            </div>
-          </header>
-          <main className="min-w-0 flex-1">
-            <PageTransition>{children}</PageTransition>
-          </main>
-          <footer className="flex shrink-0 items-center justify-between border-t border-border px-5 py-4 text-[12px] text-text-tertiary md:px-8 print:hidden">
-            <span>© 2026 Prestige Land. All rights reserved.</span>
-            <span className="mono">Version 1.0.0</span>
-          </footer>
+    <PresenceProvider userId={ctx.userId} fullName={ctx.fullName} role={ctx.role}>
+      <ConfirmProvider>
+        <div className="flex min-h-screen bg-background">
+          <Sidebar role={ctx.role} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3 md:gap-4 md:px-6 print:hidden">
+              <div className="flex min-w-0 shrink-0 items-baseline gap-3">
+                <PageTitle />
+              </div>
+              <div className="flex flex-1 justify-end md:justify-center">
+                <GlobalSearch />
+              </div>
+              <div className="flex shrink-0 items-center gap-2.5">
+                <ThemeToggle />
+                <UserMenu name={ctx.fullName} role={ctx.role} signOut={signOut} />
+              </div>
+            </header>
+            <main className="min-w-0 flex-1">
+              <PageTransition>{children}</PageTransition>
+            </main>
+            <footer className="flex shrink-0 items-center justify-between border-t border-border px-5 py-4 text-[12px] text-text-tertiary md:px-8 print:hidden">
+              <span>© 2026 Prestige Land. All rights reserved.</span>
+              <span className="mono">Version 1.0.0</span>
+            </footer>
+          </div>
+          <Toaster />
         </div>
-        <Toaster />
-      </div>
-    </ConfirmProvider>
+      </ConfirmProvider>
+    </PresenceProvider>
   );
 }

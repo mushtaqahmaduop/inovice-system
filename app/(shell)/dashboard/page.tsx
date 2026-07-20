@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatAed } from "@/lib/money";
 import { AedFlow } from "@/components/ui/aed-flow";
 import { CashFlowChart, type CashFlowPoint } from "@/components/dashboard/cash-flow-chart";
+import { OnlineEmployees } from "@/components/dashboard/online-employees";
 
 // Dashboard (task 7.1 → redesign slice 7, "premium" look). Full-width, KPI
 // row led by the client's one named figure — "who owes us" — as a filled
@@ -209,8 +210,12 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Cash flow + recent activity */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+      {/* Cash flow + recent activity (+ online employees, admin only) */}
+      <div
+        className={`mb-4 grid gap-4 ${
+          ctx.role === "admin" ? "lg:grid-cols-[1.4fr_1fr_1fr]" : "lg:grid-cols-[1.7fr_1fr]"
+        }`}
+      >
         <section className="rounded-[14px] border border-border bg-surface p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -263,6 +268,8 @@ export default async function DashboardPage() {
             ) : null}
           </ul>
         </section>
+
+        {ctx.role === "admin" ? <OnlineEmployees /> : null}
       </div>
 
       {/* Top customers */}
