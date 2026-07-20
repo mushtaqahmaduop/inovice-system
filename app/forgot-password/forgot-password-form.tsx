@@ -8,7 +8,7 @@ import { FieldLabel } from "@/components/ui/field";
 
 type Step = "email" | "code";
 
-// This project's recovery email carries the raw 6-digit OTP
+// This project's recovery email carries the raw OTP
 // (Supabase's `{{ .Token }}` template variable), not a clickable link, so
 // the flow consumes it with verifyOtp(type: "recovery") directly rather
 // than depending on a link + /auth/callback round trip. verifyOtp
@@ -67,19 +67,19 @@ export function ForgotPasswordForm() {
     return (
       <form onSubmit={submitCode} className="space-y-4">
         <p className="text-sm leading-relaxed text-text-secondary">
-          If an account exists for <span className="font-medium text-foreground">{email}</span>,
-          a 6-digit code is on its way — check your inbox (and spam folder).
+          If an account exists for <span className="font-medium text-foreground">{email}</span>, a
+          reset code is on its way — check your inbox (and spam folder).
         </p>
         {error && <p className="text-sm text-error">{error}</p>}
         <div>
           <FieldLabel htmlFor="otp-code">Reset code</FieldLabel>
           <Input
             id="otp-code"
-            className="mono h-11 text-center text-[20px] tracking-[0.45em]"
+            className="mono h-11 text-center text-[20px] tracking-[0.3em]"
             inputMode="numeric"
             autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="000000"
+            maxLength={8}
+            placeholder="00000000"
             required
             autoFocus
             value={code}
