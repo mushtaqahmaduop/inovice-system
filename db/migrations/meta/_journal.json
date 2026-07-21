@@ -99,6 +99,13 @@
       "when": 1784620422240,
       "tag": "0013_zero_total_paid",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784623034914,
+      "tag": "0014_settings_arabic_details",
+      "breakpoints": true
     }
   ]
 }

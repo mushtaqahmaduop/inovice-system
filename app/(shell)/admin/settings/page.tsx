@@ -8,8 +8,10 @@ export type SettingsRow = {
   company_name: string;
   company_name_ar: string | null;
   tagline: string | null;
+  tagline_ar: string | null;
   trn: string | null;
   address: string | null;
+  address_ar: string | null;
   phone: string | null;
   email: string | null;
   bank_details: string | null;

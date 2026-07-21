@@ -1,6 +1,6 @@
 {
-  "id": "c42d4489-fda1-4fe9-8751-b6f116c23eae",
-  "prevId": "a98a8168-2cd2-4131-8d56-e2c94f9cf9fd",
+  "id": "1651fe88-319e-4573-8096-759aab191938",
+  "prevId": "c42d4489-fda1-4fe9-8751-b6f116c23eae",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1245,6 +1245,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "tagline_ar": {
+          "name": "tagline_ar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "trn": {
           "name": "trn",
           "type": "text",
@@ -1253,6 +1259,12 @@
         },
         "address": {
           "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_ar": {
+          "name": "address_ar",
           "type": "text",
           "primaryKey": false,
           "notNull": false

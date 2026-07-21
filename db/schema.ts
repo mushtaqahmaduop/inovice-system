@@ -48,10 +48,12 @@ export const profiles = pgTable(
 export const settings = pgTable("settings", {
   id: id(),
   companyName: text("company_name").notNull(),
-  companyNameAr: text("company_name_ar"), // pending Q-08
+  companyNameAr: text("company_name_ar"), // Arabic copy of the printed invoice (D-28)
   tagline: text("tagline"),
+  taglineAr: text("tagline_ar"), // Arabic tagline for the Arabic invoice copy
   trn: text("trn"), // kept populated during deregistration; just not printed (F-4b)
   address: text("address"),
+  addressAr: text("address_ar"), // Arabic address for the Arabic invoice copy
   phone: text("phone"),
   email: text("email"),
   logoPath: text("logo_path"),

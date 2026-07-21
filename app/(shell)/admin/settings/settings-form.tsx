@@ -17,8 +17,10 @@ type FormValues = {
   companyName: string;
   companyNameAr: string;
   tagline: string;
+  taglineAr: string;
   trn: string;
   address: string;
+  addressAr: string;
   phone: string;
   email: string;
   bankDetails: string;
@@ -31,27 +33,22 @@ type FormValues = {
   dueDaysDefault: string;
 };
 
-// Company & Branding fields. Arabic name is RTL — used when a staff member
-// toggles an invoice to Arabic (DECISIONS.md D-28, revised 2026-07-19:
-// English is the default, Arabic is an explicit per-invoice choice).
-const TEXT_FIELDS: {
-  name: keyof FormValues;
+// Company details print in two languages: the English field feeds the English
+// invoice, the Arabic field feeds the Arabic copy (D-28) — each auto-fetched
+// by the invoice's language. Name / tagline / address are the translatable
+// pair fields (English left, Arabic right). Phone, email, TRN and bank details
+// are language-neutral and shared across both copies.
+type CompanyPair = {
+  en: keyof FormValues;
+  ar: keyof FormValues;
   label: string;
-  hint?: string;
-  span2?: boolean;
-  rtl?: boolean;
-}[] = [
-  { name: "companyName", label: "Company name *" },
-  {
-    name: "companyNameAr",
-    label: "Company name (Arabic)",
-    hint: "Printed on bilingual (English + Arabic) invoices.",
-    rtl: true,
-  },
-  { name: "tagline", label: "Tagline", hint: "Displayed under the company name." },
-  { name: "trn", label: "TRN", hint: "Used on invoices and reports as per UAE regulations." },
-  { name: "address", label: "Address", span2: true },
-  { name: "bankDetails", label: "Bank details", span2: true },
+  required?: boolean;
+  textarea?: boolean;
+};
+const COMPANY_PAIRS: CompanyPair[] = [
+  { en: "companyName", ar: "companyNameAr", label: "Company name", required: true },
+  { en: "tagline", ar: "taglineAr", label: "Tagline" },
+  { en: "address", ar: "addressAr", label: "Address", textarea: true },
 ];
 
 // Phone/email are stored as " · "-joined strings (station N's phone pairs
@@ -93,8 +90,10 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
       companyName: settings.company_name,
       companyNameAr: settings.company_name_ar ?? "",
       tagline: settings.tagline ?? "",
+      taglineAr: settings.tagline_ar ?? "",
       trn: settings.trn ?? "",
       address: settings.address ?? "",
+      addressAr: settings.address_ar ?? "",
       phone: settings.phone ?? "",
       email: settings.email ?? "",
       bankDetails: settings.bank_details ?? "",
@@ -130,8 +129,10 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
         companyName: v.companyName,
         companyNameAr: v.companyNameAr,
         tagline: v.tagline,
+        taglineAr: v.taglineAr,
         trn: v.trn,
         address: v.address,
+        addressAr: v.addressAr,
         phone: v.phone,
         email: v.email,
         bankDetails: v.bankDetails,
@@ -180,6 +181,147 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* Company details lead — the printed invoice's header, in both
+          languages. English (left) feeds the English invoice, Arabic (right)
+          feeds the Arabic copy; each is auto-fetched by the invoice language. */}
+      <section className={SECTION}>
+        <p className={SECTION_LABEL}>Company details</p>
+        <p className="-mt-3 mb-5 text-[13px] leading-[19px] text-text-secondary">
+          English fields print on the English invoice; Arabic fields print on the Arabic copy. Each
+          is fetched automatically by the invoice&apos;s language — leave an Arabic field blank to
+          fall back to the English one.
+        </p>
+
+        <div className="mb-2 hidden gap-4 sm:grid sm:grid-cols-2">
+          <span className="text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
+            English
+          </span>
+          <span className="text-right text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
+            العربية · Arabic
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          {COMPANY_PAIRS.map((p) => (
+            <div key={p.en} className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel htmlFor={`s-${p.en}`}>
+                  {p.label}
+                  {p.required ? " *" : ""}
+                </FieldLabel>
+                {p.textarea ? (
+                  <textarea
+                    id={`s-${p.en}`}
+                    {...form.register(p.en as "address")}
+                    rows={2}
+                    className={TEXTAREA}
+                  />
+                ) : (
+                  <Input
+                    id={`s-${p.en}`}
+                    {...form.register(p.en as "companyName")}
+                    className="text-[13px]"
+                  />
+                )}
+              </div>
+              <div>
+                <FieldLabel htmlFor={`s-${p.ar}`}>{`${p.label} (العربية)`}</FieldLabel>
+                {p.textarea ? (
+                  <textarea
+                    id={`s-${p.ar}`}
+                    {...form.register(p.ar as "addressAr")}
+                    dir="rtl"
+                    rows={2}
+                    className={`${TEXTAREA} text-right`}
+                  />
+                ) : (
+                  <Input
+                    id={`s-${p.ar}`}
+                    {...form.register(p.ar as "companyNameAr")}
+                    dir="rtl"
+                    className="text-right text-[13px]"
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Language-neutral details — the same on both invoice copies. */}
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="mb-4 text-[11px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
+            Shared — same on both copies
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="s-trn">TRN</FieldLabel>
+              <Input id="s-trn" {...form.register("trn")} className="mono text-[13px]" />
+              <FieldHint>Used on invoices and reports as per UAE regulations.</FieldHint>
+            </div>
+            <div>
+              <FieldLabel htmlFor="s-bankDetails">Bank details</FieldLabel>
+              <Input id="s-bankDetails" {...form.register("bankDetails")} className="text-[13px]" />
+            </div>
+          </div>
+
+          {/* Contact stations — paired phone + email, in print priority order. */}
+          <div className="mt-4">
+            <div className="mb-1 flex items-center justify-between">
+              <FieldLabel htmlFor="station-0-phone">Contact stations</FieldLabel>
+              <span className="text-[11px] text-text-tertiary">
+                Topmost prints first on the invoice
+              </span>
+            </div>
+            <div className="space-y-2">
+              {stations.map((s, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="mono mt-2.5 w-4 shrink-0 text-[11px] text-text-tertiary">
+                    {i + 1}
+                  </span>
+                  <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      id={`station-${i}-phone`}
+                      value={s.phone}
+                      onChange={(e) => setStation(i, { phone: e.target.value })}
+                      inputMode="tel"
+                      placeholder="+971 50 986 0956"
+                      className="text-[13px]"
+                    />
+                    <Input
+                      id={`station-${i}-email`}
+                      value={s.email}
+                      onChange={(e) => setStation(i, { email: e.target.value })}
+                      type="email"
+                      placeholder="name@example.com"
+                      className="text-[13px]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeStation(i)}
+                    aria-label={`Remove station ${i + 1}`}
+                    title="Remove station"
+                    className="mt-1 rounded-[8px] p-1.5 text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-danger"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addStation}
+              className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
+            >
+              <Plus className="size-4" /> Add station
+            </button>
+            <FieldHint>
+              Each station pairs a phone with the email beside it on the invoice.
+            </FieldHint>
+          </div>
+        </div>
+      </section>
+
       <section className={SECTION}>
         <p className={SECTION_LABEL}>VAT</p>
         <label className="flex items-start gap-2.5">
@@ -262,79 +404,6 @@ export function SettingsForm({ settings }: { settings: SettingsRow }) {
               className={TEXTAREA}
             />
           </div>
-        </div>
-      </section>
-
-      <section className={SECTION}>
-        <p className={SECTION_LABEL}>Company &amp; Branding</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {TEXT_FIELDS.map((f) => (
-            <div key={f.name} className={f.span2 ? "sm:col-span-2" : ""}>
-              <FieldLabel htmlFor={`s-${f.name}`}>{f.label}</FieldLabel>
-              <Input
-                id={`s-${f.name}`}
-                {...form.register(f.name as "companyName")}
-                dir={f.rtl ? "rtl" : undefined}
-                className={`text-[13px] ${f.rtl ? "text-right" : ""}`}
-              />
-              {f.hint ? <FieldHint>{f.hint}</FieldHint> : null}
-            </div>
-          ))}
-        </div>
-
-        {/* Contact stations — paired phone + email, in print priority order.
-            Replaces the old middot-delimited single fields (owner request). */}
-        <div className="mt-6">
-          <div className="mb-1 flex items-center justify-between">
-            <FieldLabel htmlFor="station-0-phone">Contact stations</FieldLabel>
-            <span className="text-[11px] text-text-tertiary">
-              Topmost prints first on the invoice
-            </span>
-          </div>
-          <div className="space-y-2">
-            {stations.map((s, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="mono mt-2.5 w-4 shrink-0 text-[11px] text-text-tertiary">
-                  {i + 1}
-                </span>
-                <div className="grid flex-1 gap-2 sm:grid-cols-2">
-                  <Input
-                    id={`station-${i}-phone`}
-                    value={s.phone}
-                    onChange={(e) => setStation(i, { phone: e.target.value })}
-                    inputMode="tel"
-                    placeholder="+971 50 986 0956"
-                    className="text-[13px]"
-                  />
-                  <Input
-                    id={`station-${i}-email`}
-                    value={s.email}
-                    onChange={(e) => setStation(i, { email: e.target.value })}
-                    type="email"
-                    placeholder="name@example.com"
-                    className="text-[13px]"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeStation(i)}
-                  aria-label={`Remove station ${i + 1}`}
-                  title="Remove station"
-                  className="mt-1 rounded-[8px] p-1.5 text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-danger"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={addStation}
-            className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
-          >
-            <Plus className="size-4" /> Add station
-          </button>
-          <FieldHint>Each station pairs a phone with the email beside it on the invoice.</FieldHint>
         </div>
       </section>
 
