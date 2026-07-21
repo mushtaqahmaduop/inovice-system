@@ -26,6 +26,7 @@ export function Modal({
   tone?: "default" | "danger";
 }) {
   const titleId = React.useId();
+  const panelRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!dismissable) return;
@@ -35,6 +36,49 @@ export function Modal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [dismissable, onClose]);
+
+  // Focus management: move focus into the dialog on open, keep Tab cycling
+  // within it (a modal that leaks focus to the page behind is a keyboard /
+  // screen-reader trap of the wrong kind), and restore focus to the element
+  // that opened it on close.
+  React.useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const opener = document.activeElement as HTMLElement | null;
+
+    const focusables = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+
+    (focusables()[0] ?? panel).focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panel.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    panel.addEventListener("keydown", onKey);
+    return () => {
+      panel.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
+  }, []);
 
   return (
     <div
@@ -47,8 +91,10 @@ export function Modal({
       aria-labelledby={titleId}
     >
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={cn(
-          "w-full rounded-[14px] border border-border bg-surface-raised shadow-[var(--shadow-drawer)]",
+          "w-full rounded-[14px] border border-border bg-surface-raised shadow-[var(--shadow-drawer)] outline-none",
           size === "sm" ? "max-w-sm" : "max-w-md"
         )}
       >

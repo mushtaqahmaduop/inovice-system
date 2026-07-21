@@ -15,7 +15,8 @@ import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { formatAed } from "@/lib/money";
 import { AedFlow } from "@/components/ui/aed-flow";
-import { CashFlowChart, type CashFlowPoint } from "@/components/dashboard/cash-flow-chart";
+import type { CashFlowPoint } from "@/components/dashboard/cash-flow-chart";
+import { CashFlowChart } from "@/components/dashboard/cash-flow-chart-lazy";
 import { OnlineEmployees } from "@/components/dashboard/online-employees";
 
 // Dashboard (task 7.1 → redesign slice 7, "premium" look). Full-width, KPI
@@ -37,23 +38,31 @@ export default async function DashboardPage() {
   const monShort = now.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
   const todayDay = now.getUTCDate();
 
-  const [{ data: issued }, { data: payments }, { data: events }, { data: profiles }, { count: draftCount }] =
-    await Promise.all([
-      supabase
-        .from("invoice_list")
-        .select(
-          "id, invoice_number, customer_id, customer_snapshot, issue_date, grand_total, paid_total, vat_amount, payment_status"
-        )
-        .eq("status", "issued"),
-      supabase.from("payments").select("amount, received_on").gte("received_on", lastMonthStart),
-      supabase
-        .from("invoice_events")
-        .select("id, event_type, created_at, actor_id, invoice_id")
-        .order("created_at", { ascending: false })
-        .limit(7),
-      supabase.from("profiles").select("id, full_name"),
-      supabase.from("invoice_list").select("id", { count: "exact", head: true }).eq("status", "draft"),
-    ]);
+  const [
+    { data: issued },
+    { data: payments },
+    { data: events },
+    { data: profiles },
+    { count: draftCount },
+  ] = await Promise.all([
+    supabase
+      .from("invoice_list")
+      .select(
+        "id, invoice_number, customer_id, customer_snapshot, issue_date, grand_total, paid_total, vat_amount, payment_status"
+      )
+      .eq("status", "issued"),
+    supabase.from("payments").select("amount, received_on").gte("received_on", lastMonthStart),
+    supabase
+      .from("invoice_events")
+      .select("id, event_type, created_at, actor_id, invoice_id")
+      .order("created_at", { ascending: false })
+      .limit(7),
+    supabase.from("profiles").select("id, full_name"),
+    supabase
+      .from("invoice_list")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "draft"),
+  ]);
 
   const rows = issued ?? [];
   const pays = payments ?? [];

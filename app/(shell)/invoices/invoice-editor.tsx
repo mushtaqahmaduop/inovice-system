@@ -441,6 +441,32 @@ export function InvoiceEditor({
     return () => clearInterval(t);
   }, []);
 
+  // beforeunload guard for the data-loss window. A brand-new invoice is never
+  // autosaved (§4 — autosave never CREATES a row), so typed-but-unsaved work
+  // is lost on a hard navigation (tab close, reload, external link). Warn if
+  // the current state differs from what's been persisted — the pristine
+  // baseline for a never-saved draft, the last saved snapshot otherwise. This
+  // only fires on real browser unloads, not Next client-side navigations, so
+  // the save/issue flows (which router.push) are unaffected.
+  const baselineRef = useRef<string | null>(null);
+  if (baselineRef.current === null) baselineRef.current = JSON.stringify(payload());
+  const dirtyRef = useRef<() => boolean>(() => false);
+  dirtyRef.current = () => {
+    if (confirming) return false; // sealing in progress — let it complete
+    const persisted =
+      lastSavedRef.current === "__new__" ? baselineRef.current : lastSavedRef.current;
+    return JSON.stringify(payload()) !== persisted;
+  };
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current()) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   // Issue = save the exact current state, then the MANDATORY preview
   // (D-23); sealing only happens from the sheet's Confirm button.
   async function startIssue() {
