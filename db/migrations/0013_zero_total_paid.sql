@@ -11,10 +11,18 @@
 --   0 < paid < total     → partial
 --   paid >= total (incl. total = 0) → paid / overpaid (UI flags overpay)
 --
--- CREATE OR REPLACE keeps the view's grants and the security_invoker flag.
--- Append-only: this supersedes the CASE in 0009, it does not edit it.
+-- DROP + CREATE, NOT create-or-replace: 0009 froze the view's column list via
+-- `i.*` before 0011 added display_currency / exchange_rate_e6 to invoices.
+-- create-or-replace may only APPEND view columns, never reorder, so
+-- re-expanding i.* (which now yields the new columns mid-list) is rejected by
+-- Postgres. Recreating the view picks up the current invoices columns
+-- cleanly. invoice_list has no dependents, so DROP is safe; the
+-- security_invoker flag and the GRANT are re-declared because DROP discards
+-- them. Append-only: this supersedes the CASE in 0009, it does not edit it.
 
-CREATE OR REPLACE VIEW public.invoice_list
+DROP VIEW IF EXISTS public.invoice_list;
+--> statement-breakpoint
+CREATE VIEW public.invoice_list
 WITH (security_invoker = true) AS
 SELECT i.*,
        COALESCE(p.paid, 0) AS paid_total,
@@ -28,3 +36,7 @@ FROM public.invoices i
 LEFT JOIN LATERAL (
   SELECT SUM(amount) AS paid FROM public.payments WHERE invoice_id = i.id
 ) p ON true;
+--> statement-breakpoint
+-- The underlying tables' RLS is the enforcement (security_invoker); the
+-- view itself just needs to be selectable by app roles.
+GRANT SELECT ON public.invoice_list TO authenticated;
