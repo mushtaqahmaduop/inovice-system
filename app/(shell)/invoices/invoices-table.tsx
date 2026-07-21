@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   createColumnHelper,
@@ -22,10 +23,13 @@ import type { InvoiceListRow } from "./page";
 
 const col = createColumnHelper<InvoiceListRow>();
 
-// Per-row actions menu (owner mockup ⋮). Self-contained open state so it
-// doesn't force the memoized column set to rebuild; a full-screen backdrop
-// catches the outside click. The row itself is already click-to-open, so
-// this is a discoverable shortcut to Open / Print.
+// Per-row actions menu (owner mockup ⋮). The dropdown is rendered in a PORTAL
+// to <body> with fixed positioning computed from the trigger, so it is NEVER
+// clipped by the table's `max-h-[70vh] overflow-auto` scroll container (which
+// used to swallow the menu on the last rows / short lists). It flips above the
+// trigger when there isn't room below, and closes on outside-click, scroll, or
+// resize. The row itself is already click-to-open; this is a discoverable
+// shortcut to Open / Print.
 function RowMenu({
   status,
   onOpen,
@@ -36,59 +40,97 @@ function RowMenu({
   onPrint: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    // Capture phase so it also catches scrolling inside the table container,
+    // not just the window — a fixed menu would otherwise detach from its row.
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  const toggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const r = e.currentTarget.getBoundingClientRect();
+    const menuH = status === "issued" ? 92 : 48; // 2 items vs 1
+    const below = r.bottom + 4;
+    const flipUp = below + menuH > window.innerHeight;
+    setPos({
+      top: flipUp ? Math.max(8, r.top - menuH - 4) : below,
+      right: Math.max(8, window.innerWidth - r.right),
+    });
+    setOpen(true);
+  };
+
+  const itemCls =
+    "flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken";
+
   return (
-    <div className="relative flex justify-end" onClick={(e) => e.stopPropagation()}>
+    <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-label="Row actions"
         aria-haspopup="menu"
         aria-expanded={open}
       >
         <MoreVertical />
       </Button>
-      {open ? (
-        <>
-          <button
-            type="button"
-            aria-hidden="true"
-            tabIndex={-1}
-            className="fixed inset-0 z-20 cursor-default"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="menu"
-            className="absolute top-8 right-0 z-30 w-40 overflow-hidden rounded-[10px] border border-border bg-surface-raised py-1 shadow-[var(--shadow-popover)]"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onOpen();
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
-            >
-              {status === "draft" ? <Pencil className="size-4" /> : <Eye className="size-4" />}
-              {status === "draft" ? "Edit draft" : "Open"}
-            </button>
-            {status === "issued" ? (
+      {open && pos
+        ? createPortal(
+            <>
               <button
                 type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onPrint();
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+                aria-hidden="true"
+                tabIndex={-1}
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setOpen(false)}
+              />
+              <div
+                role="menu"
+                style={{ top: pos.top, right: pos.right }}
+                className="fixed z-50 w-40 overflow-hidden rounded-[10px] border border-border bg-surface-raised py-1 shadow-[var(--shadow-popover)]"
               >
-                <Printer className="size-4" /> Print
-              </button>
-            ) : null}
-          </div>
-        </>
-      ) : null}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    onOpen();
+                  }}
+                  className={itemCls}
+                >
+                  {status === "draft" ? <Pencil className="size-4" /> : <Eye className="size-4" />}
+                  {status === "draft" ? "Edit draft" : "Open"}
+                </button>
+                {status === "issued" ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
+                      onPrint();
+                    }}
+                    className={itemCls}
+                  >
+                    <Printer className="size-4" /> Print
+                  </button>
+                ) : null}
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
