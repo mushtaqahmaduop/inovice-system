@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import NumberFlow from "@number-flow/react";
 
 // Animated AED figure (LIBRARIES_GUIDE §2.2). Digits roll with JetBrains
@@ -7,16 +8,20 @@ import NumberFlow from "@number-flow/react";
 // with thousands grouping — byte-identical to lib/money.ts formatAed for
 // non-negative amounts, which is all we animate (totals, balances).
 //
-// The value is bound directly to `fils`, so the server-rendered / first-paint
-// figure is the REAL amount (an earlier version started at 0 and rolled up on
-// mount, which flashed "AED 0.00" until hydration — wrong on an FTA figure).
-// NumberFlow still animates old → new whenever `fils` changes in place (e.g. a
-// payment lands and the outstanding figure updates), and respects prefers-
-// reduced-motion automatically — reduced-motion users just see the value.
+// On mount it rolls up from 0 → value (the premium load-in the owner asked to
+// keep); thereafter it animates old → new whenever `fils` changes in place
+// (e.g. a payment lands and the outstanding figure updates). The visible
+// figure starts at 0 for one frame before the roll; the aria-label always
+// carries the REAL amount so screen readers and no-JS never see the 0.
+// NumberFlow respects prefers-reduced-motion automatically — reduced-motion
+// users just see the final value with no roll.
 export function AedFlow({ fils, className }: { fils: number; className?: string }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => setValue(fils / 100), [fils]);
+
   return (
     <NumberFlow
-      value={fils / 100}
+      value={value}
       locales="en-US"
       format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}
       className={className}

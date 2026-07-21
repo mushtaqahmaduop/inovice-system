@@ -134,10 +134,17 @@ export default async function InvoicePage({
   // the exact sample layout, scaled to the narrower sheet (130mm vs 182mm
   // of content width → 0.72). Body <style> comes after the global sheet,
   // so its @page wins over the A4 default in globals.css.
+  //
+  // @page margin stays 0 (see globals.css) so the browser prints no URL /
+  // date footer; the real margin is padding on .print-doc. A5 is zoomed 0.72,
+  // which scales the padding too, so its padding is pre-divided (12.5mm × 0.72
+  // ≈ 9mm effective) to keep the same physical margin.
   const paper = settings?.paper_size === "A5" ? "A5" : "A4";
   const pageStyle =
-    `@page { size: ${paper}; margin: ${paper === "A5" ? "9mm" : "14mm"}; }` +
-    (paper === "A5" ? " @media print { .print-doc { zoom: 0.72; } }" : "");
+    `@page { size: ${paper}; margin: 0; }` +
+    (paper === "A5"
+      ? " @media print { .print-doc { zoom: 0.72; padding: 12.5mm !important; } }"
+      : " @media print { .print-doc { padding: 14mm !important; } }");
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 print:max-w-none print:p-0">

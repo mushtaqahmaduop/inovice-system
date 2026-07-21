@@ -1,4 +1,5 @@
 import { LoginForm } from "./login-form";
+import { BrandMark } from "@/components/shell/brand-mark";
 
 // No self-signup anywhere — accounts are created by the admin (D-19).
 // Redesign slice 9: the auth screens follow the premium Federal-Blue look —
@@ -13,20 +14,12 @@ export default async function LoginPage({
     <div className="flex min-h-screen items-center justify-center bg-bg-sunken px-4 py-10">
       <div className="w-full max-w-sm rounded-[16px] border border-border bg-surface p-8 shadow-[var(--shadow-popover)]">
         <div className="mb-6 flex items-center gap-3">
-          <svg viewBox="0 0 28 28" className="size-9 shrink-0" aria-hidden="true">
-            <polygon points="14,1.5 25.5,8 25.5,20 14,26.5 2.5,20 2.5,8" className="fill-primary" />
-            <path
-              d="M9.5 11h9M9.5 14.5h9M9.5 18h5.5"
-              stroke="white"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
+          <BrandMark />
           <div className="min-w-0">
             <p className="text-[16px] font-semibold tracking-tight text-foreground">
               Prestige Land
             </p>
-            <p className="mono text-[11px] leading-4 text-text-tertiary">Invoice Ledger</p>
+            <p className="text-[13px] leading-4 font-medium text-primary">Typing Center</p>
           </div>
         </div>
 

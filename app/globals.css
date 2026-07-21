@@ -303,9 +303,16 @@
    default page; the sealed view emits an overriding @page (+ A5 zoom)
    from settings.paper_size — body <style> comes after this sheet, so it
    wins (Q-07: A4/A5, never thermal). */
+/* margin: 0 is load-bearing — the browser draws its own header/footer (page
+   URL, date, title) inside the @page MARGIN box, so any non-zero margin lets
+   that chrome print on the invoice. With margin 0 there is no room for it, and
+   the real page margin is supplied as PADDING on .print-doc instead (a single-
+   language invoice is one page, so container padding == page margin). The
+   sealed view overrides this @page per paper size (A4/A5) with the same
+   margin:0 + padding trick. */
 @page {
   size: A4;
-  margin: 14mm;
+  margin: 0;
 }
 @media print {
   body {
@@ -318,6 +325,8 @@
        backgrounds by default. */
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+    /* Page margin, moved off @page (see above). */
+    padding: 14mm !important;
   }
   /* Never split a line-item row across sheets; thead repeats natively. */
   .print-doc tr {
