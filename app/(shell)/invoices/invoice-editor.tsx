@@ -342,8 +342,12 @@ export function InvoiceEditor({
   }
 
   function payload() {
+    // customer?.id (not customer!.id): payload() is also called at render time
+    // to seed the beforeunload baseline, and on a fresh /invoices/new no
+    // customer is picked yet — the non-null assertion crashed the whole page.
+    // The save/issue paths validate a customer first, so it's the real id there.
     return {
-      customerId: customer!.id,
+      customerId: customer?.id ?? null,
       issueDate: issueDate || null,
       notes,
       terms,
