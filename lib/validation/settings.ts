@@ -16,10 +16,12 @@ const optionalTrimmed = (max: number) =>
 
 export const settingsUpdateSchema = z.object({
   companyName: z.string().trim().min(1, "Company name is required").max(200),
-  companyNameAr: optionalTrimmed(200), // pending Q-08
+  companyNameAr: optionalTrimmed(200), // Arabic invoice copy (D-28)
   tagline: optionalTrimmed(300),
+  taglineAr: optionalTrimmed(300), // Arabic tagline for the Arabic invoice copy
   trn: optionalTrimmed(20), // kept during deregistration, just not printed (F-4b)
   address: optionalTrimmed(500),
+  addressAr: optionalTrimmed(500), // Arabic address for the Arabic invoice copy
   // Phone and email are one-or-more contact "stations" joined with " · "
   // (station N's phone pairs with station N's email on the printed invoice).
   // The form edits them as paired rows; the wire format stays the middot-

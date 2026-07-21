@@ -33,8 +33,10 @@ export type DocCompany = {
   name: string;
   nameAr: string | null;
   tagline: string | null;
+  taglineAr: string | null;
   trn: string | null;
   address: string | null;
+  addressAr: string | null;
   phone: string | null;
   email: string | null;
   bankDetails: string | null;
@@ -244,10 +246,13 @@ export function InvoiceDoc({
   const paidFils = status === "issued" ? paidTotal : 0;
   const outstandingFils = totals.grandTotal - paidFils;
   const showArrears = payKey === "partial" || payKey === "unpaid";
-  const addressLines = (company.address ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // Company header text is language-specific: the Arabic copy uses the Arabic
+  // tagline/address when set, falling back to the English value otherwise.
+  const addrLines = (v: string | null) =>
+    (v ?? "")
+      .split(/[,\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
 
   const th = "border border-[#333] px-2 py-1.5 text-start text-[12px] font-semibold";
   const td = "border border-[#333] px-2 py-1.5 text-[12px]";
@@ -255,248 +260,258 @@ export function InvoiceDoc({
 
   // One document body, rendered once per language. `dir` mirrors the whole
   // section under rtl; logical utilities keep alignment correct in both.
-  const Section = (L: Labels, dir: "ltr" | "rtl", companyName: string, arabic: boolean) => (
-    <section
-      dir={dir}
-      className={`break-inside-avoid ${arabic ? "font-arabic" : ""}`}
-      lang={arabic ? "ar" : "en"}
-    >
-      {status === "voided" ? (
-        <div className="mb-4 border-2 border-[#c2410c] px-3 py-2">
-          <p className="mono text-[11px] font-semibold tracking-[0.14em] text-[#c2410c] uppercase">
-            {L.voided}
-            {voidReason ? ` — ${voidReason}` : ""}
-          </p>
-        </div>
-      ) : null}
+  const Section = (L: Labels, dir: "ltr" | "rtl", companyName: string, arabic: boolean) => {
+    const secTagline = arabic ? company.taglineAr || company.tagline : company.tagline;
+    const secAddressLines = addrLines(
+      arabic ? company.addressAr || company.address : company.address
+    );
+    return (
+      <section
+        dir={dir}
+        className={`break-inside-avoid ${arabic ? "font-arabic" : ""}`}
+        lang={arabic ? "ar" : "en"}
+      >
+        {status === "voided" ? (
+          <div className="mb-4 border-2 border-[#c2410c] px-3 py-2">
+            <p className="mono text-[11px] font-semibold tracking-[0.14em] text-[#c2410c] uppercase">
+              {L.voided}
+              {voidReason ? ` — ${voidReason}` : ""}
+            </p>
+          </div>
+        ) : null}
 
-      {/* ── Header: logo block leading, INVOICE title + address trailing ── */}
-      <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0">
-          {/* Logo placeholder — swaps for the real logo file when provided */}
-          <div className="inline-block bg-[#1a1a1a] px-5 py-3">
-            <p className="text-[16px] leading-tight font-semibold text-white">{companyName}</p>
-          </div>
-          {/* Tagline sits under the name block and above the contact lines. */}
-          {company.tagline ? (
-            <p className="mt-1.5 text-[9px] tracking-[0.2em] text-[#333] uppercase">
-              {company.tagline}
-            </p>
-          ) : null}
-          <div className="mt-1.5 space-y-0.5 text-[10.5px] leading-snug">
-            {company.phone
-              ? (() => {
-                  // Multiple stations, one line each — phone and email are
-                  // each "·"-separated in Settings and paired positionally
-                  // (station 1's phone with station 1's email, etc.). A
-                  // phone with no matching email index just prints alone.
-                  const phones = company.phone.split("·").map((p) => p.trim());
-                  const emails = (company.email ?? "").split("·").map((e) => e.trim());
-                  return phones.map((p, i) => (
-                    <p key={i} className="mono" dir="ltr">
-                      {p}
-                      {emails[i] ? ` | ${emails[i]}` : ""}
-                    </p>
-                  ));
-                })()
-              : null}
-          </div>
-        </div>
-        <div className="shrink-0 text-end">
-          <h1 className="text-[34px] leading-none font-bold tracking-tight uppercase">
-            {title(L)}
-          </h1>
-          <div className="mt-1.5 space-y-0.5 text-[12px] leading-snug">
-            {addressLines.map((l, i) => (
-              <p key={i}>{l}</p>
-            ))}
-          </div>
-          {vatRegistered && company.trn ? (
-            <p className="mono mt-1 text-[11px]">
-              {L.trn} {company.trn}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {/* ── Billed to (leading) · number/date/paid (trailing) ── */}
-      <div className="mt-12 mb-4 flex items-start justify-between gap-6">
-        <div className="min-w-0">
-          <p className="text-[14px] font-bold">{L.billedTo}</p>
-          <p className="text-[13px]">{billTo.name}</p>
-          <p className="text-[10.5px] text-[#444]">
-            {L.addressPrefix} {billTo.address ?? ""}
-            {billTo.phone ? ` · ${billTo.phone}` : ""}
-          </p>
-          {billTo.trn ? (
-            <p className="mono text-[10.5px] text-[#444]">
-              {L.trn} {billTo.trn}
-            </p>
-          ) : null}
-        </div>
-        <table className="shrink-0 text-[13px]">
-          <tbody>
-            <tr>
-              <td className="pe-4 text-end font-bold">{L.invoiceNumber}</td>
-              <td className="mono text-end">{number ?? L.atIssue}</td>
-            </tr>
-            <tr>
-              <td className="pe-4 text-end font-bold">{L.invoiceDate}</td>
-              <td className="mono text-end">{fmtDate(issueDate)}</td>
-            </tr>
-            {foreign ? (
-              <tr>
-                <td className="pe-4 text-end font-bold">{L.currency}</td>
-                <td className="mono text-end">{cur}</td>
-              </tr>
+        {/* ── Header: logo block leading, INVOICE title + address trailing ── */}
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            {/* Logo placeholder — swaps for the real logo file when provided */}
+            <div className="inline-block bg-[#1a1a1a] px-5 py-3">
+              <p className="text-[16px] leading-tight font-semibold text-white">{companyName}</p>
+            </div>
+            {/* Tagline sits under the name block and above the contact lines. */}
+            {secTagline ? (
+              <p className="mt-1.5 text-[9px] tracking-[0.2em] text-[#333] uppercase">
+                {secTagline}
+              </p>
             ) : null}
+            <div className="mt-1.5 space-y-0.5 text-[10.5px] leading-snug">
+              {company.phone
+                ? (() => {
+                    // Multiple stations, one line each — phone and email are
+                    // each "·"-separated in Settings and paired positionally
+                    // (station 1's phone with station 1's email, etc.). A
+                    // phone with no matching email index just prints alone.
+                    const phones = company.phone.split("·").map((p) => p.trim());
+                    const emails = (company.email ?? "").split("·").map((e) => e.trim());
+                    return phones.map((p, i) => (
+                      <p key={i} className="mono" dir="ltr">
+                        {p}
+                        {emails[i] ? ` | ${emails[i]}` : ""}
+                      </p>
+                    ));
+                  })()
+                : null}
+            </div>
+          </div>
+          <div className="shrink-0 text-end">
+            <h1 className="text-[34px] leading-none font-bold tracking-tight uppercase">
+              {title(L)}
+            </h1>
+            <div className="mt-1.5 space-y-0.5 text-[12px] leading-snug">
+              {secAddressLines.map((l, i) => (
+                <p key={i}>{l}</p>
+              ))}
+            </div>
+            {vatRegistered && company.trn ? (
+              <p className="mono mt-1 text-[11px]">
+                {L.trn} {company.trn}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        {/* ── Billed to (leading) · number/date/paid (trailing) ── */}
+        <div className="mt-12 mb-4 flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <p className="text-[14px] font-bold">{L.billedTo}</p>
+            <p className="text-[13px]">{billTo.name}</p>
+            <p className="text-[10.5px] text-[#444]">
+              {L.addressPrefix} {billTo.address ?? ""}
+              {billTo.phone ? ` · ${billTo.phone}` : ""}
+            </p>
+            {billTo.trn ? (
+              <p className="mono text-[10.5px] text-[#444]">
+                {L.trn} {billTo.trn}
+              </p>
+            ) : null}
+          </div>
+          <table className="shrink-0 text-[13px]">
+            <tbody>
+              <tr>
+                <td className="pe-4 text-end font-bold">{L.invoiceNumber}</td>
+                <td className="mono text-end">{number ?? L.atIssue}</td>
+              </tr>
+              <tr>
+                <td className="pe-4 text-end font-bold">{L.invoiceDate}</td>
+                <td className="mono text-end">{fmtDate(issueDate)}</td>
+              </tr>
+              {foreign ? (
+                <tr>
+                  <td className="pe-4 text-end font-bold">{L.currency}</td>
+                  <td className="mono text-end">{cur}</td>
+                </tr>
+              ) : null}
+              <tr>
+                <td className="pe-4 text-end font-bold">{L.paidHeading}</td>
+                <td className="text-end">{payKey ? L.paid[payKey] : ""}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── The ruled grid, exactly per the sample ── */}
+        <table className="w-full border-collapse">
+          <thead>
             <tr>
-              <td className="pe-4 text-end font-bold">{L.paidHeading}</td>
-              <td className="text-end">{payKey ? L.paid[payKey] : ""}</td>
+              <th className={`${th} w-12`}>{L.colItem}</th>
+              <th className={th}>{L.colDescription}</th>
+              <th className={`${th} w-14 text-center`}>{L.colQty}</th>
+              <th className={`${th} w-24 text-end`}>{L.colUnitPrice}</th>
+              <th className={`${th} w-24 text-end`}>
+                {L.colServiceFee}
+                {vatRegistered ? ` (+${ratePct}% ${L.vat})` : ""}
+              </th>
+              {columns.map((c, i) => (
+                <th key={i} className={`${th} w-24 text-end`}>
+                  {c.label}
+                  {c.vatable && vatRegistered ? ` (+${ratePct}%)` : ""}
+                </th>
+              ))}
+              <th className={`${th} w-28 text-end`}>{L.colAmount}</th>
             </tr>
+          </thead>
+          <tbody>
+            {lines.map((l, idx) => (
+              <tr key={idx}>
+                <td className={`${td} mono`}>{idx + 1}</td>
+                <td className={td}>{l.description || "—"}</td>
+                <td className={`${td} mono text-center`}>{l.qty}</td>
+                <td className={`${td} mono text-end`}>
+                  {l.govtFee > 0 ? money(l.qty * l.govtFee) : ""}
+                </td>
+                <td className={`${td} mono text-end`}>
+                  {l.serviceFee > 0 ? money(l.qty * l.serviceFee) : ""}
+                </td>
+                {columns.map((_, i) => (
+                  <td key={i} className={`${td} mono text-end`}>
+                    {(l.extraFees[i] ?? 0) > 0 ? money(l.qty * (l.extraFees[i] ?? 0)) : ""}
+                  </td>
+                ))}
+                <td className={`${td} mono text-end font-semibold`}>{money(lineAmount(l))}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
 
-      {/* ── The ruled grid, exactly per the sample ── */}
-      <table className="w-full border-collapse">
-        <thead>
-          <tr>
-            <th className={`${th} w-12`}>{L.colItem}</th>
-            <th className={th}>{L.colDescription}</th>
-            <th className={`${th} w-14 text-center`}>{L.colQty}</th>
-            <th className={`${th} w-24 text-end`}>{L.colUnitPrice}</th>
-            <th className={`${th} w-24 text-end`}>
-              {L.colServiceFee}
-              {vatRegistered ? ` (+${ratePct}% ${L.vat})` : ""}
-            </th>
-            {columns.map((c, i) => (
-              <th key={i} className={`${th} w-24 text-end`}>
-                {c.label}
-                {c.vatable && vatRegistered ? ` (+${ratePct}%)` : ""}
-              </th>
-            ))}
-            <th className={`${th} w-28 text-end`}>{L.colAmount}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((l, idx) => (
-            <tr key={idx}>
-              <td className={`${td} mono`}>{idx + 1}</td>
-              <td className={td}>{l.description || "—"}</td>
-              <td className={`${td} mono text-center`}>{l.qty}</td>
-              <td className={`${td} mono text-end`}>
-                {l.govtFee > 0 ? money(l.qty * l.govtFee) : ""}
-              </td>
-              <td className={`${td} mono text-end`}>
-                {l.serviceFee > 0 ? money(l.qty * l.serviceFee) : ""}
-              </td>
-              {columns.map((_, i) => (
-                <td key={i} className={`${td} mono text-end`}>
-                  {(l.extraFees[i] ?? 0) > 0 ? money(l.qty * (l.extraFees[i] ?? 0)) : ""}
-                </td>
-              ))}
-              <td className={`${td} mono text-end font-semibold`}>{money(lineAmount(l))}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* ── Totals stack, bottom-trailing per the sample ── */}
-      <div className="mt-6 flex justify-end">
-        <table className="text-[13px]">
-          <tbody>
-            <tr>
-              <td className="pe-6 text-end font-bold">{L.subtotal}</td>
-              <td className="mono w-28 text-end">{money(totals.subtotalGovt)}</td>
-            </tr>
-            <tr>
-              <td className="pe-6 text-end font-bold">{L.serviceFeeTotal}</td>
-              <td className="mono text-end">{money(totals.subtotalService)}</td>
-            </tr>
-            {totals.subtotalExtras > 0 ? (
+        {/* ── Totals stack, bottom-trailing per the sample ── */}
+        <div className="mt-6 flex justify-end">
+          <table className="text-[13px]">
+            <tbody>
               <tr>
-                <td className="pe-6 text-end font-bold">{L.otherCharges}</td>
-                <td className="mono text-end">{money(totals.subtotalExtras)}</td>
+                <td className="pe-6 text-end font-bold">{L.subtotal}</td>
+                <td className="mono w-28 text-end">{money(totals.subtotalGovt)}</td>
               </tr>
-            ) : null}
-            {vatRegistered && totals.vatAmount > 0 ? (
               <tr>
-                <td className="pe-6 text-end font-bold">
-                  {L.vat} ({ratePct}%):
-                </td>
-                <td className="mono text-end">{money(totals.vatAmount)}</td>
+                <td className="pe-6 text-end font-bold">{L.serviceFeeTotal}</td>
+                <td className="mono text-end">{money(totals.subtotalService)}</td>
               </tr>
-            ) : null}
-            <tr>
-              <td className="pt-1 pe-6 text-end text-[14px] font-bold">
-                {L.totalAmount} {cur} :
-              </td>
-              <td className="mono pt-1 text-end text-[14px] font-bold">
-                {money(totals.grandTotal)}
-              </td>
-            </tr>
-            {/* FTA: a foreign-currency invoice must state the rate and the AED
-                equivalent of the tax + total. AED remains the record of truth. */}
-            {foreign ? (
-              <>
+              {totals.subtotalExtras > 0 ? (
                 <tr>
-                  <td className="pt-2 pe-6 text-end text-[10.5px] text-[#444]">{L.exchangeRate}</td>
-                  <td className="mono pt-2 text-end text-[10.5px] text-[#444]" dir="ltr">
-                    {rateStr}
-                  </td>
+                  <td className="pe-6 text-end font-bold">{L.otherCharges}</td>
+                  <td className="mono text-end">{money(totals.subtotalExtras)}</td>
                 </tr>
-                {vatRegistered && totals.vatAmount > 0 ? (
+              ) : null}
+              {vatRegistered && totals.vatAmount > 0 ? (
+                <tr>
+                  <td className="pe-6 text-end font-bold">
+                    {L.vat} ({ratePct}%):
+                  </td>
+                  <td className="mono text-end">{money(totals.vatAmount)}</td>
+                </tr>
+              ) : null}
+              <tr>
+                <td className="pt-1 pe-6 text-end text-[14px] font-bold">
+                  {L.totalAmount} {cur} :
+                </td>
+                <td className="mono pt-1 text-end text-[14px] font-bold">
+                  {money(totals.grandTotal)}
+                </td>
+              </tr>
+              {/* FTA: a foreign-currency invoice must state the rate and the AED
+                equivalent of the tax + total. AED remains the record of truth. */}
+              {foreign ? (
+                <>
                   <tr>
-                    <td className="pe-6 text-end text-[10.5px] text-[#444]">{L.vatAed}</td>
-                    <td className="mono text-end text-[10.5px] text-[#444]">
-                      {formatAed(totals.vatAmount)}
+                    <td className="pt-2 pe-6 text-end text-[10.5px] text-[#444]">
+                      {L.exchangeRate}
+                    </td>
+                    <td className="mono pt-2 text-end text-[10.5px] text-[#444]" dir="ltr">
+                      {rateStr}
                     </td>
                   </tr>
-                ) : null}
-                <tr>
-                  <td className="pe-6 text-end text-[11px] font-bold text-[#444]">
-                    {L.totalAedEquivalent}
-                  </td>
-                  <td className="mono text-end text-[11px] font-bold text-[#444]">
-                    {formatAed(totals.grandTotal)}
-                  </td>
-                </tr>
-              </>
-            ) : null}
-            {/* Arrears — only on a partial or unpaid issued invoice. */}
-            {showArrears ? (
-              <>
-                {paidFils > 0 ? (
+                  {vatRegistered && totals.vatAmount > 0 ? (
+                    <tr>
+                      <td className="pe-6 text-end text-[10.5px] text-[#444]">{L.vatAed}</td>
+                      <td className="mono text-end text-[10.5px] text-[#444]">
+                        {formatAed(totals.vatAmount)}
+                      </td>
+                    </tr>
+                  ) : null}
                   <tr>
-                    <td className="pt-2 pe-6 text-end font-bold">{L.amountPaid}</td>
-                    <td className="mono pt-2 text-end">{money(paidFils)}</td>
+                    <td className="pe-6 text-end text-[11px] font-bold text-[#444]">
+                      {L.totalAedEquivalent}
+                    </td>
+                    <td className="mono text-end text-[11px] font-bold text-[#444]">
+                      {formatAed(totals.grandTotal)}
+                    </td>
                   </tr>
-                ) : null}
-                <tr>
-                  <td className="pe-6 text-end text-[14px] font-bold">{L.balanceDue}</td>
-                  <td className="mono text-end text-[14px] font-bold">{money(outstandingFils)}</td>
-                </tr>
-              </>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                </>
+              ) : null}
+              {/* Arrears — only on a partial or unpaid issued invoice. */}
+              {showArrears ? (
+                <>
+                  {paidFils > 0 ? (
+                    <tr>
+                      <td className="pt-2 pe-6 text-end font-bold">{L.amountPaid}</td>
+                      <td className="mono pt-2 text-end">{money(paidFils)}</td>
+                    </tr>
+                  ) : null}
+                  <tr>
+                    <td className="pe-6 text-end text-[14px] font-bold">{L.balanceDue}</td>
+                    <td className="mono text-end text-[14px] font-bold">
+                      {money(outstandingFils)}
+                    </td>
+                  </tr>
+                </>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
 
-      {/* ── Terms & Conditions foot per the sample ── */}
-      <div className="mt-14">
-        <p className="text-[14px] font-bold">{L.termsHeading}</p>
-        {terms ? <p className="mt-1 text-[12.5px]">{terms}</p> : null}
-        {notes ? <p className="mt-1 text-[12.5px]">{notes}</p> : null}
-        <p className="mt-3 text-[12.5px]">{L.thankYou}</p>
-        {company.bankDetails ? (
-          <p className="mono mt-2 text-[10.5px] text-[#444]" dir="ltr">
-            {company.bankDetails}
-          </p>
-        ) : null}
-      </div>
-    </section>
-  );
+        {/* ── Terms & Conditions foot per the sample ── */}
+        <div className="mt-14">
+          <p className="text-[14px] font-bold">{L.termsHeading}</p>
+          {terms ? <p className="mt-1 text-[12.5px]">{terms}</p> : null}
+          {notes ? <p className="mt-1 text-[12.5px]">{notes}</p> : null}
+          <p className="mt-3 text-[12.5px]">{L.thankYou}</p>
+          {company.bankDetails ? (
+            <p className="mono mt-2 text-[10.5px] text-[#444]" dir="ltr">
+              {company.bankDetails}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <div>

@@ -62,7 +62,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     supabase
       .from("settings")
       .select(
-        "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, company_name_ar, tagline, trn, address, phone, email, bank_details"
+        "vat_registered, vat_rate_bp, invoice_notes_default, invoice_terms_default, company_name, company_name_ar, tagline, tagline_ar, trn, address, address_ar, phone, email, bank_details"
       )
       .limit(1)
       .maybeSingle(),
@@ -134,8 +134,10 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           name: settings?.company_name ?? "",
           nameAr: settings?.company_name_ar ?? null,
           tagline: settings?.tagline ?? null,
+          taglineAr: settings?.tagline_ar ?? null,
           trn: settings?.trn ?? null,
           address: settings?.address ?? null,
+          addressAr: settings?.address_ar ?? null,
           phone: settings?.phone ?? null,
           email: settings?.email ?? null,
           bankDetails: settings?.bank_details ?? null,
