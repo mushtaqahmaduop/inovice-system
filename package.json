@@ -14,6 +14,7 @@
     "db:seed": "node --env-file=.env.local db/seed.mjs",
     "db:backup": "node --env-file=.env.local scripts/backup.mjs",
     "db:reseed": "node --env-file=.env.local scripts/reseed.mjs",
+    "db:wipe-demo": "node --env-file=.env.local scripts/wipe-demo.mjs",
     "db:drill": "node --env-file=.env.local scripts/restore-drill.mjs",
     "test:db:1.2a": "node --env-file=.env.local db/tests/task-1.2a.test.mjs",
     "test:db:1.2b": "node --env-file=.env.local db/tests/task-1.2b.test.mjs",
