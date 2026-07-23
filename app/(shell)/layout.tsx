@@ -28,7 +28,12 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   return (
     <PresenceProvider userId={ctx.userId} fullName={ctx.fullName} role={ctx.role}>
       <ConfirmProvider>
-        <div className="flex min-h-screen bg-background">
+        {/* data-app-shell: this min-h-screen wrapper otherwise paints its dark
+            bg-background over the (white) body below the invoice, printing the
+            lower half of the sheet black in dark mode. globals.css @media print
+            forces it white via this attribute (deterministic, no utility
+            cascade ambiguity). */}
+        <div className="flex min-h-screen bg-background" data-app-shell>
           <Sidebar role={ctx.role} />
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3 md:gap-4 md:px-6 print:hidden">

@@ -44,7 +44,14 @@ export function ResponsiveSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className={cn("w-full overflow-y-auto p-6 sm:w-[48%] sm:max-w-[48%]", desktopClassName)}
+          // The width utilities must carry the same data-[side=right]: prefix as
+          // SheetContent's own defaults (w-3/4 + sm:max-w-sm), or tailwind-merge
+          // treats them as separate keys and the 384px sm:max-w-sm cap wins —
+          // which squeezed this ~48% preview down to ~28% (a 384px column).
+          className={cn(
+            "w-full overflow-y-auto p-6 data-[side=right]:sm:w-[48%] data-[side=right]:sm:max-w-[48%]",
+            desktopClassName
+          )}
         >
           <SheetTitle className="sr-only">{title}</SheetTitle>
           {children}
