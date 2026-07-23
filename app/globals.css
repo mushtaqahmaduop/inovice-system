@@ -315,7 +315,15 @@
   margin: 0;
 }
 @media print {
-  body {
+  /* The min-h-screen app shell has a dark bg-background in dark mode; without
+     forcing it white here it paints the lower half of the printed sheet black
+     (the invoice paper is white, but the empty space under it is the shell).
+     Target both the stable data hook AND the .bg-background utility so the fix
+     lands via pure CSS — no server-component reload needed. */
+  html,
+  body,
+  [data-app-shell],
+  .bg-background {
     background: #ffffff !important;
     color: #000000;
   }
