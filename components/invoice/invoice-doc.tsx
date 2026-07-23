@@ -90,6 +90,7 @@ type Labels = {
   subtotal: string;
   serviceFeeTotal: string;
   otherCharges: string;
+  inclusiveVat: string; // customer copy: "Total is inclusive of VAT" note
   totalAmount: string; // followed by the currency code
   exchangeRate: string;
   vatAed: string;
@@ -123,6 +124,7 @@ const EN: Labels = {
   subtotal: "Subtotal:",
   serviceFeeTotal: "Service Fee:",
   otherCharges: "Other Charges:",
+  inclusiveVat: "Total is inclusive of VAT",
   totalAmount: "Total Amount",
   exchangeRate: "Exchange rate:",
   vatAed: "VAT (AED):",
@@ -156,6 +158,7 @@ const AR: Labels = {
   subtotal: "المجموع الفرعي:",
   serviceFeeTotal: "رسوم الخدمة:",
   otherCharges: "رسوم أخرى:",
+  inclusiveVat: "الإجمالي شامل ضريبة القيمة المضافة",
   totalAmount: "المبلغ الإجمالي",
   exchangeRate: "سعر الصرف:",
   vatAed: "الضريبة (بالدرهم):",
@@ -221,6 +224,14 @@ export function InvoiceDoc({
   issuedAt?: string | null;
 }) {
   const [language, setLanguage] = useState<"en" | "ar">("en");
+  // Which rendering of the SAME sealed invoice to show (owner request
+  // 2026-07-23). "customer" = the copy handed to the customer: one blended,
+  // VAT-inclusive amount per line and a single grand total, with the
+  // government/service split and the VAT figure hidden so the customer cannot
+  // see (and argue down) the service fee. "fta" = the full detailed copy for
+  // the books. Defaults to the customer copy — the one printed at point of
+  // sale — and, like the language toggle, controls print output too.
+  const [copy, setCopy] = useState<"customer" | "fta">("customer");
 
   // AED-anchored: when a foreign currency + rate are set, money figures render
   // in that currency (derived from the sealed AED fils); otherwise plain AED.
@@ -233,6 +244,39 @@ export function InvoiceDoc({
     : "";
   const lineAmount = (l: DocLine) =>
     l.qty * (l.govtFee + l.serviceFee + l.extraFees.reduce((s, v) => s + v, 0));
+  // Customer-copy per-line amounts: the sealed net blended amount plus the
+  // sealed VAT distributed across the lines (proportional to each line's
+  // VAT-able base, largest-remainder), so the displayed lines sum EXACTLY to
+  // the sealed grand total. This is a DISPLAY layer only (cf. D-27 foreign
+  // currency) — no sealed money is recomputed or altered; hiding the separate
+  // VAT row must not leave a visible gap that would leak the service fee.
+  const custLineAmounts: number[] = (() => {
+    const nets = lines.map(lineAmount);
+    const out = nets.slice();
+    const vat = vatRegistered ? totals.vatAmount : 0;
+    if (vat > 0 && nets.length > 0) {
+      const base = (l: DocLine) =>
+        l.qty *
+        (l.serviceFee + l.extraFees.reduce((s, v, i) => s + (columns[i]?.vatable ? v : 0), 0));
+      const bases = lines.map(base);
+      const totalBase = bases.reduce((s, v) => s + v, 0);
+      if (totalBase > 0) {
+        const raw = bases.map((b) => (vat * b) / totalBase);
+        const share = raw.map((r) => Math.floor(r));
+        let leftover = vat - share.reduce((s, v) => s + v, 0);
+        const order = raw
+          .map((r, i) => ({ i, frac: r - Math.floor(r) }))
+          .sort((a, b) => b.frac - a.frac);
+        for (let k = 0; k < order.length && leftover > 0; k++, leftover--) share[order[k].i] += 1;
+        for (let i = 0; i < out.length; i++) out[i] = nets[i] + share[i];
+      }
+    }
+    // Absorb any residual (e.g. seal rounding) into the last line so the copy
+    // always foots to the exact sealed grand total.
+    const delta = totals.grandTotal - out.reduce((s, v) => s + v, 0);
+    if (delta !== 0 && out.length > 0) out[out.length - 1] += delta;
+    return out;
+  })();
   const payKey: PayKey | null =
     status !== "issued" || !paymentStatus
       ? null
@@ -260,7 +304,13 @@ export function InvoiceDoc({
 
   // One document body, rendered once per language. `dir` mirrors the whole
   // section under rtl; logical utilities keep alignment correct in both.
-  const Section = (L: Labels, dir: "ltr" | "rtl", companyName: string, arabic: boolean) => {
+  const Section = (
+    L: Labels,
+    dir: "ltr" | "rtl",
+    companyName: string,
+    arabic: boolean,
+    customer: boolean
+  ) => {
     const secTagline = arabic ? company.taglineAr || company.tagline : company.tagline;
     const secAddressLines = addrLines(
       arabic ? company.addressAr || company.address : company.address
@@ -375,17 +425,21 @@ export function InvoiceDoc({
               <th className={`${th} w-12`}>{L.colItem}</th>
               <th className={th}>{L.colDescription}</th>
               <th className={`${th} w-14 text-center`}>{L.colQty}</th>
-              <th className={`${th} w-24 text-end`}>{L.colUnitPrice}</th>
-              <th className={`${th} w-24 text-end`}>
-                {L.colServiceFee}
-                {vatRegistered ? ` (+${ratePct}% ${L.vat})` : ""}
-              </th>
-              {columns.map((c, i) => (
-                <th key={i} className={`${th} w-24 text-end`}>
-                  {c.label}
-                  {c.vatable && vatRegistered ? ` (+${ratePct}%)` : ""}
-                </th>
-              ))}
+              {customer ? null : (
+                <>
+                  <th className={`${th} w-24 text-end`}>{L.colUnitPrice}</th>
+                  <th className={`${th} w-24 text-end`}>
+                    {L.colServiceFee}
+                    {vatRegistered ? ` (+${ratePct}% ${L.vat})` : ""}
+                  </th>
+                  {columns.map((c, i) => (
+                    <th key={i} className={`${th} w-24 text-end`}>
+                      {c.label}
+                      {c.vatable && vatRegistered ? ` (+${ratePct}%)` : ""}
+                    </th>
+                  ))}
+                </>
+              )}
               <th className={`${th} w-28 text-end`}>{L.colAmount}</th>
             </tr>
           </thead>
@@ -395,18 +449,24 @@ export function InvoiceDoc({
                 <td className={`${td} mono`}>{idx + 1}</td>
                 <td className={td}>{l.description || "—"}</td>
                 <td className={`${td} mono text-center`}>{l.qty}</td>
-                <td className={`${td} mono text-end`}>
-                  {l.govtFee > 0 ? money(l.qty * l.govtFee) : ""}
+                {customer ? null : (
+                  <>
+                    <td className={`${td} mono text-end`}>
+                      {l.govtFee > 0 ? money(l.qty * l.govtFee) : ""}
+                    </td>
+                    <td className={`${td} mono text-end`}>
+                      {l.serviceFee > 0 ? money(l.qty * l.serviceFee) : ""}
+                    </td>
+                    {columns.map((_, i) => (
+                      <td key={i} className={`${td} mono text-end`}>
+                        {(l.extraFees[i] ?? 0) > 0 ? money(l.qty * (l.extraFees[i] ?? 0)) : ""}
+                      </td>
+                    ))}
+                  </>
+                )}
+                <td className={`${td} mono text-end font-semibold`}>
+                  {money(customer ? (custLineAmounts[idx] ?? 0) : lineAmount(l))}
                 </td>
-                <td className={`${td} mono text-end`}>
-                  {l.serviceFee > 0 ? money(l.qty * l.serviceFee) : ""}
-                </td>
-                {columns.map((_, i) => (
-                  <td key={i} className={`${td} mono text-end`}>
-                    {(l.extraFees[i] ?? 0) > 0 ? money(l.qty * (l.extraFees[i] ?? 0)) : ""}
-                  </td>
-                ))}
-                <td className={`${td} mono text-end font-semibold`}>{money(lineAmount(l))}</td>
               </tr>
             ))}
           </tbody>
@@ -416,28 +476,32 @@ export function InvoiceDoc({
         <div className="mt-6 flex justify-end">
           <table className="text-[13px]">
             <tbody>
-              <tr>
-                <td className="pe-6 text-end font-bold">{L.subtotal}</td>
-                <td className="mono w-28 text-end">{money(totals.subtotalGovt)}</td>
-              </tr>
-              <tr>
-                <td className="pe-6 text-end font-bold">{L.serviceFeeTotal}</td>
-                <td className="mono text-end">{money(totals.subtotalService)}</td>
-              </tr>
-              {totals.subtotalExtras > 0 ? (
-                <tr>
-                  <td className="pe-6 text-end font-bold">{L.otherCharges}</td>
-                  <td className="mono text-end">{money(totals.subtotalExtras)}</td>
-                </tr>
-              ) : null}
-              {vatRegistered && totals.vatAmount > 0 ? (
-                <tr>
-                  <td className="pe-6 text-end font-bold">
-                    {L.vat} ({ratePct}%):
-                  </td>
-                  <td className="mono text-end">{money(totals.vatAmount)}</td>
-                </tr>
-              ) : null}
+              {customer ? null : (
+                <>
+                  <tr>
+                    <td className="pe-6 text-end font-bold">{L.subtotal}</td>
+                    <td className="mono w-28 text-end">{money(totals.subtotalGovt)}</td>
+                  </tr>
+                  <tr>
+                    <td className="pe-6 text-end font-bold">{L.serviceFeeTotal}</td>
+                    <td className="mono text-end">{money(totals.subtotalService)}</td>
+                  </tr>
+                  {totals.subtotalExtras > 0 ? (
+                    <tr>
+                      <td className="pe-6 text-end font-bold">{L.otherCharges}</td>
+                      <td className="mono text-end">{money(totals.subtotalExtras)}</td>
+                    </tr>
+                  ) : null}
+                  {vatRegistered && totals.vatAmount > 0 ? (
+                    <tr>
+                      <td className="pe-6 text-end font-bold">
+                        {L.vat} ({ratePct}%):
+                      </td>
+                      <td className="mono text-end">{money(totals.vatAmount)}</td>
+                    </tr>
+                  ) : null}
+                </>
+              )}
               <tr>
                 <td className="pt-1 pe-6 text-end text-[14px] font-bold">
                   {L.totalAmount} {cur} :
@@ -446,6 +510,15 @@ export function InvoiceDoc({
                   {money(totals.grandTotal)}
                 </td>
               </tr>
+              {/* Customer copy: VAT figure is hidden, so state that the total is
+                  VAT-inclusive (keeps it a valid simplified receipt). */}
+              {customer && vatRegistered && totals.vatAmount > 0 ? (
+                <tr>
+                  <td colSpan={2} className="pt-1 text-end text-[10.5px] text-[#444]">
+                    {L.inclusiveVat} ({ratePct}%)
+                  </td>
+                </tr>
+              ) : null}
               {/* FTA: a foreign-currency invoice must state the rate and the AED
                 equivalent of the tax + total. AED remains the record of truth. */}
               {foreign ? (
@@ -458,7 +531,7 @@ export function InvoiceDoc({
                       {rateStr}
                     </td>
                   </tr>
-                  {vatRegistered && totals.vatAmount > 0 ? (
+                  {!customer && vatRegistered && totals.vatAmount > 0 ? (
                     <tr>
                       <td className="pe-6 text-end text-[10.5px] text-[#444]">{L.vatAed}</td>
                       <td className="mono text-end text-[10.5px] text-[#444]">
@@ -515,9 +588,19 @@ export function InvoiceDoc({
 
   return (
     <div>
-      {/* Language toggle — controls preview AND print, since it changes
-          what's actually in the DOM below. Defaults to English. */}
-      <div className="mb-3 flex justify-end print:hidden">
+      {/* Copy + language toggles — both control preview AND print, since they
+          change what's actually in the DOM below. Copy defaults to the
+          customer copy (printed at point of sale); language to English. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
+        <Segmented
+          aria-label="Invoice copy type"
+          value={copy}
+          onChange={setCopy}
+          options={[
+            { value: "customer", label: "Customer copy" },
+            { value: "fta", label: "FTA copy" },
+          ]}
+        />
         <Segmented
           aria-label="Invoice language"
           value={language}
@@ -544,8 +627,8 @@ export function InvoiceDoc({
         ) : null}
 
         {language === "en"
-          ? Section(EN, "ltr", company.name, false)
-          : Section(AR, "rtl", company.nameAr || company.name, true)}
+          ? Section(EN, "ltr", company.name, false, copy === "customer")
+          : Section(AR, "rtl", company.nameAr || company.name, true, copy === "customer")}
       </div>
     </div>
   );
