@@ -78,7 +78,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
     let q = supabase
       .from("invoice_list")
       .select(
-        "invoice_number, status, payment_status, issue_date, customer_snapshot, vat_registered_snapshot, vat_rate_bp_snapshot, subtotal_govt, subtotal_service, subtotal_extras, vat_amount, grand_total, paid_total"
+        "invoice_number, status, payment_status, issue_date, customer_snapshot, vat_registered_snapshot, vat_rate_bp_snapshot, subtotal_govt, subtotal_service, subtotal_extras, vat_amount, grand_total, delivery_fee, customer_total, paid_total"
       )
       .neq("status", "draft")
       .order("issue_date");
@@ -101,6 +101,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
               "other_charges_aed",
               "vat_aed",
               "grand_total_aed",
+              "delivery_aed",
+              "customer_total_aed",
               "paid_aed",
               "payment_status",
             ],
@@ -114,6 +116,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
               filsToCsvAed(r.subtotal_extras ?? 0),
               filsToCsvAed(r.vat_amount ?? 0),
               filsToCsvAed(r.grand_total ?? 0),
+              filsToCsvAed(r.delivery_fee ?? 0),
+              filsToCsvAed(r.customer_total ?? 0),
               filsToCsvAed(r.paid_total ?? 0),
               r.payment_status ?? "",
             ])
@@ -121,6 +125,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
         : csvDocument(
             // VAT report BASIS (the accountant's V-1..V-6 answers finalize
             // the actual return format — this is deliberately raw).
+            //
+            // Deliberately NO delivery column (D-30): delivery is money
+            // collected for a third-party driver, not part of the centre's
+            // supply, so grand_total_aed here is the taxable document total and
+            // matches the FTA copy exactly. Cash reconciliation belongs to the
+            // invoices export, which carries delivery_aed and
+            // customer_total_aed.
             [
               "invoice_number",
               "status",

@@ -70,6 +70,7 @@ export type ExistingDraft = {
   terms: string | null;
   displayCurrency: string | null;
   exchangeRateE6: number | null;
+  deliveryFee: number | null;
   columns: { label: string; vatable: boolean }[];
   lines: {
     description: string;
@@ -166,6 +167,15 @@ export function InvoiceEditor({
   const isForeign = isForeignCurrency(displayCurrency);
   const rateE6 = isForeign ? parseRateToE6(rateInput) : null;
   const rateInvalid = isForeign && rateInput.trim() !== "" && rateE6 === null;
+  // Delivery charge collected for a third-party driver (D-30). Never enters the
+  // sealed totals — issue_invoice() computes grand_total without it — so the
+  // FTA copy can print the supply alone while the customer copy, the payments
+  // panel and the ledger all work from grand_total + delivery.
+  const [deliveryInput, setDeliveryInput] = useState(
+    existing?.deliveryFee ? filsToInput(existing.deliveryFee) : ""
+  );
+  const deliveryFils = deliveryInput.trim() === "" ? 0 : (aedToFils(deliveryInput) ?? 0);
+  const deliveryInvalid = deliveryInput.trim() !== "" && aedToFils(deliveryInput) === null;
   // Prefill today's date so the picker shows a concrete day (existing drafts
   // keep their saved date; a blank one still falls back to today). The user
   // can change it; the server re-defaults to the issue day only if cleared.
@@ -225,6 +235,10 @@ export function InvoiceEditor({
     }));
     return calcInvoiceTotals(draftLines, columns, { vatRegistered, vatRateBp });
   }, [lines, columns, vatRegistered, vatRateBp]);
+
+  // What the customer hands over = the sealed supply + the driver's fee (D-30).
+  // totals.grandTotal remains the figure the FTA copy prints.
+  const customerTotal = totals.grandTotal + deliveryFils;
 
   const custMatches = useMemo(() => {
     const q = custQuery.trim().toLowerCase();
@@ -354,6 +368,7 @@ export function InvoiceEditor({
       displayCurrency,
       // AED carries no rate; a foreign draft may still be rate-less mid-edit.
       exchangeRateE6: displayCurrency === "AED" ? null : rateE6,
+      deliveryFee: deliveryFils,
       columns: columns.map((c) => ({ label: c.label, vatable: c.vatable })),
       lines: lines.map((l) => ({
         description: l.description.trim(),
@@ -1049,6 +1064,29 @@ export function InvoiceEditor({
                 </div>
               ) : null}
             </div>
+            {/* Delivery collected for a third-party driver (D-30). Charged to
+                the customer, kept out of the sealed supply — so it shows on the
+                customer copy and every balance, and never on the FTA copy. */}
+            <div>
+              <FieldLabel htmlFor="inv-delivery">Delivery charge (optional)</FieldLabel>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-text-tertiary">AED</span>
+                <Input
+                  id="inv-delivery"
+                  value={deliveryInput}
+                  onChange={(e) => setDeliveryInput(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  aria-invalid={deliveryInvalid}
+                  className="mono w-40 text-right text-[13px]"
+                />
+              </div>
+              <FieldHint>
+                {deliveryInvalid
+                  ? "Enter an amount in AED with at most 2 decimals."
+                  : "Driver's fee collected with this bill. Added to the customer's total and their balance; never shown on the FTA copy."}
+              </FieldHint>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <div className="flex items-baseline justify-between">
@@ -1104,13 +1142,29 @@ export function InvoiceEditor({
             {vatRegistered && totals.vatAmount > 0 ? (
               <TotalsRow label={`VAT (${ratePct}%) on taxable fees`} fils={totals.vatAmount} />
             ) : null}
+            {deliveryFils > 0 ? (
+              <TotalsRow label="Delivery (collected for driver)" fils={deliveryFils} />
+            ) : null}
             <div className="mt-3 flex items-baseline justify-between border-t border-accent-border pt-3">
-              <span className="text-[15px] font-[550] text-foreground">Net total</span>
+              <span className="text-[15px] font-[550] text-foreground">
+                {deliveryFils > 0 ? "Customer pays" : "Net total"}
+              </span>
               <span className="mono text-[22px] leading-7 font-semibold text-primary">
                 <span className="mr-1.5 text-[13px] font-normal text-text-tertiary">AED</span>
-                {formatAed(totals.grandTotal)}
+                {formatAed(customerTotal)}
               </span>
             </div>
+            {deliveryFils > 0 ? (
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-[12px] leading-4 text-text-tertiary">
+                  Invoice total on the FTA copy (delivery excluded)
+                </span>
+                <span className="mono text-[13px] font-[550] text-foreground">
+                  <span className="mr-1.5 text-[11px] font-normal text-text-tertiary">AED</span>
+                  {formatAed(totals.grandTotal)}
+                </span>
+              </div>
+            ) : null}
             {isForeign && rateE6 ? (
               <div className="mt-2 flex items-baseline justify-between">
                 <span className="text-[12px] leading-4 text-text-tertiary">
@@ -1120,7 +1174,7 @@ export function InvoiceEditor({
                   <span className="mr-1.5 text-[11px] font-normal text-text-tertiary">
                     {displayCurrency}
                   </span>
-                  {formatForeign(totals.grandTotal, rateE6)}
+                  {formatForeign(customerTotal, rateE6)}
                 </span>
               </div>
             ) : null}
@@ -1146,7 +1200,7 @@ export function InvoiceEditor({
                     onChange={(e) => {
                       const on = e.target.checked;
                       setMarkPaid(on);
-                      if (on && !payAmount) setPayAmount(filsToInput(totals.grandTotal));
+                      if (on && !payAmount) setPayAmount(filsToInput(customerTotal));
                     }}
                     className="size-4 accent-[var(--accent)]"
                   />
@@ -1161,7 +1215,7 @@ export function InvoiceEditor({
                         value={payAmount}
                         onChange={(e) => setPayAmount(e.target.value)}
                         inputMode="decimal"
-                        placeholder={filsToInput(totals.grandTotal) || "0.00"}
+                        placeholder={filsToInput(customerTotal) || "0.00"}
                         className="mono w-full text-right text-[13px]"
                       />
                       <FieldHint>
@@ -1197,7 +1251,7 @@ export function InvoiceEditor({
                     {(() => {
                       const paid = aedToFils(payAmount);
                       if (paid === null || paid <= 0) return null;
-                      const remaining = totals.grandTotal - paid;
+                      const remaining = customerTotal - paid;
                       if (remaining <= 0)
                         return (
                           <p className="col-span-2 text-[12px] leading-4 text-success">
@@ -1207,7 +1261,7 @@ export function InvoiceEditor({
                       return (
                         <p className="col-span-2 text-[12px] leading-4 text-warn">
                           Part payment — AED {formatAed(remaining)} of AED{" "}
-                          {formatAed(totals.grandTotal)} will remain outstanding.
+                          {formatAed(customerTotal)} will remain outstanding.
                         </p>
                       );
                     })()}
@@ -1274,6 +1328,7 @@ export function InvoiceEditor({
           terms={terms || null}
           displayCurrency={displayCurrency}
           exchangeRateE6={rateE6}
+          deliveryFee={deliveryFils}
         />
         <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
           Issuing allocates the next invoice number and this invoice becomes permanent — it cannot

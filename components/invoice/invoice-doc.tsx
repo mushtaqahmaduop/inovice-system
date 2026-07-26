@@ -191,11 +191,11 @@ export function InvoiceDoc({
   totals,
   notes,
   terms,
-  paymentStatus,
   paidTotal = 0,
   voidReason,
   displayCurrency = "AED",
   exchangeRateE6 = null,
+  deliveryFee = 0,
 }: {
   company: DocCompany;
   vatRegistered: boolean;
@@ -209,6 +209,10 @@ export function InvoiceDoc({
   totals: DocTotals;
   notes: string | null;
   terms: string | null;
+  /** Accepted for call-site compatibility but no longer read: since D-30 the
+   *  two copies settle against different totals, so each derives its own
+   *  paid/partial/unpaid word from paidTotal (see payFigures). For the customer
+   *  copy that is identical to invoice_list.payment_status. */
   paymentStatus?: string | null;
   /** AED fils already received — drives the Amount Paid / Balance Due rows
    *  shown on a partial or unpaid issued invoice. */
@@ -219,6 +223,10 @@ export function InvoiceDoc({
    *  AED equivalent + rate shown for the total/VAT (AED stays the record). */
   displayCurrency?: string;
   exchangeRateE6?: number | null;
+  /** Third-party delivery collected for the customer (D-30), AED fils. Sits
+   *  OUTSIDE the sealed totals: the CUSTOMER copy blends it into the line
+   *  amounts and its grand total, the FTA copy never shows or mentions it. */
+  deliveryFee?: number;
   /** kept for call-site compatibility; the sample layout has no issued-by block */
   issuedByName?: string | null;
   issuedAt?: string | null;
@@ -244,6 +252,10 @@ export function InvoiceDoc({
     : "";
   const lineAmount = (l: DocLine) =>
     l.qty * (l.govtFee + l.serviceFee + l.extraFees.reduce((s, v) => s + v, 0));
+  // What the customer actually hands over: the sealed supply plus the driver's
+  // fee we collected on their behalf (D-30). grand_total stays the centre's
+  // supply, and is the only figure the FTA copy is ever shown.
+  const customerTotal = totals.grandTotal + Math.max(0, deliveryFee);
   // Customer-copy per-line amounts: the sealed net blended amount plus the
   // sealed VAT distributed across the lines (proportional to each line's
   // VAT-able base, largest-remainder), so the displayed lines sum EXACTLY to
@@ -253,43 +265,66 @@ export function InvoiceDoc({
   const custLineAmounts: number[] = (() => {
     const nets = lines.map(lineAmount);
     const out = nets.slice();
+    // Spread `amount` across the lines in proportion to `weights`, integer fils,
+    // largest-remainder so the parts sum back to `amount` exactly.
+    const spread = (amount: number, weights: number[]) => {
+      const totalWeight = weights.reduce((s, v) => s + v, 0);
+      if (amount <= 0 || totalWeight <= 0) return null;
+      const raw = weights.map((w) => (amount * w) / totalWeight);
+      const share = raw.map((r) => Math.floor(r));
+      let leftover = amount - share.reduce((s, v) => s + v, 0);
+      const order = raw
+        .map((r, i) => ({ i, frac: r - Math.floor(r) }))
+        .sort((a, b) => b.frac - a.frac);
+      for (let k = 0; k < order.length && leftover > 0; k++, leftover--) share[order[k].i] += 1;
+      return share;
+    };
     const vat = vatRegistered ? totals.vatAmount : 0;
     if (vat > 0 && nets.length > 0) {
       const base = (l: DocLine) =>
         l.qty *
         (l.serviceFee + l.extraFees.reduce((s, v, i) => s + (columns[i]?.vatable ? v : 0), 0));
-      const bases = lines.map(base);
-      const totalBase = bases.reduce((s, v) => s + v, 0);
-      if (totalBase > 0) {
-        const raw = bases.map((b) => (vat * b) / totalBase);
-        const share = raw.map((r) => Math.floor(r));
-        let leftover = vat - share.reduce((s, v) => s + v, 0);
-        const order = raw
-          .map((r, i) => ({ i, frac: r - Math.floor(r) }))
-          .sort((a, b) => b.frac - a.frac);
-        for (let k = 0; k < order.length && leftover > 0; k++, leftover--) share[order[k].i] += 1;
-        for (let i = 0; i < out.length; i++) out[i] = nets[i] + share[i];
-      }
+      const share = spread(vat, lines.map(base));
+      if (share) for (let i = 0; i < out.length; i++) out[i] += share[i];
+    }
+    // Delivery (D-30) rides inside the customer's line amounts, proportional to
+    // each line's net, so it never appears as a nameable row the FTA copy would
+    // have to explain. Weightless edge case (all-zero lines) falls through to
+    // the residual absorber below.
+    if (deliveryFee > 0 && nets.length > 0) {
+      const share = spread(deliveryFee, nets);
+      if (share) for (let i = 0; i < out.length; i++) out[i] += share[i];
     }
     // Absorb any residual (e.g. seal rounding) into the last line so the copy
-    // always foots to the exact sealed grand total.
-    const delta = totals.grandTotal - out.reduce((s, v) => s + v, 0);
+    // always foots to the exact figure printed as its total.
+    const delta = customerTotal - out.reduce((s, v) => s + v, 0);
     if (delta !== 0 && out.length > 0) out[out.length - 1] += delta;
     return out;
   })();
-  const payKey: PayKey | null =
-    status !== "issued" || !paymentStatus
-      ? null
-      : paymentStatus === "paid"
-        ? "paid"
-        : paymentStatus === "partial"
-          ? "partial"
-          : "unpaid";
-  // Arrears: on a partial or unpaid issued invoice, spell out what was paid
-  // and what remains. AED fils in, rendered in the display currency.
-  const paidFils = status === "issued" ? paidTotal : 0;
-  const outstandingFils = totals.grandTotal - paidFils;
-  const showArrears = payKey === "partial" || payKey === "unpaid";
+  // Arrears: on a partial or unpaid issued invoice, spell out what was paid and
+  // what remains. AED fils in, rendered in the display currency.
+  //
+  // The two copies settle against different totals (D-30). The customer copy
+  // uses everything received against what they owe. The FTA copy must never
+  // hint at delivery, so it credits payment to the SUPPLY only — capped at
+  // grand_total — and derives its own paid/partial/unpaid word from that.
+  // Without the cap, a fully-paid 450 invoice would print "Amount Paid 450"
+  // under a total of 400 on the FTA copy: a phantom overpayment that both
+  // looks broken and leaks the delivery charge.
+  const paidAll = status === "issued" ? paidTotal : 0;
+  const payFigures = (customer: boolean) => {
+    const total = customer ? customerTotal : totals.grandTotal;
+    const paid = customer ? paidAll : Math.min(paidAll, totals.grandTotal);
+    const key: PayKey | null =
+      status !== "issued" ? null : paid >= total ? "paid" : paid === 0 ? "unpaid" : "partial";
+    return {
+      total,
+      paid,
+      outstanding: total - paid,
+      key,
+      showArrears: key === "partial" || key === "unpaid",
+    };
+  };
   // Company header text is language-specific: the Arabic copy uses the Arabic
   // tagline/address when set, falling back to the English value otherwise.
   const addrLines = (v: string | null) =>
@@ -315,6 +350,10 @@ export function InvoiceDoc({
     const secAddressLines = addrLines(
       arabic ? company.addressAr || company.address : company.address
     );
+    // Copy-specific money: the customer copy totals what they owe (supply +
+    // delivery), the FTA copy totals the supply alone (D-30).
+    const pay = payFigures(customer);
+    const displayTotal = customer ? customerTotal : totals.grandTotal;
     return (
       <section
         dir={dir}
@@ -412,7 +451,7 @@ export function InvoiceDoc({
               ) : null}
               <tr>
                 <td className="pe-4 text-end font-bold">{L.paidHeading}</td>
-                <td className="text-end">{payKey ? L.paid[payKey] : ""}</td>
+                <td className="text-end">{pay.key ? L.paid[pay.key] : ""}</td>
               </tr>
             </tbody>
           </table>
@@ -506,9 +545,7 @@ export function InvoiceDoc({
                 <td className="pt-1 pe-6 text-end text-[14px] font-bold">
                   {L.totalAmount} {cur} :
                 </td>
-                <td className="mono pt-1 text-end text-[14px] font-bold">
-                  {money(totals.grandTotal)}
-                </td>
+                <td className="mono pt-1 text-end text-[14px] font-bold">{money(displayTotal)}</td>
               </tr>
               {/* Customer copy: VAT figure is hidden, so state that the total is
                   VAT-inclusive (keeps it a valid simplified receipt). */}
@@ -544,24 +581,24 @@ export function InvoiceDoc({
                       {L.totalAedEquivalent}
                     </td>
                     <td className="mono text-end text-[11px] font-bold text-[#444]">
-                      {formatAed(totals.grandTotal)}
+                      {formatAed(displayTotal)}
                     </td>
                   </tr>
                 </>
               ) : null}
               {/* Arrears — only on a partial or unpaid issued invoice. */}
-              {showArrears ? (
+              {pay.showArrears ? (
                 <>
-                  {paidFils > 0 ? (
+                  {pay.paid > 0 ? (
                     <tr>
                       <td className="pt-2 pe-6 text-end font-bold">{L.amountPaid}</td>
-                      <td className="mono pt-2 text-end">{money(paidFils)}</td>
+                      <td className="mono pt-2 text-end">{money(pay.paid)}</td>
                     </tr>
                   ) : null}
                   <tr>
                     <td className="pe-6 text-end text-[14px] font-bold">{L.balanceDue}</td>
                     <td className="mono text-end text-[14px] font-bold">
-                      {money(outstandingFils)}
+                      {money(pay.outstanding)}
                     </td>
                   </tr>
                 </>

@@ -21,7 +21,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { data: invoice } = await supabase
     .from("invoices")
     .select(
-      "id, status, customer_id, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6"
+      "id, status, customer_id, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6, delivery_fee"
     )
     .eq("id", id)
     .maybeSingle();
@@ -104,6 +104,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     terms: invoice.terms,
     displayCurrency: invoice.display_currency ?? "AED",
     exchangeRateE6: invoice.exchange_rate_e6 ?? null,
+    deliveryFee: invoice.delivery_fee ?? null,
     columns: columnList.map((c) => ({ label: c.label, vatable: c.vatable })),
     lines: (lines ?? []).map((l) => ({
       description: l.description,

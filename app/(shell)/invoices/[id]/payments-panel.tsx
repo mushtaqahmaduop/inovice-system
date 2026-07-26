@@ -33,6 +33,7 @@ export function PaymentsPanel({
   methods,
   paidTotal,
   grandTotal,
+  deliveryFee = 0,
   paymentStatus,
 }: {
   invoiceId: string;
@@ -40,6 +41,11 @@ export function PaymentsPanel({
   methods: MethodOption[];
   paidTotal: number;
   grandTotal: number;
+  /** Third-party delivery collected for the customer (D-30). Outside
+   *  grand_total, but the customer owes it — so every figure in this panel
+   *  settles against grand_total + delivery_fee, matching what
+   *  invoice_list.payment_status now derives. */
+  deliveryFee?: number;
   paymentStatus: string | null;
 }) {
   const router = useRouter();
@@ -52,8 +58,9 @@ export function PaymentsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const outstanding = grandTotal - paidTotal;
-  const overpaid = paidTotal > grandTotal;
+  const customerTotal = grandTotal + Math.max(0, deliveryFee);
+  const outstanding = customerTotal - paidTotal;
+  const overpaid = paidTotal > customerTotal;
 
   // Human-readable status pill (owner: the raw "partial/unpaid" word wasn't a
   // clear clue). Amounts below still spell out exactly what's left.
@@ -124,11 +131,17 @@ export function PaymentsPanel({
             AED <AedFlow fils={paidTotal} />
           </span>
           {" of "}
-          <span className="mono">AED {formatAed(grandTotal)}</span>
+          <span className="mono">AED {formatAed(customerTotal)}</span>
+          {deliveryFee > 0 ? (
+            <span className="text-text-tertiary">
+              {" "}
+              (incl. AED {formatAed(deliveryFee)} delivery)
+            </span>
+          ) : null}
           {overpaid ? (
             <span className="text-danger">
               {" "}
-              · overpaid by AED <AedFlow fils={paidTotal - grandTotal} className="mono" />
+              · overpaid by AED <AedFlow fils={paidTotal - customerTotal} className="mono" />
             </span>
           ) : outstanding > 0 ? (
             <>
