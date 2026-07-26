@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
   Ban,
-  Calendar,
-  ChevronDown,
   CircleDollarSign,
   FileText,
   PencilLine,
@@ -19,6 +17,8 @@ import { AedFlow } from "@/components/ui/aed-flow";
 import type { CashFlowPoint } from "@/components/dashboard/cash-flow-chart";
 import { CashFlowChart } from "@/components/dashboard/cash-flow-chart-lazy";
 import { OnlineEmployees } from "@/components/dashboard/online-employees";
+import { PeriodFilter } from "@/components/dashboard/period-filter";
+import { monthLabel, monthOf, resolvePeriod } from "@/lib/dashboard-period";
 
 // Dashboard (task 7.1 → redesign slice 7, "premium" look). Full-width, KPI
 // row led by the client's one named figure — "who owes us" — as a filled
@@ -26,18 +26,18 @@ import { OnlineEmployees } from "@/components/dashboard/online-employees";
 // feed and a top-customers table. Everything derives from sealed columns +
 // the invoice_list view and the payments ledger at read time; nothing is
 // stored or recomputed. Trend chips are real month-over-month deltas.
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
   const ctx = await requireUser();
   const supabase = await createClient();
 
   const now = new Date();
-  const monthStart = now.toISOString().slice(0, 8) + "01";
-  const md = new Date(monthStart + "T00:00:00Z");
-  const lastMonthStart = new Date(Date.UTC(md.getUTCFullYear(), md.getUTCMonth() - 1, 1))
-    .toISOString()
-    .slice(0, 10);
-  const monShort = now.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
-  const todayDay = now.getUTCDate();
+  const period = resolvePeriod((await searchParams).period, now);
+  // The chart's twelve monthly buckets bound the payments we need to read.
+  const chartStart = period.monthKeys[0] + "-01";
 
   const [
     { data: issued },
@@ -53,7 +53,7 @@ export default async function DashboardPage() {
         "id, invoice_number, customer_id, customer_snapshot, issue_date, customer_total, paid_total, vat_amount, payment_status"
       )
       .eq("status", "issued"),
-    supabase.from("payments").select("amount, received_on").gte("received_on", lastMonthStart),
+    supabase.from("payments").select("amount, received_on").gte("received_on", chartStart),
     supabase
       .from("invoice_events")
       .select("id, event_type, created_at, actor_id, invoice_id")
@@ -84,17 +84,20 @@ export default async function DashboardPage() {
   const custName = (r: (typeof rows)[number]) =>
     (r.customer_snapshot as { name?: string } | null)?.name ?? "—";
 
-  // ── This month & last month, from sealed values ──────────────────────────
-  const inMonth = (d: string | null) => (d ?? "") >= monthStart;
-  const inLastMonth = (d: string | null) => (d ?? "") >= lastMonthStart && (d ?? "") < monthStart;
+  // ── The selected period, and the comparable one before it ────────────────
+  const within = (d: string | null, from: string | null, toEx: string) =>
+    d !== null && (from === null || d >= from) && d < toEx;
 
-  const monthRows = rows.filter((r) => inMonth(r.issue_date));
-  const monthTotal = monthRows.reduce((s, r) => s + (r.customer_total ?? 0), 0);
-  const monthVat = monthRows.reduce((s, r) => s + (r.vat_amount ?? 0), 0);
+  const periodRows = rows.filter((r) => within(r.issue_date, period.start, period.endEx));
+  const periodTotal = periodRows.reduce((s, r) => s + (r.customer_total ?? 0), 0);
+  const periodVat = periodRows.reduce((s, r) => s + (r.vat_amount ?? 0), 0);
 
-  const lastRows = rows.filter((r) => inLastMonth(r.issue_date));
-  const lastTotal = lastRows.reduce((s, r) => s + (r.customer_total ?? 0), 0);
-  const lastVat = lastRows.reduce((s, r) => s + (r.vat_amount ?? 0), 0);
+  const prevRows =
+    period.prevEndEx === null
+      ? []
+      : rows.filter((r) => within(r.issue_date, period.prevStart, period.prevEndEx!));
+  const prevTotal = prevRows.reduce((s, r) => s + (r.customer_total ?? 0), 0);
+  const prevVat = prevRows.reduce((s, r) => s + (r.vat_amount ?? 0), 0);
 
   // ── Outstanding — open balance per customer, largest first ────────────────
   const debtors = new Map<string, { name: string; open: number; count: number }>();
@@ -108,37 +111,30 @@ export default async function DashboardPage() {
   }
   const outstandingTotal = [...debtors.values()].reduce((s, d) => s + d.open, 0);
 
-  // ── Cash-flow: daily invoiced (issue_date) + net paid (received_on) ───────
-  const invByDay = new Map<string, number>();
-  for (const r of monthRows)
-    invByDay.set(
-      r.issue_date ?? "",
-      (invByDay.get(r.issue_date ?? "") ?? 0) + (r.customer_total ?? 0)
-    );
-  const paidByDay = new Map<string, number>();
+  // ── Cash-flow: MONTHLY invoiced (issue_date) + net paid (received_on) ─────
+  // Owner, 2026-07-27: monthly, not daily. Each point is that month's own
+  // total — no running sum, which only existed to keep a lumpy daily series
+  // legible. Twelve buckets ending with the selected period's last month.
+  const invByMonth = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.issue_date) continue;
+    const k = monthOf(r.issue_date);
+    invByMonth.set(k, (invByMonth.get(k) ?? 0) + (r.customer_total ?? 0));
+  }
+  const paidByMonth = new Map<string, number>();
   for (const p of pays) {
-    if (p.received_on < monthStart) continue;
-    paidByDay.set(p.received_on, (paidByDay.get(p.received_on) ?? 0) + (p.amount ?? 0));
+    const k = monthOf(p.received_on);
+    paidByMonth.set(k, (paidByMonth.get(k) ?? 0) + (p.amount ?? 0));
   }
-  // Cumulative across the month — a running total so the curve ascends to
-  // the month's invoiced/collected figure even when activity is lumpy.
-  const cashFlow: CashFlowPoint[] = [];
-  let cumInv = 0;
-  let cumPaid = 0;
-  for (let day = 1; day <= todayDay; day++) {
-    const iso = `${monthStart.slice(0, 8)}${String(day).padStart(2, "0")}`;
-    cumInv += (invByDay.get(iso) ?? 0) / 100;
-    cumPaid += (paidByDay.get(iso) ?? 0) / 100;
-    cashFlow.push({
-      day: `${String(day).padStart(2, "0")} ${monShort}`,
-      invoiced: cumInv,
-      paid: cumPaid,
-    });
-  }
+  const cashFlow: CashFlowPoint[] = period.monthKeys.map((k) => ({
+    label: monthLabel(k),
+    invoiced: (invByMonth.get(k) ?? 0) / 100,
+    paid: (paidByMonth.get(k) ?? 0) / 100,
+  }));
 
-  // ── Top customers this month ──────────────────────────────────────────────
+  // ── Top customers in the selected period ─────────────────────────────────
   const tc = new Map<string, { name: string; count: number; invoiced: number; paid: number }>();
-  for (const r of monthRows) {
+  for (const r of periodRows) {
     const t = tc.get(r.customer_id) ?? { name: custName(r), count: 0, invoiced: 0, paid: 0 };
     t.count += 1;
     t.invoiced += r.customer_total ?? 0;
@@ -199,9 +195,8 @@ export default async function DashboardPage() {
           "the page is half showing"). Heading, what-needs-action pills and the
           period chip share a single line, so the figures start above the fold
           on a 768px laptop. The topbar no longer repeats the page name. */}
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <header className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-[20px] leading-7 font-semibold text-foreground">Dashboard</h1>
           {unpaidRows.length > 0 ? (
             <Link
               href="/invoices?filter=unpaid"
@@ -221,28 +216,26 @@ export default async function DashboardPage() {
             </Link>
           ) : null}
         </div>
-        <span className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground">
-          <Calendar className="size-4 text-text-tertiary" />
-          This month
-          <ChevronDown className="size-4 text-text-tertiary" />
-        </span>
+        <PeriodFilter value={period.key} />
       </header>
 
       {/* KPI row — the client's named figure leads as a filled accent hero. */}
       <div className="mb-3 grid gap-3 lg:grid-cols-3">
         <HeroCard total={outstandingTotal} settled={debtors.size === 0} count={debtors.size} />
         <KpiCard
-          label="Invoiced this month"
-          valueFils={monthTotal}
+          label={`Invoiced ${period.suffix}`}
+          valueFils={periodTotal}
           icon={<Wallet className="size-5" />}
-          foot={`${monthRows.length} sealed`}
-          trend={pctTrend(monthTotal, lastTotal)}
+          foot={`${periodRows.length} sealed`}
+          trend={pctTrend(periodTotal, prevTotal)}
+          trendNote={period.key === "this-year" ? "vs last year" : "vs the period before"}
         />
         <KpiCard
-          label="VAT collected this month"
-          valueFils={monthVat}
+          label={`VAT collected ${period.suffix}`}
+          valueFils={periodVat}
           icon={<Percent className="size-5" />}
-          trend={pctTrend(monthVat, lastVat)}
+          trend={pctTrend(periodVat, prevVat)}
+          trendNote={period.key === "this-year" ? "vs last year" : "vs the period before"}
         />
       </div>
 
@@ -257,7 +250,7 @@ export default async function DashboardPage() {
         }`}
       >
         <section className="rounded-[14px] border border-border bg-surface p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div>
               <h2 className="text-[15px] font-semibold text-foreground">Cash Flow Overview</h2>
               <div className="mt-1.5 flex items-center gap-4">
@@ -265,6 +258,9 @@ export default async function DashboardPage() {
                 <Legend dash label="Paid" />
               </div>
             </div>
+            <span className="text-[12px] text-text-tertiary">
+              Monthly · {monthLabel(period.monthKeys[0])} – {monthLabel(period.monthKeys[11])}
+            </span>
           </div>
           <CashFlowChart data={cashFlow} />
         </section>
@@ -419,12 +415,14 @@ function KpiCard({
   icon,
   foot,
   trend,
+  trendNote = "vs the period before",
 }: {
   label: string;
   valueFils: number;
   icon: React.ReactNode;
   foot?: string;
   trend: Trend;
+  trendNote?: string;
 }) {
   return (
     <div className="relative rounded-[14px] border border-border bg-surface p-5">
@@ -446,7 +444,7 @@ function KpiCard({
           </span>
         ) : null}
         {foot ? <span className="text-text-tertiary">{foot}</span> : null}
-        {trend ? <span className="text-text-tertiary">vs last month</span> : null}
+        {trend ? <span className="text-text-tertiary">{trendNote}</span> : null}
       </div>
       <span className="absolute top-5 right-5 flex size-11 items-center justify-center rounded-[10px] bg-accent-soft text-primary">
         {icon}

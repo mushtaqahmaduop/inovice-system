@@ -11,11 +11,13 @@ import {
   YAxis,
 } from "recharts";
 
-// Cash-flow overview (dashboard). Two real series over the selected month:
-// Invoiced (sealed grand totals by issue_date) as a filled area, and Paid
-// (net payments by received_on) as a dashed line. Values arrive in AED
-// decimals already — the server does the fils→AED boundary.
-export type CashFlowPoint = { day: string; invoiced: number; paid: number };
+// Cash-flow overview (dashboard). Two real series over twelve MONTHS (owner,
+// 2026-07-27 — it used to be days): Invoiced (sealed customer totals by
+// issue_date) as a filled area, and Paid (net payments by received_on) as a
+// dashed line. Each point is that month's own total, not a running sum.
+// Values arrive in AED decimals already — the server does the fils→AED
+// boundary.
+export type CashFlowPoint = { label: string; invoiced: number; paid: number };
 
 const ACCENT = "var(--accent)";
 
@@ -60,22 +62,26 @@ export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
           </defs>
           <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="0" />
           <XAxis
-            dataKey="day"
+            dataKey="label"
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 11, fill: "var(--text-tertiary)" }}
             dy={8}
           />
+          {/* Compact ticks — "AED 12,000" wrapped onto two lines in the
+              gutter. The card's legend already establishes the currency. */}
           <YAxis
-            width={64}
+            width={44}
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 11, fill: "var(--text-tertiary)" }}
-            tickFormatter={(v: number) => `AED ${v}`}
+            tickFormatter={(v: number) =>
+              v >= 1000 ? `${(v / 1000).toLocaleString("en-AE")}k` : String(v)
+            }
           />
           <Tooltip content={<TooltipBox />} cursor={{ stroke: "var(--border-strong)" }} />
           <Area
-            type="monotone"
+            type="linear"
             name="Invoiced"
             dataKey="invoiced"
             stroke={ACCENT}
@@ -86,7 +92,7 @@ export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
             isAnimationActive={false}
           />
           <Line
-            type="monotone"
+            type="linear"
             name="Paid"
             dataKey="paid"
             stroke={ACCENT}

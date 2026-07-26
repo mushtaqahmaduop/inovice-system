@@ -21,8 +21,7 @@ export default async function UsersPage() {
           <ChevronRight className="size-3" />
           <span className="text-text-secondary">Users</span>
         </nav>
-        <h1 className="text-[22px] leading-7 font-semibold text-foreground">Users</h1>
-        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+        <p className="text-[13px] leading-[19px] text-text-secondary">
           Manage user accounts, roles, and access. Sign out users from all devices or reactivate
           accounts.
         </p>

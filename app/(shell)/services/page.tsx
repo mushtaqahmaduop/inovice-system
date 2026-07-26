@@ -29,8 +29,8 @@ export default async function ServicesPage() {
 
   return (
     <div className="w-full px-5 py-6 md:px-8">
-      <header className="mb-6 flex items-center gap-2.5">
-        <h1 className="text-[22px] leading-7 font-semibold text-foreground">Services</h1>
+      <header className="mb-4 flex items-center gap-2">
+        <span className="text-[13px] leading-[19px] text-text-secondary">Active services</span>
         <span className="mono rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium text-primary">
           {activeCount}
         </span>

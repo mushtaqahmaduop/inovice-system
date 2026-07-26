@@ -14,8 +14,7 @@ export default async function ExportsPage() {
           <ChevronRight className="size-3" />
           <span className="text-text-secondary">Exports</span>
         </nav>
-        <h1 className="text-[22px] leading-7 font-semibold text-foreground">CSV exports</h1>
-        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+        <p className="text-[13px] leading-[19px] text-text-secondary">
           Sealed and voided documents only — drafts carry no financials. Amounts are exact 2-decimal
           AED. The VAT file is the report <em>basis</em>; the accountant&apos;s answers (V-register)
           finalize the return format.

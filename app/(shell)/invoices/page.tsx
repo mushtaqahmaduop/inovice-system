@@ -63,10 +63,9 @@ export default async function InvoicesPage() {
   return (
     <div className="w-full px-5 py-6 md:px-8">
       {/* Live refetch (R-5) rides the sidebar's single realtime subscriber. */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[22px] leading-7 font-semibold text-foreground">Invoices</h1>
-          <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+          <p className="text-[13px] leading-[19px] text-text-secondary">
             {list.length === 1 ? "1 invoice" : `${list.length} invoices`} on record — {issued}{" "}
             sealed{drafts > 0 ? `, ${drafts} open ${drafts === 1 ? "draft" : "drafts"}` : ""}.
             Sealed invoices are immutable; payment status derives from recorded payments.
