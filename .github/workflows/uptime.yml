@@ -8,8 +8,18 @@
 #
 # Simulated-outage test (the task's done-criterion): run this workflow
 # manually (Actions → Uptime → Run workflow) with url set to something
-# dead, e.g. https://inovice-system.vercel.app/definitely-down — the run
-# fails and the failure email is the simulated alert.
+# dead, e.g. https://example.invalid/definitely-down — the run fails and
+# the failure email is the simulated alert.
+#
+# The probed URL is the PRODUCTION ALIAS, never a generated deployment URL
+# (`…-<hash>-<team>.vercel.app`): Deployment Protection walls those behind
+# Vercel SSO, so an unauthenticated runner would get a 302 and every run
+# would "fail" while the site is perfectly healthy.
+#
+# Set the repository variable PROD_URL (Settings → Secrets and variables →
+# Actions → Variables) to re-point this without a code change — the literal
+# below is only the fallback. It must be updated at go-live, when production
+# moves to its own Supabase project and Vercel deployment (D-06).
 
 name: Uptime
 
@@ -32,7 +42,7 @@ jobs:
     steps:
       - name: Probe production
         env:
-          TARGET: ${{ inputs.url != '' && inputs.url || 'https://inovice-system.vercel.app/login' }}
+          TARGET: ${{ inputs.url != '' && inputs.url || vars.PROD_URL != '' && vars.PROD_URL || 'https://inovice-system-lyart.vercel.app/login' }}
         run: |
           set -u
           for attempt in 1 2 3; do
