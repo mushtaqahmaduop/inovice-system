@@ -5,14 +5,11 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, FileText } from "lucide-react";
 import { NAV_SECTIONS } from "./nav-items";
 
-// Sub-pages that aren't top-level nav items (the invoice editor) show a
-// topbar title + breadcrumb and omit the big in-body <h1>, per the owner's
-// New-Invoice mockup. Extend this map as new sub-pages land.
-//
-// Top-level nav pages render NOTHING here: they already carry an <h1>, and
-// printing the same word twice — once in the topbar, once as the page
-// heading — was both a duplicate and a waste of the fold (owner, 2026-07-27).
-// The sidebar's active pill says which page you are on.
+// The page's name lives HERE, in the topbar, for every page (owner's marked
+// screenshot, 2026-07-27). The in-body <h1>s were removed at the same time,
+// so the name is printed once, not twice, and the body starts straight at the
+// content. Sub-pages that aren't top-level nav items (the invoice editor)
+// additionally show a breadcrumb — extend crumbFor as new ones land.
 type Crumb = { title: string; parent: { label: string; href: string } };
 
 function crumbFor(pathname: string): Crumb | null {
@@ -60,14 +57,15 @@ export function PageTitle() {
     );
   }
 
-  // A page inside the nav registry owns its own heading — say nothing.
+  // Longest matching href wins, so /admin/users beats /admin.
   const items = NAV_SECTIONS.flatMap((s) => s.items);
-  const known = items.some((i) => pathname === i.href || pathname.startsWith(i.href + "/"));
-  if (known) return null;
+  const match = items
+    .filter((i) => pathname === i.href || pathname.startsWith(i.href + "/"))
+    .sort((a, b) => b.href.length - a.href.length)[0];
 
   return (
-    <h1 className="truncate text-[15px] font-medium tracking-tight text-foreground">
-      Prestige Land
+    <h1 className="truncate text-[17px] leading-6 font-semibold tracking-tight text-foreground">
+      {match?.label ?? "Prestige Land"}
     </h1>
   );
 }

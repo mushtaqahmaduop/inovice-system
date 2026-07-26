@@ -51,9 +51,8 @@ export default async function SettingsPage() {
 
   return (
     <div className="w-full px-5 py-5 md:px-8">
-      <header className="mb-5">
-        <h1 className="text-[22px] leading-7 font-semibold text-foreground">Settings</h1>
-        <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
+      <header className="mb-4">
+        <p className="text-[13px] leading-[19px] text-text-secondary">
           Company details and invoicing defaults.
         </p>
       </header>
