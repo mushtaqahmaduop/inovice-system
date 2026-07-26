@@ -14,14 +14,14 @@ import { fetchRecentLines } from "@/lib/invoices/recent-lines";
 // shows a lock notice instead of the editor (their real detail view is
 // 4.3/5.3); the DB would reject any edit regardless.
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const ctx = await requireUser();
   const { id } = await params;
   const supabase = await createClient();
 
   const { data: invoice } = await supabase
     .from("invoices")
     .select(
-      "id, status, customer_id, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6, delivery_fee"
+      "id, status, customer_id, created_by, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6, delivery_fee"
     )
     .eq("id", id)
     .maybeSingle();
@@ -131,6 +131,9 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         defaultNotes={settings?.invoice_notes_default ?? ""}
         defaultTerms={settings?.invoice_terms_default ?? ""}
         existing={existing}
+        // D-31 — the DB function is the real gate; this only decides whether
+        // the action is offered.
+        canDelete={ctx.role === "admin" || invoice.created_by === ctx.userId}
         company={{
           name: settings?.company_name ?? "",
           nameAr: settings?.company_name_ar ?? null,

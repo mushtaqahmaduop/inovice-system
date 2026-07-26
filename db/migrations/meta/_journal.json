@@ -113,6 +113,13 @@
       "when": 1785091778700,
       "tag": "0015_delivery_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785101056330,
+      "tag": "0016_delete_draft",
+      "breakpoints": true
     }
   ]
 }

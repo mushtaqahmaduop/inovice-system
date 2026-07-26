@@ -12,16 +12,28 @@ import { createClient } from "@/lib/supabase/server";
 // Invoices read invoice_list (migration 0009, security_invoker) so we get
 // grand_total / payment_status / issue_date alongside the number.
 
-const querySchema = z.object({ q: z.string().trim().min(2).max(64) });
+// One character is enough: invoice numbers are INV-1, INV-2 … so a two-char
+// floor made "search an invoice by its number" impossible for the first nine
+// invoices of every year — typing 2 returned a 400 and an empty palette.
+const querySchema = z.object({ q: z.string().trim().min(1).max(64) });
 const LIMIT = 5;
 
 // PostgREST .or() parses commas/parens as syntax and % _ * as wildcards —
 // strip them rather than juggling escapes; trigram search doesn't need them.
 function sanitize(q: string): string {
   return q
-    .replace(/[%_*,()\\"]/g, " ")
+    .replace(/[%_*,()#\\"]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// How people actually type an invoice number: "2", "#2", "inv2", "INV 2",
+// "inv-2". Everything but the digits is noise, so pull the sequence out and
+// match the number's tail exactly — "2" then finds INV-2 without dragging in
+// INV-12 and INV-20, which the plain substring pass still offers anyway.
+function invoiceSeq(raw: string): string | null {
+  const m = /^#?\s*(?:inv[\s-]*)?(\d{1,9})$/i.exec(raw.trim());
+  return m ? m[1] : null;
 }
 
 const EMPTY = {
@@ -40,13 +52,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsed = querySchema.safeParse({ q: searchParams.get("q") ?? "" });
   if (!parsed.success) {
-    return NextResponse.json({ error: "q must be 2–64 characters" }, { status: 400 });
+    return NextResponse.json({ error: "q must be 1–64 characters" }, { status: 400 });
   }
+  const seq = invoiceSeq(parsed.data.q);
   const q = sanitize(parsed.data.q);
-  if (q.length < 2) return NextResponse.json(EMPTY);
+  if (q.length < 1) return NextResponse.json(EMPTY);
 
   const supabase = await createClient();
-  const invoiceOr = `invoice_number.ilike.*${q}*,customer_snapshot->>name.ilike.*${q}*`;
+  // Invoices by number or by the customer name frozen on them; customers by
+  // name or phone — the two things staff have in hand at the counter.
+  const invoiceOr = [
+    `invoice_number.ilike.*${q}*`,
+    `customer_snapshot->>name.ilike.*${q}*`,
+    ...(seq ? [`invoice_number.ilike.*-${seq}`] : []),
+  ].join(",");
+  const customerOr = `name.ilike.*${q}*,phone.ilike.*${q}*`;
 
   const [customersRes, customersCount, invoicesRes, invoicesCount, servicesRes, servicesCount] =
     await Promise.all([
@@ -54,14 +74,14 @@ export async function GET(request: Request) {
         .from("customers")
         .select("id, name, type, phone")
         .is("deleted_at", null)
-        .ilike("name", `%${q}%`)
+        .or(customerOr)
         .order("name")
         .limit(LIMIT),
       supabase
         .from("customers")
         .select("id", { count: "exact", head: true })
         .is("deleted_at", null)
-        .ilike("name", `%${q}%`),
+        .or(customerOr),
       supabase
         .from("invoice_list")
         .select(
