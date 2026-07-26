@@ -21,6 +21,7 @@ import { toast } from "@/components/ui/toast";
 import { FieldLabel, FieldHint } from "@/components/ui/field";
 import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { InvoiceDoc, type DocCompany } from "@/components/invoice/invoice-doc";
+import { useDeleteDraft } from "@/components/invoice/use-delete-draft";
 import { aedToFils, formatAed } from "@/lib/money";
 import { todayInDubai } from "@/lib/date";
 import {
@@ -113,6 +114,7 @@ export function InvoiceEditor({
   defaultNotes,
   defaultTerms,
   existing,
+  canDelete = false,
   company,
 }: {
   vatRegistered: boolean;
@@ -124,9 +126,12 @@ export function InvoiceEditor({
   defaultNotes: string;
   defaultTerms: string;
   existing: ExistingDraft | null;
+  /** D-31: offer "Delete draft" — admin, or the employee who created it. */
+  canDelete?: boolean;
   company: DocCompany;
 }) {
   const router = useRouter();
+  const deleteDraft = useDeleteDraft();
 
   const [columns, setColumns] = useState<ExtraColumn[]>(() =>
     (existing?.columns ?? []).map((c, i) => ({
@@ -1275,6 +1280,22 @@ export function InvoiceEditor({
 
       {error ? <p className="text-right text-[13px] leading-[19px] text-error">{error}</p> : null}
       <div className="flex items-center justify-end gap-3">
+        {/* Deleting an existing draft (D-31) — quiet and on the far left, away
+            from Save / Issue. Only ever offered for a draft that exists. */}
+        {existing && canDelete ? (
+          <button
+            type="button"
+            onClick={() =>
+              deleteDraft(existing.id, {
+                customerName: customer?.name ?? null,
+                onDeleted: () => router.push("/invoices"),
+              })
+            }
+            className="mr-auto inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[13px] text-text-tertiary transition-colors hover:text-error"
+          >
+            <Trash2 className="size-4" /> Delete draft
+          </button>
+        ) : null}
         {savedAt ? (
           <span className="mono mr-1 text-[13px] text-text-tertiary">{savedAt}</span>
         ) : null}

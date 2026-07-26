@@ -8,6 +8,7 @@ import {
   PencilLine,
   Printer,
   Send,
+  Trash2,
   Wallet,
   Percent,
 } from "lucide-react";
@@ -44,6 +45,7 @@ export default async function DashboardPage() {
     { data: events },
     { data: profiles },
     { count: draftCount },
+    { data: tombstones },
   ] = await Promise.all([
     supabase
       .from("invoice_list")
@@ -56,12 +58,19 @@ export default async function DashboardPage() {
       .from("invoice_events")
       .select("id, event_type, created_at, actor_id, invoice_id")
       .order("created_at", { ascending: false })
-      .limit(7),
+      .limit(8),
     supabase.from("profiles").select("id, full_name"),
     supabase
       .from("invoice_list")
       .select("id", { count: "exact", head: true })
       .eq("status", "draft"),
+    // D-31 tombstones — a deleted draft leaves no invoice_events row (they go
+    // with it), so the feed reads them from here to keep the trail visible.
+    supabase
+      .from("deleted_drafts")
+      .select("id, customer_name, deleted_by, deleted_by_name, deleted_at")
+      .order("deleted_at", { ascending: false })
+      .limit(8),
   ]);
 
   const rows = issued ?? [];
@@ -142,6 +151,8 @@ export default async function DashboardPage() {
     .slice(0, 6);
 
   // ── Recent activity ───────────────────────────────────────────────────────
+  // Two sources, one chronological feed: the append-only invoice_events, plus
+  // the D-31 tombstones of drafts that were deleted (whose events are gone).
   const eventNumbers = new Map(rows.map((r) => [r.id, r.invoice_number]));
   const person = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
   const timeFmt = new Intl.DateTimeFormat("en-GB", {
@@ -152,57 +163,73 @@ export default async function DashboardPage() {
     timeZone: "Asia/Dubai",
   });
 
+  type FeedItem = {
+    key: string;
+    kind: string;
+    href: string | null;
+    ref: string;
+    actor: string;
+    at: string;
+  };
+  const feed: FeedItem[] = [
+    ...(events ?? []).map((e) => ({
+      key: `e-${e.id}`,
+      kind: e.event_type,
+      href: `/invoices/${e.invoice_id}`,
+      ref: eventNumbers.get(e.invoice_id) ?? "Draft",
+      actor: person.get(e.actor_id ?? "") ?? "system",
+      at: e.created_at as string,
+    })),
+    ...(tombstones ?? []).map((t) => ({
+      key: `d-${t.id}`,
+      kind: "draft_deleted",
+      href: null, // there is nothing left to open
+      ref: t.customer_name ?? "Draft",
+      // The stored name is the durable one — it outlives the profile row.
+      actor: t.deleted_by_name ?? person.get(t.deleted_by ?? "") ?? "system",
+      at: t.deleted_at as string,
+    })),
+  ]
+    .sort((a, b) => (a.at < b.at ? 1 : -1))
+    .slice(0, 8);
+
   return (
     <div className="w-full px-5 py-4 md:px-8">
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] leading-7 font-semibold text-foreground">Dashboard</h1>
-          <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">
-            Signed in as {ctx.fullName}
-            {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. Figures derive from sealed
-            invoices and recorded payments.
-          </p>
+      {/* One toolbar row instead of three stacked blocks (owner, 2026-07-27:
+          "the page is half showing"). Heading, what-needs-action pills and the
+          period chip share a single line, so the figures start above the fold
+          on a 768px laptop. The topbar no longer repeats the page name. */}
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="text-[20px] leading-7 font-semibold text-foreground">Dashboard</h1>
+          {unpaidRows.length > 0 ? (
+            <Link
+              href="/invoices?filter=unpaid"
+              className="inline-flex items-center gap-1.5 rounded-full border border-warn/30 bg-warn-soft px-2.5 py-1 text-[12px] font-medium text-foreground hover:border-warn/60"
+            >
+              <CircleDollarSign className="size-3.5 text-warn" />
+              {unpaidRows.length} unpaid · AED {formatAed(unpaidTotal)}
+            </Link>
+          ) : null}
+          {drafts > 0 ? (
+            <Link
+              href="/invoices?filter=draft"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] font-medium text-text-secondary hover:border-border-strong"
+            >
+              <PencilLine className="size-3.5" />
+              {drafts} open {drafts === 1 ? "draft" : "drafts"}
+            </Link>
+          ) : null}
         </div>
-        <span className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-surface px-3.5 py-2 text-[13px] font-medium text-foreground">
+        <span className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground">
           <Calendar className="size-4 text-text-tertiary" />
           This month
           <ChevronDown className="size-4 text-text-tertiary" />
         </span>
       </header>
 
-      {/* Unpaid / drafts banner — surfaces what needs action before the KPI
-          row buries it in figures. Hidden entirely when both are zero. */}
-      {unpaidRows.length > 0 || drafts > 0 ? (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-warn/30 bg-warn-soft px-4 py-3">
-          {unpaidRows.length > 0 ? (
-            <Link
-              href="/invoices?filter=unpaid"
-              className="inline-flex items-center gap-2 text-[13px] font-medium text-foreground hover:underline"
-            >
-              <CircleDollarSign className="size-4 text-warn" />
-              {unpaidRows.length} unpaid {unpaidRows.length === 1 ? "invoice" : "invoices"} ·{" "}
-              {formatAed(unpaidTotal)} AED outstanding
-            </Link>
-          ) : null}
-          {unpaidRows.length > 0 && drafts > 0 ? (
-            <span className="text-text-tertiary" aria-hidden="true">
-              ·
-            </span>
-          ) : null}
-          {drafts > 0 ? (
-            <Link
-              href="/invoices?filter=draft"
-              className="inline-flex items-center gap-2 text-[13px] font-medium text-foreground hover:underline"
-            >
-              <PencilLine className="size-4 text-warn" />
-              {drafts} open {drafts === 1 ? "draft" : "drafts"}
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
-
       {/* KPI row — the client's named figure leads as a filled accent hero. */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+      <div className="mb-3 grid gap-3 lg:grid-cols-3">
         <HeroCard total={outstandingTotal} settled={debtors.size === 0} count={debtors.size} />
         <KpiCard
           label="Invoiced this month"
@@ -219,14 +246,18 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Cash flow + recent activity (+ online employees, admin only) */}
+      {/* Cash flow + top customers (+ online employees, admin only).
+          Owner, 2026-07-27: Top Customers and Recent Activity swap places AND
+          shapes. Customers is a short ranked list — it belongs in the narrow
+          column beside the chart; activity has four facts per row (what, which
+          invoice, who, when) and reads far better across the full width. */}
       <div
-        className={`mb-4 grid gap-4 ${
+        className={`mb-3 grid gap-3 ${
           ctx.role === "admin" ? "lg:grid-cols-[1.4fr_1fr_1fr]" : "lg:grid-cols-[1.7fr_1fr]"
         }`}
       >
-        <section className="rounded-[14px] border border-border bg-surface p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="rounded-[14px] border border-border bg-surface p-4">
+          <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="text-[15px] font-semibold text-foreground">Cash Flow Overview</h2>
               <div className="mt-1.5 flex items-center gap-4">
@@ -238,42 +269,45 @@ export default async function DashboardPage() {
           <CashFlowChart data={cashFlow} />
         </section>
 
-        <section className="rounded-[14px] border border-border bg-surface p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[15px] font-semibold text-foreground">Recent Activity</h2>
-            <Link href="/invoices" className="text-[13px] font-medium text-primary hover:underline">
-              View all
+        <section className="rounded-[14px] border border-border bg-surface p-4">
+          {/* No "(This Month)" here — the period chip in the page header says
+              it once, and the pair wrapped the title in the narrow column. */}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="shrink-0 text-[15px] font-semibold text-foreground">Top Customers</h2>
+            <Link
+              href="/customers"
+              className="shrink-0 text-[13px] font-medium text-primary hover:underline"
+            >
+              View report
             </Link>
           </div>
           <ul className="flex flex-col">
-            {(events ?? []).map((e) => (
-              <li key={e.id}>
+            {topCustomers.slice(0, 5).map((c) => (
+              <li key={c.id}>
                 <Link
-                  href={`/invoices/${e.invoice_id}`}
-                  className="-mx-2 flex items-center gap-3 rounded-[8px] px-2 py-2.5 transition-colors hover:bg-bg-sunken"
+                  href={`/customers/${c.id}`}
+                  className="-mx-2 flex items-center gap-3 rounded-[8px] px-2 py-2 transition-colors hover:bg-bg-sunken"
                 >
-                  <ActivityIcon type={e.event_type} />
+                  <Avatar name={c.name} />
                   <span className="min-w-0 flex-1">
-                    <span className="mono block text-[13px] font-semibold text-foreground">
-                      {eventNumbers.get(e.invoice_id) ?? "Draft"}
+                    <span className="block truncate text-[14px] font-medium text-foreground">
+                      {c.name}
                     </span>
-                    <span className="block text-[12px] text-text-secondary">
-                      {ACTIVITY_LABEL[e.event_type] ?? e.event_type}
+                    <span className="block truncate text-[12px] text-text-tertiary">
+                      {c.count} invoice{c.count === 1 ? "" : "s"} ·{" "}
+                      {c.balance > 0 ? `AED ${formatAed(c.balance)} open` : "settled"}
                     </span>
                   </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-[12px] text-text-secondary">
-                      {person.get(e.actor_id ?? "") ?? "system"}
-                    </span>
-                    <span className="mono block text-[11px] text-text-tertiary">
-                      {timeFmt.format(new Date(e.created_at))}
-                    </span>
+                  <span className="mono shrink-0 text-right text-[13px] font-medium text-primary">
+                    {formatAed(c.invoiced)}
                   </span>
                 </Link>
               </li>
             ))}
-            {(events ?? []).length === 0 ? (
-              <li className="py-8 text-center text-[13px] text-text-secondary">No activity yet.</li>
+            {topCustomers.length === 0 ? (
+              <li className="py-8 text-center text-[13px] text-text-secondary">
+                No sealed invoices this month yet.
+              </li>
             ) : null}
           </ul>
         </section>
@@ -281,81 +315,69 @@ export default async function DashboardPage() {
         {ctx.role === "admin" ? <OnlineEmployees /> : null}
       </div>
 
-      {/* Top customers */}
-      <section className="rounded-[14px] border border-border bg-surface p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-foreground">
-            Top Customers <span className="text-text-tertiary">(This Month)</span>
-          </h2>
-          <Link href="/customers" className="text-[13px] font-medium text-primary hover:underline">
-            View report
+      {/* Recent activity — full width, one row per event. */}
+      <section className="rounded-[14px] border border-border bg-surface p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-foreground">Recent Activity</h2>
+          <Link href="/invoices" className="text-[13px] font-medium text-primary hover:underline">
+            View all
           </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="pb-2.5 text-[12px] font-medium text-text-tertiary">Customer</th>
-                <th className="pb-2.5 text-center text-[12px] font-medium text-text-tertiary">
-                  Invoices
-                </th>
-                <th className="pb-2.5 text-right text-[12px] font-medium text-text-tertiary">
-                  Invoiced (AED)
-                </th>
-                <th className="pb-2.5 text-right text-[12px] font-medium text-text-tertiary">
-                  Paid (AED)
-                </th>
-                <th className="pb-2.5 text-right text-[12px] font-medium text-text-tertiary">
-                  Balance (AED)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {topCustomers.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b border-border last:border-b-0 hover:bg-bg-sunken"
+        <ul className="flex flex-col">
+          {feed.map((f) => {
+            const inner = (
+              <>
+                <ActivityIcon type={f.kind} />
+                <span className="min-w-0 flex-1 text-[13px] text-foreground">
+                  {ACTIVITY_LABEL[f.kind] ?? f.kind}
+                </span>
+                {/* A deleted draft has no number left, so its reference is the
+                    customer's name — plain text, never dressed as a number. */}
+                <span
+                  className={`hidden w-[16ch] shrink-0 truncate text-[13px] sm:block ${
+                    f.kind === "draft_deleted"
+                      ? "text-text-secondary"
+                      : "mono font-semibold text-primary"
+                  }`}
+                  title={f.ref}
                 >
-                  <td className="py-3">
-                    <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
-                      <Avatar name={c.name} />
-                      <span>
-                        <span className="block text-[14px] font-medium text-foreground">
-                          {c.name}
-                        </span>
-                        <span className="block text-[12px] text-text-tertiary">
-                          {c.count} invoice{c.count === 1 ? "" : "s"}
-                        </span>
-                      </span>
-                    </Link>
-                  </td>
-                  <td className="mono py-3 text-center text-[13px] text-foreground">{c.count}</td>
-                  <td className="mono py-3 text-right text-[13px] font-medium text-primary">
-                    {formatAed(c.invoiced)}
-                  </td>
-                  <td className="mono py-3 text-right text-[13px] font-medium text-success">
-                    {formatAed(c.paid)}
-                  </td>
-                  <td className="mono py-3 text-right text-[13px] font-medium text-foreground">
-                    {formatAed(c.balance)}
-                  </td>
-                </tr>
-              ))}
-              {topCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-[13px] text-text-secondary">
-                    No sealed invoices this month yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                  {f.ref}
+                </span>
+                <span className="hidden w-[18ch] shrink-0 truncate text-right text-[12px] text-text-secondary sm:block">
+                  {f.actor}
+                </span>
+                <span className="mono w-[13ch] shrink-0 text-right text-[12px] text-text-tertiary">
+                  {timeFmt.format(new Date(f.at))}
+                </span>
+              </>
+            );
+            return (
+              <li key={f.key}>
+                {f.href ? (
+                  <Link
+                    href={f.href}
+                    className="-mx-2 flex items-center gap-3 rounded-[8px] px-2 py-2 transition-colors hover:bg-bg-sunken"
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <span className="-mx-2 flex items-center gap-3 rounded-[8px] px-2 py-2">
+                    {inner}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+          {feed.length === 0 ? (
+            <li className="py-8 text-center text-[13px] text-text-secondary">No activity yet.</li>
+          ) : null}
+        </ul>
       </section>
 
-      <p className="mt-6 flex items-center justify-center gap-1.5 text-[12px] text-text-tertiary">
-        All figures derive from sealed invoices and recorded payments — nothing is ever edited by
-        hand.
+      <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-text-tertiary">
+        Signed in as {ctx.fullName}
+        {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. All figures derive from sealed
+        invoices and recorded payments — nothing is ever edited by hand.
       </p>
     </div>
   );
@@ -455,6 +477,7 @@ function Legend({ label, dash }: { label: string; dash: boolean }) {
 const ACTIVITY_LABEL: Record<string, string> = {
   created: "Draft created",
   draft_updated: "Draft edited",
+  draft_deleted: "Draft deleted",
   issued: "Issued",
   payment_recorded: "Payment recorded",
   payment_reversed: "Payment reversed",
@@ -481,6 +504,7 @@ function ActivityIcon({ type }: { type: string }) {
       icon: <PencilLine className="size-4" />,
       cls: "bg-neutral-soft text-text-secondary",
     },
+    draft_deleted: { icon: <Trash2 className="size-4" />, cls: "bg-neutral-soft text-error" },
   };
   const { icon, cls } = map[type] ?? map.created;
   return (

@@ -310,3 +310,33 @@ export const invoiceCounters = pgTable("invoice_counters", {
   year: integer("year").primaryKey(),
   lastNumber: integer("last_number").notNull(),
 });
+
+/* ── 2.13 deleted_drafts — tombstones for erased drafts (D-31) ──────────────
+      A draft is scratch: no number, no VAT, no customer copy — nothing an
+      auditor needs. So delete_draft() erases the row and its events outright
+      (§4.2's append-only guard stays absolute for everything else) and leaves
+      ONE tombstone here so an admin can still see who deleted what. There is
+      deliberately NO invoice FK — the invoice is gone. No money figure is
+      recorded either: a draft's totals are unsealed, and an approximate
+      amount in an audit table invites being read as a real one.
+      Append-only itself, same three-layer recipe as invoice_events. ─────── */
+export const deletedDrafts = pgTable(
+  "deleted_drafts",
+  {
+    id: id(),
+    invoiceId: uuid("invoice_id").notNull(), // no FK by design — row is gone
+    customerId: uuid("customer_id"),
+    customerName: text("customer_name"),
+    lineCount: integer("line_count").notNull().default(0),
+    // Both actors are recorded TWICE: the id for linking, and the name as
+    // plain text. A tombstone has to stay readable after the employee's row
+    // is gone (SET NULL below), which is exactly when it matters most.
+    draftCreatedBy: uuid("draft_created_by").references(() => profiles.id, { onDelete: "set null" }),
+    draftCreatedByName: text("draft_created_by_name"),
+    draftCreatedAt: timestamp("draft_created_at", { withTimezone: true }),
+    deletedBy: uuid("deleted_by").references(() => profiles.id, { onDelete: "set null" }),
+    deletedByName: text("deleted_by_name"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("deleted_drafts_deleted_at_idx").on(t.deletedAt)]
+);

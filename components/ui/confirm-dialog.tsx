@@ -14,9 +14,9 @@ type ConfirmOptions = {
 
 type PendingConfirm = ConfirmOptions & { resolve: (value: boolean) => void };
 
-const ConfirmContext = React.createContext<
-  ((opts: ConfirmOptions) => Promise<boolean>) | null
->(null);
+const ConfirmContext = React.createContext<((opts: ConfirmOptions) => Promise<boolean>) | null>(
+  null
+);
 
 // App-wide replacement for window.confirm() — a themed Modal instead of the
 // unbranded browser dialog. One instance mounted in the shell layout;

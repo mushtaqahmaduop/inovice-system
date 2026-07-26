@@ -11,9 +11,12 @@ import { broadcastInvoicesChanged } from "@/lib/realtime";
 // correct shape for a draft; the 1.2b parent-lock trigger serializes this
 // against a concurrent issue, so an edit can never interleave with sealing).
 // Issued/voided invoices are immutable: this route answers 409 and the DB
-// would raise anyway (three-layer enforcement). No delete action: RLS has
-// no DELETE policy for app roles — stale drafts are a cleanup question for
-// a later task, not a bypass to add here.
+// would raise anyway (three-layer enforcement).
+//
+// DELETE (D-31) removes a DRAFT and nothing else, through delete_draft() —
+// the sole sanctioned erasure. The rule "an admin, or the employee who
+// created it" is enforced inside that function, so a direct PostgREST RPC
+// obeys it too; the checks here only shape the HTTP answer.
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update_draft"), data: draftInvoiceSchema }),
@@ -25,6 +28,46 @@ const actionSchema = z.discriminatedUnion("action", [
     createReplacement: z.boolean().default(false),
   }),
 ]);
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireUserApi();
+  if (guard.error) return guard.error;
+
+  const { id } = await params;
+  if (!z.uuid().safeParse(id).success) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_draft", { p_invoice_id: id });
+  if (error) {
+    if (/not found/.test(error.message)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (/only an admin or the employee/.test(error.message)) {
+      return NextResponse.json(
+        { error: "Only an admin or the employee who created this draft can delete it." },
+        { status: 403 }
+      );
+    }
+    if (/only drafts may be deleted/.test(error.message)) {
+      return NextResponse.json(
+        { error: "This invoice is sealed — void it instead of deleting it." },
+        { status: 409 }
+      );
+    }
+    if (/has payments/.test(error.message)) {
+      return NextResponse.json(
+        { error: "This draft has payments recorded against it." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  await broadcastInvoicesChanged();
+  return NextResponse.json({ ok: true });
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireUserApi();

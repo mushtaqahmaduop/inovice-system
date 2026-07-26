@@ -105,7 +105,9 @@ export function GlobalSearch() {
 
   const runSearch = useCallback((query: string) => {
     abortRef.current?.abort();
-    if (query.trim().length < 2) {
+    // One character is enough — invoice numbers start at INV-1 (see the
+    // matching floor in /api/search).
+    if (query.trim().length < 1) {
       setResults(EMPTY);
       setSearching(false);
       return;
@@ -133,7 +135,7 @@ export function GlobalSearch() {
   const rememberQuery = useCallback(
     (term: string) => {
       const t = term.trim();
-      if (t.length < 2) return;
+      if (t.length < 1) return;
       const next = [t, ...recent.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 6);
       setRecent(next);
       try {
@@ -163,7 +165,7 @@ export function GlobalSearch() {
     [q, rememberQuery, router]
   );
 
-  const hasQuery = q.trim().length >= 2;
+  const hasQuery = q.trim().length >= 1;
 
   // Build the flat, ordered, keyboard-navigable item list for the current
   // mode (recent vs. results), followed by the always-present quick actions.
@@ -401,7 +403,7 @@ export function GlobalSearch() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Search customers, invoices, services…"
+                placeholder="Search by invoice number, customer name or phone…"
                 className="h-14 w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-text-tertiary"
               />
             </div>

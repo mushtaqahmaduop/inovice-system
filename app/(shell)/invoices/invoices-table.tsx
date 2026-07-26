@@ -13,11 +13,20 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { MoreVertical, Eye, Printer, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  MoreVertical,
+  Eye,
+  Printer,
+  Pencil,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { StatusChip, type ChipVariant } from "@/components/ui/status-chip";
+import { canDeleteDraft, useDeleteDraft } from "@/components/invoice/use-delete-draft";
 import { formatAed } from "@/lib/money";
 import type { InvoiceListRow } from "./page";
 
@@ -32,12 +41,16 @@ const col = createColumnHelper<InvoiceListRow>();
 // shortcut to Open / Print.
 function RowMenu({
   status,
+  canDelete,
   onOpen,
   onPrint,
+  onDelete,
 }: {
   status: InvoiceListRow["status"];
+  canDelete: boolean;
   onOpen: () => void;
   onPrint: () => void;
+  onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
@@ -61,7 +74,8 @@ function RowMenu({
       return;
     }
     const r = e.currentTarget.getBoundingClientRect();
-    const menuH = status === "issued" ? 92 : 48; // 2 items vs 1
+    const items = 1 + (status === "issued" ? 1 : 0) + (canDelete ? 1 : 0);
+    const menuH = items * 44 + 8;
     const below = r.bottom + 4;
     const flipUp = below + menuH > window.innerHeight;
     setPos({
@@ -124,6 +138,21 @@ function RowMenu({
                     className={itemCls}
                   >
                     <Printer className="size-4" /> Print
+                  </button>
+                ) : null}
+                {/* D-31: drafts only, and only for an admin or the employee who
+                    created it. Sealed invoices are voided, never deleted. */}
+                {canDelete ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
+                      onDelete();
+                    }}
+                    className={`${itemCls} text-error`}
+                  >
+                    <Trash2 className="size-4" /> Delete draft
                   </button>
                 ) : null}
               </div>
@@ -190,12 +219,17 @@ function rowChip(
 export function InvoicesTable({
   rows,
   dueDaysDefault,
+  viewerId,
+  viewerIsAdmin,
 }: {
   rows: InvoiceListRow[];
   dueDaysDefault: number | null;
+  viewerId: string;
+  viewerIsAdmin: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const deleteDraft = useDeleteDraft();
   // Deep-link entry point — e.g. the dashboard's unpaid banner links to
   // /invoices?filter=unpaid. Any unrecognized value falls back to "all"
   // rather than rendering an empty, confusing table.
@@ -301,17 +335,19 @@ export function InvoicesTable({
           return (
             <RowMenu
               status={r.status}
+              canDelete={canDeleteDraft(r, { id: viewerId, isAdmin: viewerIsAdmin })}
               onOpen={() =>
                 router.push(r.status === "draft" ? `/invoices/${r.id}/edit` : `/invoices/${r.id}`)
               }
               onPrint={() => router.push(`/invoices/${r.id}?print=1`)}
+              onDelete={() => deleteDraft(r.id, { customerName: r.customer_name })}
             />
           );
         },
       }),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dueDaysDefault]
+    [dueDaysDefault, viewerId, viewerIsAdmin]
   );
 
   const table = useReactTable({

@@ -17,6 +17,8 @@ export type InvoiceListRow = {
   due_date: string | null;
   created_at: string;
   customer_name: string;
+  /** who created the draft — decides who may delete it (D-31). */
+  created_by: string | null;
 };
 
 // Invoice list (task 4.3) — reads the invoice_list view (migration 0009):
@@ -25,13 +27,13 @@ export type InvoiceListRow = {
 // no snapshot yet, so their display name joins from the customers list.
 // Most-recent 500 fetched; the table filters/sorts/pages client-side.
 export default async function InvoicesPage() {
-  await requireUser();
+  const ctx = await requireUser();
   const supabase = await createClient();
   const [{ data: rows }, { data: customers }, { data: settings }] = await Promise.all([
     supabase
       .from("invoice_list")
       .select(
-        "id, invoice_number, status, payment_status, paid_total, customer_total, issue_date, due_date, created_at, customer_id, customer_snapshot"
+        "id, invoice_number, status, payment_status, paid_total, customer_total, issue_date, due_date, created_at, created_by, customer_id, customer_snapshot"
       )
       .order("created_at", { ascending: false })
       .limit(500),
@@ -52,6 +54,7 @@ export default async function InvoicesPage() {
     created_at: r.created_at,
     customer_name:
       (r.customer_snapshot as { name?: string } | null)?.name ?? nameById.get(r.customer_id) ?? "—",
+    created_by: r.created_by ?? null,
   }));
 
   const issued = list.filter((r) => r.status === "issued").length;
@@ -72,7 +75,12 @@ export default async function InvoicesPage() {
         {/* The only blue button on this screen (§4). */}
         <Button render={<Link href="/invoices/new" />}>Create invoice</Button>
       </div>
-      <InvoicesTable rows={list} dueDaysDefault={settings?.due_days_default ?? null} />
+      <InvoicesTable
+        rows={list}
+        dueDaysDefault={settings?.due_days_default ?? null}
+        viewerId={ctx.userId}
+        viewerIsAdmin={ctx.role === "admin"}
+      />
     </div>
   );
 }
