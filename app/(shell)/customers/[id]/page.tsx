@@ -25,7 +25,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   const { data: invoices } = await supabase
     .from("invoice_list")
     .select(
-      "id, invoice_number, status, payment_status, paid_total, grand_total, issue_date, created_at"
+      "id, invoice_number, status, payment_status, paid_total, customer_total, issue_date, created_at"
     )
     .eq("customer_id", id)
     .order("created_at", { ascending: false });
@@ -45,7 +45,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   const numberById = new Map(rows.map((r) => [r.id, r.invoice_number]));
 
   const issued = rows.filter((r) => r.status === "issued");
-  const totalInvoiced = issued.reduce((s, r) => s + (r.grand_total ?? 0), 0);
+  const totalInvoiced = issued.reduce((s, r) => s + (r.customer_total ?? 0), 0);
   const totalPaid = issued.reduce((s, r) => s + (r.paid_total ?? 0), 0);
   const balance = totalInvoiced - totalPaid;
 
@@ -118,7 +118,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
             <div className="flex items-baseline justify-between gap-3">
               <span className="mono text-[12px] text-primary">{r.invoice_number ?? "draft"}</span>
               <span className="mono text-[12px] text-foreground">
-                {r.grand_total !== null ? `AED ${formatAed(r.grand_total)}` : "—"}
+                {r.customer_total !== null ? `AED ${formatAed(r.customer_total)}` : "—"}
               </span>
             </div>
             <div className="mt-1 flex items-center justify-between gap-2">
@@ -172,7 +172,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
                   {r.issue_date ?? "—"}
                 </td>
                 <td className="mono px-3 py-2 text-[12px] text-foreground">
-                  {r.grand_total !== null ? `AED ${formatAed(r.grand_total)}` : "—"}
+                  {r.customer_total !== null ? `AED ${formatAed(r.customer_total)}` : "—"}
                 </td>
                 <td className="mono px-3 py-2 text-[12px] text-text-secondary">
                   {r.status === "issued" ? `AED ${formatAed(r.paid_total ?? 0)}` : "—"}

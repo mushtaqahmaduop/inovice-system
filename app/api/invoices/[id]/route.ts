@@ -243,6 +243,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       terms: d.terms ?? null,
       display_currency: d.displayCurrency,
       exchange_rate_e6: d.displayCurrency === "AED" ? null : (d.exchangeRateE6 ?? null),
+      delivery_fee: d.deliveryFee,
     })
     .eq("id", id);
   if (updErr) {

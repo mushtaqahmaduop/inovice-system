@@ -169,7 +169,7 @@ function rowChip(
   if (r.status === "voided") return { variant: "warning", label: "Voided" };
   if (overdue) return { variant: "warning-filled", label: "Overdue" };
   if (r.payment_status === "paid") {
-    const overpaid = r.grand_total !== null && r.paid_total > r.grand_total;
+    const overpaid = r.customer_total !== null && r.paid_total > r.customer_total;
     return {
       variant: "success",
       label: overpaid ? "Paid ⚑ · sealed" : "Paid · sealed",
@@ -177,7 +177,7 @@ function rowChip(
     };
   }
   if (r.payment_status === "partial") {
-    const outstanding = (r.grand_total ?? 0) - r.paid_total;
+    const outstanding = (r.customer_total ?? 0) - r.paid_total;
     return {
       variant: "warning",
       label: "Part-paid",
@@ -268,7 +268,7 @@ export function InvoicesTable({
           <span className="mono text-[13px] text-text-secondary">{fmtDate(c.getValue())}</span>
         ),
       }),
-      col.accessor("grand_total", {
+      col.accessor("customer_total", {
         header: "Total",
         cell: (c) =>
           c.getValue() !== null ? (
@@ -400,10 +400,10 @@ export function InvoicesTable({
                 ) : (
                   <span className="text-[13px] text-text-tertiary">Draft</span>
                 )}
-                {r.grand_total !== null ? (
+                {r.customer_total !== null ? (
                   <span className="mono text-[13px] text-foreground">
                     <span className="mr-1 text-[11px] text-text-tertiary">AED</span>
-                    {formatAed(r.grand_total)}
+                    {formatAed(r.customer_total)}
                   </span>
                 ) : (
                   <span className="text-[13px] text-text-tertiary">—</span>
@@ -435,7 +435,7 @@ export function InvoicesTable({
                     onClick={h.column.getToggleSortingHandler()}
                     className={`px-3 py-2.5 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase ${
                       h.column.getCanSort() ? "cursor-pointer select-none" : ""
-                    } ${h.column.id === "grand_total" ? "text-right" : ""}`}
+                    } ${h.column.id === "customer_total" ? "text-right" : ""}`}
                   >
                     {flexRender(h.column.columnDef.header, h.getContext())}
                     {{ asc: " ↑", desc: " ↓" }[h.column.getIsSorted() as string] ?? ""}

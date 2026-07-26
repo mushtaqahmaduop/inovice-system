@@ -47,6 +47,11 @@ export const draftInvoiceSchema = z
     // a foreign invoice is enforced at the ISSUE path, not on every draft save.
     displayCurrency: z.enum(SUPPORTED_CURRENCY_CODES).default("AED"),
     exchangeRateE6: z.number().int().positive().max(1_000_000_000_000).nullish(),
+    // Third-party delivery collected for the customer (D-30). Deliberately NOT
+    // part of the sealed totals: issue_invoice() never sees it, and the FTA
+    // copy never prints it. It rides on the invoice row so the customer copy
+    // and every payment figure can add it to grand_total.
+    deliveryFee: fils.default(0),
   })
   .superRefine((v, ctx) => {
     for (const [li, l] of v.lines.entries()) {

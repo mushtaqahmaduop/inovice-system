@@ -139,6 +139,13 @@ export const invoices = pgTable(
     subtotalExtras: fils("subtotal_extras"),
     vatAmount: fils("vat_amount"),
     grandTotal: fils("grand_total"),
+    // Third-party delivery collected on the customer's behalf (D-30). NOT part
+    // of the centre's supply, so it is deliberately OUTSIDE grand_total: the
+    // FTA copy prints grand_total and never mentions delivery, while the
+    // customer copy and every payment/ledger figure use grand_total +
+    // delivery_fee. Editable while draft (transition matrix §4.1), frozen at
+    // issue like every other money column — issue_invoice() never touches it.
+    deliveryFee: fils("delivery_fee").notNull().default(0),
     notes: text("notes"), // editable while draft, frozen after [#11]
     terms: text("terms"),
     // Foreign-currency DISPLAY layer (AED-anchored). The invoice is priced and
@@ -163,6 +170,7 @@ export const invoices = pgTable(
       "invoices_exchange_rate_positive",
       sql`${t.exchangeRateE6} is null or ${t.exchangeRateE6} > 0`
     ),
+    check("invoices_delivery_fee_non_negative", sql`${t.deliveryFee} >= 0`),
     unique("invoices_number_year_seq_unique").on(t.numberYear, t.numberSeq),
     index("invoices_status_idx").on(t.status),
     index("invoices_customer_id_idx").on(t.customerId),

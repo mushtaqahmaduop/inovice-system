@@ -10,7 +10,9 @@ export type InvoiceListRow = {
   status: "draft" | "issued" | "voided";
   payment_status: "unpaid" | "partial" | "paid" | null;
   paid_total: number;
-  grand_total: number | null;
+  /** what the CUSTOMER owes: sealed supply + delivery (D-30). The FTA-copy
+   *  figure is grand_total and stays on the document only. */
+  customer_total: number | null;
   issue_date: string | null;
   due_date: string | null;
   created_at: string;
@@ -29,7 +31,7 @@ export default async function InvoicesPage() {
     supabase
       .from("invoice_list")
       .select(
-        "id, invoice_number, status, payment_status, paid_total, grand_total, issue_date, due_date, created_at, customer_id, customer_snapshot"
+        "id, invoice_number, status, payment_status, paid_total, customer_total, issue_date, due_date, created_at, customer_id, customer_snapshot"
       )
       .order("created_at", { ascending: false })
       .limit(500),
@@ -44,7 +46,7 @@ export default async function InvoicesPage() {
     status: r.status,
     payment_status: r.payment_status,
     paid_total: r.paid_total ?? 0,
-    grand_total: r.grand_total,
+    customer_total: r.customer_total,
     issue_date: r.issue_date,
     due_date: r.due_date,
     created_at: r.created_at,

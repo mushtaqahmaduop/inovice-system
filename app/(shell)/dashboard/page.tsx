@@ -48,7 +48,7 @@ export default async function DashboardPage() {
     supabase
       .from("invoice_list")
       .select(
-        "id, invoice_number, customer_id, customer_snapshot, issue_date, grand_total, paid_total, vat_amount, payment_status"
+        "id, invoice_number, customer_id, customer_snapshot, issue_date, customer_total, paid_total, vat_amount, payment_status"
       )
       .eq("status", "issued"),
     supabase.from("payments").select("amount, received_on").gte("received_on", lastMonthStart),
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
   const drafts = draftCount ?? 0;
   const unpaidRows = rows.filter((r) => r.payment_status !== "paid");
   const unpaidTotal = unpaidRows.reduce(
-    (s, r) => s + ((r.grand_total ?? 0) - (r.paid_total ?? 0)),
+    (s, r) => s + ((r.customer_total ?? 0) - (r.paid_total ?? 0)),
     0
   );
   const custName = (r: (typeof rows)[number]) =>
@@ -80,17 +80,17 @@ export default async function DashboardPage() {
   const inLastMonth = (d: string | null) => (d ?? "") >= lastMonthStart && (d ?? "") < monthStart;
 
   const monthRows = rows.filter((r) => inMonth(r.issue_date));
-  const monthTotal = monthRows.reduce((s, r) => s + (r.grand_total ?? 0), 0);
+  const monthTotal = monthRows.reduce((s, r) => s + (r.customer_total ?? 0), 0);
   const monthVat = monthRows.reduce((s, r) => s + (r.vat_amount ?? 0), 0);
 
   const lastRows = rows.filter((r) => inLastMonth(r.issue_date));
-  const lastTotal = lastRows.reduce((s, r) => s + (r.grand_total ?? 0), 0);
+  const lastTotal = lastRows.reduce((s, r) => s + (r.customer_total ?? 0), 0);
   const lastVat = lastRows.reduce((s, r) => s + (r.vat_amount ?? 0), 0);
 
   // ── Outstanding — open balance per customer, largest first ────────────────
   const debtors = new Map<string, { name: string; open: number; count: number }>();
   for (const r of rows) {
-    const due = (r.grand_total ?? 0) - (r.paid_total ?? 0);
+    const due = (r.customer_total ?? 0) - (r.paid_total ?? 0);
     if (r.payment_status === "paid" || due <= 0) continue;
     const d = debtors.get(r.customer_id) ?? { name: custName(r), open: 0, count: 0 };
     d.open += due;
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
   for (const r of monthRows)
     invByDay.set(
       r.issue_date ?? "",
-      (invByDay.get(r.issue_date ?? "") ?? 0) + (r.grand_total ?? 0)
+      (invByDay.get(r.issue_date ?? "") ?? 0) + (r.customer_total ?? 0)
     );
   const paidByDay = new Map<string, number>();
   for (const p of pays) {
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
   for (const r of monthRows) {
     const t = tc.get(r.customer_id) ?? { name: custName(r), count: 0, invoiced: 0, paid: 0 };
     t.count += 1;
-    t.invoiced += r.grand_total ?? 0;
+    t.invoiced += r.customer_total ?? 0;
     t.paid += r.paid_total ?? 0;
     tc.set(r.customer_id, t);
   }

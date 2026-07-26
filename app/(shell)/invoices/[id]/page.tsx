@@ -32,7 +32,7 @@ export default async function InvoicePage({
        vat_registered_snapshot, vat_rate_bp_snapshot,
        subtotal_govt, subtotal_service, subtotal_extras, vat_amount, grand_total,
        notes, terms, issued_at, void_reason, issued_by, replaces_invoice_id,
-       display_currency, exchange_rate_e6`
+       display_currency, exchange_rate_e6, delivery_fee`
     )
     .eq("id", id)
     .maybeSingle();
@@ -241,6 +241,7 @@ export default async function InvoicePage({
         issuedAt={invoice.issued_at}
         paymentStatus={listRow?.payment_status ?? null}
         paidTotal={listRow?.paid_total ?? 0}
+        deliveryFee={invoice.delivery_fee ?? 0}
         voidReason={invoice.void_reason}
       />
 
@@ -271,6 +272,7 @@ export default async function InvoicePage({
           }))}
           paidTotal={listRow?.paid_total ?? 0}
           grandTotal={invoice.grand_total ?? 0}
+          deliveryFee={invoice.delivery_fee ?? 0}
           paymentStatus={listRow?.payment_status ?? null}
         />
       ) : null}

@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       // while drafting (the issue path enforces a positive rate before sealing).
       exchange_rate_e6:
         parsed.data.displayCurrency === "AED" ? null : (parsed.data.exchangeRateE6 ?? null),
+      delivery_fee: parsed.data.deliveryFee,
       created_by: guard.ctx.userId,
     })
     .select("id")
