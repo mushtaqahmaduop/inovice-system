@@ -186,7 +186,7 @@ export function InvoiceEditor({
 
   // Record-on-issue payment (owner request): a draft carries no payments,
   // so this stays local until issue seals the invoice — confirmIssue then
-  // posts it to the payments ledger before navigating to print.
+  // posts it to the payments ledger before navigating to the sealed invoice.
   const [markPaid, setMarkPaid] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethodId, setPayMethodId] = useState(methods[0]?.id ?? "");
@@ -575,15 +575,20 @@ export function InvoiceEditor({
               { duration: Infinity }
             );
             // The sealed invoice still loads; land on it so the payment can be
-            // recorded immediately (skip auto-print — it isn't paid).
+            // recorded immediately. Same destination as the success path now
+            // that issuing never prints by itself.
             router.push(`/invoices/${draftId}`);
             return; // stay disabled while navigating
           }
         }
       }
-      toast.success(`${issuedLabel} issued`);
-      // Owner request: land on the sealed invoice and print it as issued.
-      router.push(`/invoices/${draftId}?print=1`);
+      toast.success(`${issuedLabel} issued — use Print when you're ready`);
+      // Client request 2026-07-30: issuing must NOT open the print dialog by
+      // itself. Land on the sealed invoice and let the operator press Print
+      // there (they may want to check it, take payment, or not print at all).
+      // No `?print=1` — that flag stays for the invoices list's Print action,
+      // which IS a deliberate button press.
+      router.push(`/invoices/${draftId}`);
       return; // stay disabled while navigating
     }
     setIssueError(body?.error ?? "Issue failed — the draft is unchanged.");
@@ -1367,7 +1372,8 @@ export function InvoiceEditor({
         <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
           Issuing allocates the next invoice number and this invoice becomes permanent — it cannot
           be edited afterwards. Totals are recomputed server-side at that moment; corrections happen
-          via a new document.
+          via a new document. Nothing is printed automatically: you land on the sealed invoice and
+          press Print there.
         </p>
         {issueError ? (
           <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
@@ -1377,7 +1383,8 @@ export function InvoiceEditor({
             Keep editing
           </Button>
           <Button onClick={confirmIssue} disabled={confirming}>
-            {confirming ? "Issuing…" : markPaid ? "Issue, record payment & print" : "Issue & print"}
+            {/* No "& print" any more — issuing no longer prints on its own. */}
+            {confirming ? "Issuing…" : markPaid ? "Issue & record payment" : "Issue invoice"}
           </Button>
         </div>
       </ResponsiveSheet>
