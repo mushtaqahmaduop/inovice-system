@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,30 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
   // is never left on screen behind the MFA challenge.
   const [showPassword, setShowPassword] = useState(false);
 
+  // "Remember me" (owner request 2026-07-30). It remembers the EMAIL ADDRESS
+  // only — it deliberately does NOT extend the session or keep anyone signed in.
+  //
+  // Why: session lifetime here is cookie-based through @supabase/ssr and is
+  // refreshed by the middleware on every request, so changing it means changing
+  // it in the browser client, the server client and the middleware together —
+  // an auth-critical change that also interacts with the mandatory admin TOTP
+  // and with admin session revocation (§4). A checkbox is not worth that risk,
+  // and a checkbox that silently lengthened a session on a shared counter
+  // machine would be worse than no checkbox at all. The hint under it says
+  // plainly what it does, so nobody is misled into thinking they stay logged in.
+  const [rememberMe, setRememberMe] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("login:email");
+      if (saved) {
+        setEmail(saved);
+        setRememberMe(true);
+      }
+    } catch {
+      // localStorage unavailable (private mode / blocked) — just start empty.
+    }
+  }, []);
+
   useEffect(() => {
     setError((e) => (step === "password" ? e : ""));
     setCode("");
@@ -46,6 +70,14 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
       setError("Invalid email or password.");
       setBusy(false);
       return;
+    }
+    // Only persist the address once the credentials are known good, so a typo
+    // is never the value that gets remembered.
+    try {
+      if (rememberMe) localStorage.setItem("login:email", email);
+      else localStorage.removeItem("login:email");
+    } catch {
+      // best-effort convenience only
     }
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
@@ -118,19 +150,30 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
       >
         {error && <p className="text-sm text-error">{error}</p>}
         <div>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <FieldLabel htmlFor="email">Email address</FieldLabel>
+          <div className="relative">
+            <Mail
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-text-tertiary"
+            />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
         <div>
           <FieldLabel htmlFor="password">Password</FieldLabel>
           <div className="relative">
+            <Lock
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-text-tertiary"
+            />
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -138,7 +181,7 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pr-10"
+              className="pr-10 pl-9"
             />
             <button
               type="button"
@@ -152,15 +195,31 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
             </button>
           </div>
         </div>
+        <div className="flex items-start justify-between gap-3">
+          <label className="flex cursor-pointer items-start gap-2 text-[13px] leading-[19px] text-foreground">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+            />
+            <span>
+              Remember me
+              <span className="block text-[11.5px] leading-4 text-text-tertiary">
+                Fills in your email next time. It does not keep you signed in.
+              </span>
+            </span>
+          </label>
+          <a
+            href="/forgot-password"
+            className="shrink-0 pt-0.5 text-[13px] text-primary underline-offset-2 hover:underline"
+          >
+            Forgot password?
+          </a>
+        </div>
         <Button type="submit" className="w-full" loading={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
-        <a
-          href="/forgot-password"
-          className="block text-center text-xs text-text-tertiary underline-offset-2 hover:underline"
-        >
-          Forgot password?
-        </a>
       </form>
     );
   }

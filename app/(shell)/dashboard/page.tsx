@@ -9,6 +9,12 @@ import {
   Trash2,
   Wallet,
   Percent,
+  Plus,
+  Users,
+  ListPlus,
+  Download,
+  UserCog,
+  Settings,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
@@ -370,6 +376,54 @@ export default async function DashboardPage({
         </ul>
       </section>
 
+      {/* Quick Actions (owner mockup 2026-07-30). Admins get the three
+          administration destinations as well — the mockup's "View Reports" maps
+          to the real Exports page rather than becoming a dead button, and there
+          is no reports screen to point at. Staff never see the admin row: those
+          pages are admin-only server-side, so offering them would only produce
+          a redirect. */}
+      <section className="rounded-[14px] border border-border bg-surface p-4">
+        <h2 className="mb-3 text-[15px] font-semibold text-foreground">Quick Actions</h2>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <QuickAction
+            href="/invoices/new"
+            icon={<Plus className="size-4" />}
+            label="New invoice"
+            primary
+          />
+          <QuickAction href="/customers" icon={<Users className="size-4" />} label="Add customer" />
+          <QuickAction
+            href="/services"
+            icon={<ListPlus className="size-4" />}
+            label="Add service"
+          />
+          <QuickAction
+            href="/invoices"
+            icon={<FileText className="size-4" />}
+            label="All invoices"
+          />
+          {ctx.role === "admin" ? (
+            <>
+              <QuickAction
+                href="/admin/exports"
+                icon={<Download className="size-4" />}
+                label="Exports & reports"
+              />
+              <QuickAction
+                href="/admin/users"
+                icon={<UserCog className="size-4" />}
+                label="Manage users"
+              />
+              <QuickAction
+                href="/admin/settings"
+                icon={<Settings className="size-4" />}
+                label="Settings"
+              />
+            </>
+          ) : null}
+        </div>
+      </section>
+
       <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-text-tertiary">
         Signed in as {ctx.fullName}
         {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. All figures derive from sealed
@@ -509,6 +563,34 @@ function ActivityIcon({ type }: { type: string }) {
     <span className={`flex size-9 shrink-0 items-center justify-center rounded-[9px] ${cls}`}>
       {icon}
     </span>
+  );
+}
+
+// One Quick Action tile. `primary` marks the single accent-filled action so the
+// row still has one obvious lead (§5 — the accent carries primary actions).
+function QuickAction({
+  href,
+  icon,
+  label,
+  primary = false,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        primary
+          ? "flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-3 text-[13px] font-[550] text-on-accent transition-colors hover:bg-[var(--accent-hover)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          : "flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border-strong px-3 text-[13px] font-[550] text-foreground transition-colors hover:bg-bg-sunken focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      }
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </Link>
   );
 }
 
