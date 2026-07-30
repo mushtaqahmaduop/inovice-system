@@ -120,6 +120,13 @@
       "when": 1785101056330,
       "tag": "0016_delete_draft",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785408968290,
+      "tag": "0017_line_delivery_fee",
+      "breakpoints": true
     }
   ]
 }

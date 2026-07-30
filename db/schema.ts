@@ -4,6 +4,8 @@
 // - ALL money: fils (AED × 100) as bigint, mode "number" — never floats, never numeric.
 //   JS numbers are safe: fils totals sit far below 2^53 (SCHEMA_DESIGN §7).
 // - Every per-line fee column stores the UNIT fee; line component total = qty × unit_fee.
+//   ONE exception, documented at the column: invoice_lines.delivery_fee is a ROW TOTAL
+//   and is never multiplied by qty (D-30a — a driver's fee is flat for the trip).
 // - uuid PKs, created_at everywhere; deleted_at = soft delete on business entities.
 // - Enforcement triggers, issue_invoice(), and RLS are tasks 1.2a/1.2b/1.3 — NOT here.
 //   The pg_trgm extension, expression indexes, and the profiles→auth.users FK live in
@@ -192,11 +194,22 @@ export const invoiceLines = pgTable(
     qty: integer("qty").notNull().default(1),
     govtFee: fils("govt_fee").notNull().default(0), // UNIT fee
     serviceFee: fils("service_fee").notNull().default(0), // UNIT fee
+    // Third-party delivery attributed to this row (D-30, per-line since 0017).
+    // DELIBERATE EXCEPTION to the "every per-line fee column stores the UNIT
+    // fee" convention in the header: this is the ROW TOTAL, never multiplied by
+    // qty. A driver's fee is a flat charge for the trip — multiplying it by "3
+    // typing jobs" would silently treble what the customer is charged.
+    // Excluded from the sealed totals: issue_invoice() never reads it, so
+    // grand_total stays the centre's supply alone and the FTA copy never sees
+    // delivery. invoices.delivery_fee is the SUM of this column, written by the
+    // draft-save path (never accepted from the client) and frozen at issue.
+    deliveryFee: fils("delivery_fee").notNull().default(0),
     vatAmount: fils("vat_amount").notNull().default(0), // frozen at issue (§3.1)
     createdAt: createdAt(),
   },
   (t) => [
     check("invoice_lines_qty_check", sql`${t.qty} > 0`),
+    check("invoice_lines_delivery_fee_non_negative", sql`${t.deliveryFee} >= 0`),
     index("invoice_lines_invoice_id_idx").on(t.invoiceId),
   ]
 );
@@ -331,7 +344,9 @@ export const deletedDrafts = pgTable(
     // Both actors are recorded TWICE: the id for linking, and the name as
     // plain text. A tombstone has to stay readable after the employee's row
     // is gone (SET NULL below), which is exactly when it matters most.
-    draftCreatedBy: uuid("draft_created_by").references(() => profiles.id, { onDelete: "set null" }),
+    draftCreatedBy: uuid("draft_created_by").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
     draftCreatedByName: text("draft_created_by_name"),
     draftCreatedAt: timestamp("draft_created_at", { withTimezone: true }),
     deletedBy: uuid("deleted_by").references(() => profiles.id, { onDelete: "set null" }),

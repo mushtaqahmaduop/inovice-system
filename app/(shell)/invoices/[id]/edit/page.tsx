@@ -21,7 +21,10 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { data: invoice } = await supabase
     .from("invoices")
     .select(
-      "id, status, customer_id, created_by, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6, delivery_fee"
+      // invoices.delivery_fee is deliberately NOT read here: since 0017 the
+      // grid owns delivery per line and the invoice's own column is the derived
+      // sum, rewritten on every draft save.
+      "id, status, customer_id, created_by, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6"
     )
     .eq("id", id)
     .maybeSingle();
@@ -86,7 +89,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     supabase
       .from("invoice_lines")
       .select(
-        "id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)"
+        "id, position, description, qty, govt_fee, service_fee, delivery_fee, invoice_line_fees(column_id, amount)"
       )
       .eq("invoice_id", id)
       .order("position"),
@@ -104,12 +107,14 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     terms: invoice.terms,
     displayCurrency: invoice.display_currency ?? "AED",
     exchangeRateE6: invoice.exchange_rate_e6 ?? null,
-    deliveryFee: invoice.delivery_fee ?? null,
     columns: columnList.map((c) => ({ label: c.label, vatable: c.vatable })),
     lines: (lines ?? []).map((l) => ({
       description: l.description,
       qty: l.qty,
       govtFee: l.govt_fee,
+      // D-30 per line since 0017; the invoice's own delivery_fee is the sum and
+      // is recomputed on save, so the grid is the only thing the editor reads.
+      deliveryFee: l.delivery_fee ?? 0,
       serviceFee: l.service_fee,
       extraFees: Object.fromEntries(
         ((l.invoice_line_fees as { column_id: string; amount: number }[]) ?? [])

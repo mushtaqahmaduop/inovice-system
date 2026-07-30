@@ -1,6 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DraftInvoiceInput } from "@/lib/validation/invoice";
 
+// The invoice's delivery charge (D-30) = the sum of its lines' delivery cells,
+// computed HERE from server-validated input and never taken from the client.
+// Deliberately not multiplied by qty: invoice_lines.delivery_fee is a row
+// total, not a unit fee (a driver's fee is flat for the trip — see 0017).
+export function sumLineDelivery(lines: { deliveryFee?: number }[]): number {
+  return lines.reduce((s, l) => s + (l.deliveryFee ?? 0), 0);
+}
+
 // Inserts extra columns, lines and junction fees for a DRAFT invoice
 // (shared by the create and update routes, task 4.1b). Callers hold an
 // RLS-scoped client; the 1.2b parent-lock trigger backstops every write.
@@ -37,6 +45,7 @@ export async function insertChildren(
         qty: l.qty,
         govt_fee: l.govtFee,
         service_fee: l.serviceFee,
+        delivery_fee: l.deliveryFee ?? 0,
       }))
     )
     .select("id, position");

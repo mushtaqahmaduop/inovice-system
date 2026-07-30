@@ -20,6 +20,11 @@ const line = z.object({
   qty: z.number().int().min(1).max(9999),
   govtFee: fils,
   serviceFee: fils,
+  // Third-party delivery attributed to this row (D-30, per-line since 0017).
+  // A ROW TOTAL, not a unit fee — deliberately never multiplied by qty (a
+  // driver's fee is flat for the trip). Excluded from the sealed totals;
+  // invoices.delivery_fee is the server-computed SUM of these.
+  deliveryFee: fils.default(0),
   /** column index (as string) → unit fils; sparse, zeros omitted */
   extraFees: z.record(z.string(), fils).default({}),
 });
@@ -47,11 +52,10 @@ export const draftInvoiceSchema = z
     // a foreign invoice is enforced at the ISSUE path, not on every draft save.
     displayCurrency: z.enum(SUPPORTED_CURRENCY_CODES).default("AED"),
     exchangeRateE6: z.number().int().positive().max(1_000_000_000_000).nullish(),
-    // Third-party delivery collected for the customer (D-30). Deliberately NOT
-    // part of the sealed totals: issue_invoice() never sees it, and the FTA
-    // copy never prints it. It rides on the invoice row so the customer copy
-    // and every payment figure can add it to grand_total.
-    deliveryFee: fils.default(0),
+    // NOTE: there is deliberately NO invoice-level deliveryFee on the wire.
+    // Since 0017 delivery is entered per line, and invoices.delivery_fee is
+    // derived server-side (sumLineDelivery) — the same rule as every other
+    // money total, which is never accepted from the client (CLAUDE.md §4).
   })
   .superRefine((v, ctx) => {
     for (const [li, l] of v.lines.entries()) {
