@@ -148,7 +148,10 @@ export default async function InvoicePage({
       : " @media print { .print-doc { padding: 14mm !important; } }");
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 print:max-w-none print:p-0">
+    // max-w-4xl, not 3xl: the document is designed at A4 content width and was
+    // being squeezed here, colliding the INVOICE title with the address
+    // (owner screenshot 2026-07-30). Print is unaffected — print:max-w-none.
+    <div className="mx-auto max-w-4xl px-6 py-8 print:max-w-none print:p-0">
       <style>{pageStyle}</style>
       {print === "1" && invoice.status === "issued" ? <PrintOnLoad invoiceId={invoice.id} /> : null}
       <div className="mb-4 flex items-center justify-between print:hidden">

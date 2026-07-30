@@ -1622,10 +1622,15 @@ export function InvoiceEditor({
       {/* Mandatory pre-issue preview (D-23): a slide-over on desktop, a
           drag-to-close bottom-sheet on phones (§2.5). Esc/outside-click/drag
           closes. Sealing happens ONLY from here. */}
+      {/* D-23 put this slide-over at ~45–50%. At that width the A4 document was
+          cramped and its header collided (owner screenshot 2026-07-30), so the
+          preview is widened to 62% — still a slide-over, never the permanent
+          split view D-23 actually rules out. */}
       <ResponsiveSheet
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         title={previewMode === "look" ? "Invoice preview" : "Preview — confirm to issue"}
+        desktopClassName="data-[side=right]:sm:w-[62%] data-[side=right]:sm:max-w-[62%]"
       >
         <p className={`mb-4 ${captionClass}`}>
           {previewMode === "look" ? "How this invoice will look" : "Preview — confirm to issue"}
