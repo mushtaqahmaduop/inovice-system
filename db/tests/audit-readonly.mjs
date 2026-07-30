@@ -20,7 +20,7 @@ const sql = postgres(url, { max: 1, prepare: false, onnotice: () => {} });
 
 let pass = 0;
 let fail = 0;
-let warn = 0;
+
 const ok = (label, cond, detail = "") => {
   if (cond) {
     pass++;
@@ -29,10 +29,6 @@ const ok = (label, cond, detail = "") => {
     fail++;
     console.error(`  FAIL  ${label}${detail ? ` — ${detail}` : ""}`);
   }
-};
-const note = (label, detail = "") => {
-  warn++;
-  console.log(`  NOTE  ${label}${detail ? ` — ${detail}` : ""}`);
 };
 const section = (t) => console.log(`\n${t}`);
 
@@ -259,7 +255,7 @@ try {
   ok("migration 0015 applied (invoices.delivery_fee)", cols.inv_delivery === 1);
   ok("migration 0017 applied (invoice_lines.delivery_fee)", cols.line_delivery === 1);
 
-  console.log(`\n${pass} passed · ${fail} failed · ${warn} note(s)`);
+  console.log(`\n${pass} passed · ${fail} failed`);
 } finally {
   await sql.end();
 }

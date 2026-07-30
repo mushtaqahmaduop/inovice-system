@@ -195,24 +195,25 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
             </button>
           </div>
         </div>
-        <div className="flex items-start justify-between gap-3">
-          <label className="flex cursor-pointer items-start gap-2 text-[13px] leading-[19px] text-foreground">
+        {/* One row, one line each side — the two-line hint under "Remember me"
+            was pushing the Sign in button off a laptop viewport, so it moved
+            into the title attribute where it costs no height. */}
+        <div className="flex items-center justify-between gap-3">
+          <label
+            className="flex cursor-pointer items-center gap-2 text-[13px] leading-[19px] text-foreground"
+            title="Fills in your email next time. It does not keep you signed in."
+          >
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+              className="size-4 shrink-0 accent-[var(--accent)]"
             />
-            <span>
-              Remember me
-              <span className="block text-[11.5px] leading-4 text-text-tertiary">
-                Fills in your email next time. It does not keep you signed in.
-              </span>
-            </span>
+            Remember my email
           </label>
           <a
             href="/forgot-password"
-            className="shrink-0 pt-0.5 text-[13px] text-primary underline-offset-2 hover:underline"
+            className="shrink-0 text-[13px] text-primary underline-offset-2 hover:underline"
           >
             Forgot password?
           </a>
