@@ -35,8 +35,8 @@ import { calcInvoiceTotals, type DraftLine, type ExtraColumn } from "@/lib/invoi
 
 // Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Cool White /
 // Federal Blue system (redesign slice 6 → owner-mockup pass). Numbered
-// step cards (Bill to → Items → Details / Summary) per the owner's own
-// New-Invoice mockup, but every behaviour is unchanged: quiet line grid
+// step cards (Bill to → Items → Details / Summary → Payment) per the owner's
+// own New-Invoice mockup, but every behaviour is unchanged: quiet line grid
 // (borders appear on hover/focus), Tab past the last cell adds a row
 // (§2.6), drafts autosave silently every 20s once they exist, live totals
 // mirror issue_invoice() display-only, and issuing (4.2) stays behind the
@@ -184,13 +184,27 @@ export function InvoiceEditor({
   // §2.6 — smooth row add/remove in the line-item grid (auto-animate).
   const [linesRef] = useAutoAnimate<HTMLTableSectionElement>();
 
-  // Record-on-issue payment (owner request): a draft carries no payments,
-  // so this stays local until issue seals the invoice — confirmIssue then
-  // posts it to the payments ledger before navigating to the sealed invoice.
-  const [markPaid, setMarkPaid] = useState(false);
+  // Step ⑤ Payment (client request 2026-07-30). A draft carries no payments —
+  // the API refuses them outright ("Drafts carry no payments — issue the invoice
+  // first") because payment status is derived from SUM(payments) against a total
+  // that does not exist yet. So this is an INTENT captured before issuing:
+  // confirmIssue seals the invoice and then posts the payment.
+  //
+  // "now" is the default (the counter case: the customer is standing there).
+  // "later" collapses the fields and seals the invoice unpaid — a first-class
+  // outcome, not the absence of one; the sealed invoice's Payments panel takes
+  // the money whenever it arrives, in as many part payments as needed.
+  // With no payment method configured there is nothing to record against, so
+  // "later" is the only honest default.
+  const [payWhen, setPayWhen] = useState<"now" | "later">(methods.length > 0 ? "now" : "later");
   const [payAmount, setPayAmount] = useState("");
   const [payMethodId, setPayMethodId] = useState(methods[0]?.id ?? "");
   const [payReceivedOn, setPayReceivedOn] = useState(todayInDubai);
+  const [payReference, setPayReference] = useState("");
+  // The amount tracks the live total until the operator types their own figure
+  // (a part payment), then stops — otherwise editing a line would silently
+  // overwrite the number they just entered.
+  const [payAmountEdited, setPayAmountEdited] = useState(false);
 
   const [custQuery, setCustQuery] = useState("");
   const [custOpen, setCustOpen] = useState(false);
@@ -250,6 +264,20 @@ export function InvoiceEditor({
   );
   // What the customer hands over = the sealed supply + the driver's fee (D-30).
   const customerTotal = totals.grandTotal + deliveryFils;
+
+  // Step ⑤ — keep the "paying now" amount pinned to the live total until the
+  // operator overrides it for a part payment.
+  useEffect(() => {
+    if (payAmountEdited) return;
+    setPayAmount(customerTotal > 0 ? filsToInput(customerTotal) : "");
+  }, [customerTotal, payAmountEdited]);
+
+  // Payment intent, derived. `payFils` is what will be posted the moment the
+  // invoice is sealed; anything left over stays outstanding on the ledger.
+  const payFils = payWhen === "now" ? aedToFils(payAmount) : null;
+  const payInvalid = payWhen === "now" && payAmount.trim() !== "" && payFils === null;
+  const payExceeds = payFils !== null && payFils > customerTotal && customerTotal > 0;
+  const payRemaining = payFils !== null ? customerTotal - payFils : customerTotal;
 
   const custMatches = useMemo(() => {
     const q = custQuery.trim().toLowerCase();
@@ -514,10 +542,15 @@ export function InvoiceEditor({
     // catch it here so the owner fixes it before the preview rather than at seal.
     if (isForeign && !rateE6)
       return setError(`Enter the AED-per-${displayCurrency} exchange rate before issuing.`);
-    if (markPaid) {
-      const fils = aedToFils(payAmount);
-      if (fils === null || fils <= 0)
-        return setError("Enter a valid payment amount, or uncheck “Client is paying now”.");
+    // Step ⑤ — a "paying now" invoice must carry a usable payment, or be
+    // switched to "Paying later" (which is a real choice, not a failure).
+    if (payWhen === "now") {
+      if (payFils === null || payFils <= 0)
+        return setError("Enter the amount being paid, or choose “Paying later”.");
+      if (payExceeds)
+        return setError(
+          `The payment is more than the customer owes (AED ${formatAed(customerTotal)}).`
+        );
       if (!payMethodId) return setError("Choose a payment method to record the payment.");
     }
     setSaving(true);
@@ -549,8 +582,8 @@ export function InvoiceEditor({
       // case, or the operator prints an "issued & paid" invoice whose payment
       // was never recorded. So: await it, check res.ok, and on failure surface
       // a persistent error telling them to record it on the invoice page.
-      if (markPaid) {
-        const fils = aedToFils(payAmount);
+      if (payWhen === "now") {
+        const fils = payFils;
         if (fils && fils > 0 && payMethodId) {
           let payOk = false;
           try {
@@ -562,7 +595,7 @@ export function InvoiceEditor({
                 amount: fils,
                 methodId: payMethodId,
                 receivedOn: payReceivedOn,
-                reference: null,
+                reference: payReference.trim() || null,
               }),
             });
             payOk = payRes.ok;
@@ -582,7 +615,15 @@ export function InvoiceEditor({
           }
         }
       }
-      toast.success(`${issuedLabel} issued — use Print when you're ready`);
+      // Say what actually happened to the money, so an unpaid or part-paid
+      // invoice is never mistaken for a settled one.
+      const outstanding =
+        payWhen === "now" && payFils && payFils > 0 ? customerTotal - payFils : customerTotal;
+      toast.success(
+        outstanding > 0
+          ? `${issuedLabel} issued — AED ${formatAed(outstanding)} outstanding. Print when you're ready.`
+          : `${issuedLabel} issued and paid in full — use Print when you're ready.`
+      );
       // Client request 2026-07-30: issuing must NOT open the print dialog by
       // itself. Land on the sealed invoice and let the operator press Print
       // there (they may want to check it, take payment, or not print at all).
@@ -1207,94 +1248,137 @@ export function InvoiceEditor({
                 : "Display only — totals are recomputed and sealed server-side at issue."}
             </p>
           </div>
-
-          {/* Record-on-issue payment (owner request) */}
-          <div className="mt-4 border-t border-border pt-4">
-            {methods.length === 0 ? (
-              <p className="text-[12px] leading-4 text-text-tertiary">
-                Add a payment method in Settings to record payment when you issue.
-              </p>
-            ) : (
-              <>
-                <label className="flex cursor-pointer items-center gap-2 text-[13px] leading-[19px] text-foreground">
-                  <input
-                    type="checkbox"
-                    checked={markPaid}
-                    onChange={(e) => {
-                      const on = e.target.checked;
-                      setMarkPaid(on);
-                      if (on && !payAmount) setPayAmount(filsToInput(customerTotal));
-                    }}
-                    className="size-4 accent-[var(--accent)]"
-                  />
-                  Client is paying now — record the payment on issue
-                </label>
-                {markPaid ? (
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <FieldLabel htmlFor="pay-amt">Amount (AED)</FieldLabel>
-                      <Input
-                        id="pay-amt"
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                        inputMode="decimal"
-                        placeholder={filsToInput(customerTotal) || "0.00"}
-                        className="mono w-full text-right text-[13px]"
-                      />
-                      <FieldHint>
-                        Edit this — enter less than the total for a part payment.
-                      </FieldHint>
-                    </div>
-                    <div>
-                      <FieldLabel htmlFor="pay-method">Method</FieldLabel>
-                      <select
-                        id="pay-method"
-                        value={payMethodId}
-                        onChange={(e) => setPayMethodId(e.target.value)}
-                        className="h-9 w-full rounded-[8px] border border-border-strong bg-surface px-2 text-[13px] text-foreground focus-visible:border-primary focus-visible:shadow-[var(--shadow-focus)] focus-visible:outline-none dark:bg-bg-sunken"
-                      >
-                        {methods.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <FieldLabel htmlFor="pay-date">Received on</FieldLabel>
-                      <Input
-                        id="pay-date"
-                        type="date"
-                        value={payReceivedOn}
-                        onChange={(e) => setPayReceivedOn(e.target.value)}
-                        className="mono w-48 text-[13px]"
-                      />
-                    </div>
-                    {/* Live read-out so a part payment is unmistakable. */}
-                    {(() => {
-                      const paid = aedToFils(payAmount);
-                      if (paid === null || paid <= 0) return null;
-                      const remaining = customerTotal - paid;
-                      if (remaining <= 0)
-                        return (
-                          <p className="col-span-2 text-[12px] leading-4 text-success">
-                            Paid in full — nothing will be outstanding.
-                          </p>
-                        );
-                      return (
-                        <p className="col-span-2 text-[12px] leading-4 text-warn">
-                          Part payment — AED {formatAed(remaining)} of AED{" "}
-                          {formatAed(customerTotal)} will remain outstanding.
-                        </p>
-                      );
-                    })()}
-                  </div>
-                ) : null}
-              </>
-            )}
-          </div>
         </StepCard>
       </div>
+
+      {/* ⑤ Payment — the client's "pay now or pay later" decision, made BEFORE
+          issuing (client request 2026-07-30). It replaces the checkbox that used
+          to sit under the Summary totals. Nothing is written until the invoice
+          is sealed: a draft cannot hold payments, so this is the intent and
+          confirmIssue posts it the moment the number is allocated. */}
+      <StepCard n={5} title="Payment">
+        {methods.length === 0 ? (
+          <p className="text-[13px] leading-[19px] text-text-secondary">
+            No payment methods are configured, so this invoice will be issued unpaid. Add one in
+            Settings to take payment at the counter — you can still record the payment on the
+            invoice itself at any time.
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <PayChoice
+                selected={payWhen === "now"}
+                onSelect={() => setPayWhen("now")}
+                title="Paying now"
+                detail="Record the payment as the invoice is issued"
+              />
+              <PayChoice
+                selected={payWhen === "later"}
+                onSelect={() => setPayWhen("later")}
+                title="Paying later"
+                detail="Issue it unpaid and collect the money afterwards"
+              />
+            </div>
+
+            {payWhen === "now" ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <FieldLabel htmlFor="pay-amt">Amount (AED)</FieldLabel>
+                  <Input
+                    id="pay-amt"
+                    value={payAmount}
+                    onChange={(e) => {
+                      setPayAmountEdited(true);
+                      setPayAmount(e.target.value);
+                    }}
+                    inputMode="decimal"
+                    placeholder={filsToInput(customerTotal) || "0.00"}
+                    aria-invalid={payInvalid || payExceeds || undefined}
+                    className="mono w-full text-right text-[13px]"
+                  />
+                  <FieldHint>Enter less than the total for a part payment.</FieldHint>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="pay-method">Method</FieldLabel>
+                  <SelectNative
+                    id="pay-method"
+                    value={payMethodId}
+                    onChange={(e) => setPayMethodId(e.target.value)}
+                    className="w-full text-[13px]"
+                  >
+                    {methods.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </SelectNative>
+                </div>
+                <div>
+                  <FieldLabel htmlFor="pay-date">Received on</FieldLabel>
+                  <Input
+                    id="pay-date"
+                    type="date"
+                    value={payReceivedOn}
+                    onChange={(e) => setPayReceivedOn(e.target.value)}
+                    className="mono w-full text-[13px]"
+                  />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="pay-ref">Reference (optional)</FieldLabel>
+                  <Input
+                    id="pay-ref"
+                    value={payReference}
+                    onChange={(e) => setPayReference(e.target.value)}
+                    placeholder="Receipt no., txn id…"
+                    className="w-full text-[13px]"
+                  />
+                </div>
+
+                {/* Live read-out — a part payment must never be a surprise. */}
+                <div className="sm:col-span-2 lg:col-span-4">
+                  {payInvalid ? (
+                    <p className="text-[13px] leading-[19px] text-error">
+                      Enter an amount in AED with at most 2 decimals.
+                    </p>
+                  ) : payExceeds ? (
+                    <p className="text-[13px] leading-[19px] text-error">
+                      That is more than the customer owes (AED {formatAed(customerTotal)}). Enter
+                      that amount or less — a genuine overpayment can be recorded on the invoice
+                      itself, where it asks you to confirm.
+                    </p>
+                  ) : payFils !== null && payFils > 0 && payRemaining <= 0 ? (
+                    <p className="text-[13px] leading-[19px] text-success">
+                      Paid in full — AED {formatAed(customerTotal)}. Nothing will be outstanding.
+                    </p>
+                  ) : payFils !== null && payFils > 0 ? (
+                    <p className="text-[13px] leading-[19px] text-warn">
+                      Part payment — AED {formatAed(payFils)} now, AED {formatAed(payRemaining)} of
+                      AED {formatAed(customerTotal)} left outstanding. Collect the rest on the
+                      invoice page, in as many instalments as you like.
+                    </p>
+                  ) : (
+                    <p className="text-[13px] leading-[19px] text-text-secondary">
+                      Enter the amount the customer is handing over.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
+                This invoice will be sealed <span className="font-[550]">unpaid</span>
+                {customerTotal > 0 ? (
+                  <>
+                    {" "}
+                    with AED <span className="mono">{formatAed(customerTotal)}</span> outstanding
+                  </>
+                ) : null}
+                . Record the payment on the invoice page whenever it arrives — in full or in parts,
+                as many times as needed.
+              </p>
+            )}
+          </>
+        )}
+      </StepCard>
 
       {error ? <p className="text-right text-[13px] leading-[19px] text-error">{error}</p> : null}
       <div className="flex items-center justify-end gap-3">
@@ -1375,6 +1459,27 @@ export function InvoiceEditor({
           via a new document. Nothing is printed automatically: you land on the sealed invoice and
           press Print there.
         </p>
+        {/* Restate the step ⑤ decision at the point of no return. */}
+        <p className="mt-2 text-[13px] leading-[19px] text-text-secondary">
+          {payWhen === "now" && payFils && payFils > 0 ? (
+            payFils >= customerTotal ? (
+              <>
+                Payment: <span className="font-[550]">AED {formatAed(payFils)}</span> will be
+                recorded against this invoice — paid in full.
+              </>
+            ) : (
+              <>
+                Payment: <span className="font-[550]">AED {formatAed(payFils)}</span> will be
+                recorded, leaving AED {formatAed(customerTotal - payFils)} outstanding.
+              </>
+            )
+          ) : (
+            <>
+              Payment: none — this invoice is issued <span className="font-[550]">unpaid</span> and
+              the balance is collected later.
+            </>
+          )}
+        </p>
         {issueError ? (
           <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
         ) : null}
@@ -1384,7 +1489,11 @@ export function InvoiceEditor({
           </Button>
           <Button onClick={confirmIssue} disabled={confirming}>
             {/* No "& print" any more — issuing no longer prints on its own. */}
-            {confirming ? "Issuing…" : markPaid ? "Issue & record payment" : "Issue invoice"}
+            {confirming
+              ? "Issuing…"
+              : payWhen === "now"
+                ? "Issue & record payment"
+                : "Issue unpaid"}
           </Button>
         </div>
       </ResponsiveSheet>
@@ -1427,6 +1536,48 @@ function StepCard({
       </div>
       {children}
     </section>
+  );
+}
+
+// Step ⑤ — the pay-now / pay-later decision. A real radio underneath (keyboard
+// and screen readers get proper group semantics); the card is just its label.
+function PayChoice({
+  selected,
+  onSelect,
+  title,
+  detail,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <label
+      className={`flex min-w-56 flex-1 cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-3 transition-colors ${
+        selected
+          ? "border-accent-border bg-accent-soft"
+          : "border-border bg-surface hover:border-border-strong"
+      }`}
+    >
+      <input
+        type="radio"
+        name="pay-when"
+        checked={selected}
+        onChange={onSelect}
+        className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+      />
+      <span className="min-w-0">
+        <span
+          className={`block text-[13px] leading-[19px] font-[550] ${
+            selected ? "text-primary" : "text-foreground"
+          }`}
+        >
+          {title}
+        </span>
+        <span className="block text-[12px] leading-4 text-text-secondary">{detail}</span>
+      </span>
+    </label>
   );
 }
 
