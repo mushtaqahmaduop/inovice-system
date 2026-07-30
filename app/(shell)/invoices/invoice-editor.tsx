@@ -13,7 +13,12 @@ import {
   Save,
   Clock,
   Columns3,
-  ChevronRight,
+  ArrowLeft,
+  Eye,
+  Zap,
+  CalendarClock,
+  UserCog,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, SelectNative } from "@/components/ui/input";
@@ -31,7 +36,12 @@ import {
   formatForeign,
   formatRateFromE6,
 } from "@/lib/currency";
-import { calcInvoiceTotals, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
+import {
+  calcInvoiceTotals,
+  calcLineVat,
+  type DraftLine,
+  type ExtraColumn,
+} from "@/lib/invoice-calc";
 
 // Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Cool White /
 // Federal Blue system (redesign slice 6 → owner-mockup pass). Numbered
@@ -67,6 +77,7 @@ export type ExistingDraft = {
   id: string;
   customerId: string;
   issueDate: string | null;
+  dueDate: string | null;
   notes: string | null;
   terms: string | null;
   displayCurrency: string | null;
@@ -101,9 +112,10 @@ function cellInvalid(line: EditorLine, col: CellKey): boolean {
   return raw !== undefined && raw.trim() !== "" && aedToFils(raw) === null;
 }
 
-// Quiet grid cell — reads as a document until you interact with it.
-const cellInputClass =
-  "h-8 rounded-[6px] border-transparent bg-transparent text-[13px] shadow-none hover:border-border-strong dark:bg-transparent";
+// Grid cell. The owner's 2026-07-30 redesign brief was blunt — "no border, no
+// professionality" — so the quiet borderless cell is gone: every editable cell
+// now reads as a real field, which is also what the mockup draws.
+const cellInputClass = "h-9 rounded-[8px] border-border-strong bg-surface text-[13px]";
 
 const captionClass =
   "text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase";
@@ -181,6 +193,11 @@ export function InvoiceEditor({
   // keep their saved date; a blank one still falls back to today). The user
   // can change it; the server re-defaults to the issue day only if cleared.
   const [issueDate, setIssueDate] = useState(existing?.issueDate ?? todayInDubai());
+  // When the money is due. Blank by default — Q-11 (the house convention) is
+  // still unanswered, so nothing is assumed on the operator's behalf. Once set,
+  // it drives the EXISTING overdue predicate: an issued, not-fully-paid invoice
+  // past this date shows the burnt-orange Overdue chip and counts in the sidebar.
+  const [dueDate, setDueDate] = useState(existing?.dueDate ?? "");
   // §2.6 — smooth row add/remove in the line-item grid (auto-animate).
   const [linesRef] = useAutoAnimate<HTMLTableSectionElement>();
 
@@ -225,6 +242,10 @@ export function InvoiceEditor({
   // draftId keeps later saves/issues pointed at the same row.
   const [draftId, setDraftId] = useState<string | null>(existing?.id ?? null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // "issue" = the MANDATORY pre-seal preview (D-23), the only route to Confirm.
+  // "look" = the header's Preview Invoice button: the same document, read-only,
+  // nothing saved and no way to seal from it.
+  const [previewMode, setPreviewMode] = useState<"issue" | "look">("issue");
   const [confirming, setConfirming] = useState(false); // one-way until error (R-6/[#23b])
   const [issueError, setIssueError] = useState<string | null>(null);
 
@@ -402,6 +423,7 @@ export function InvoiceEditor({
     return {
       customerId: customer?.id ?? null,
       issueDate: issueDate || null,
+      dueDate: dueDate || null,
       notes,
       terms,
       displayCurrency,
@@ -529,6 +551,16 @@ export function InvoiceEditor({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
+  // Header "Preview Invoice" — a look at the document, nothing more. Deliberately
+  // does NOT persist and cannot seal: the pre-issue preview (D-23) stays the only
+  // path to Confirm & Issue, so this can never become a second way to issue.
+  function openLookPreview() {
+    setError(null);
+    setIssueError(null);
+    setPreviewMode("look");
+    setPreviewOpen(true);
+  }
+
   // Issue = save the exact current state, then the MANDATORY preview
   // (D-23); sealing only happens from the sheet's Confirm button.
   async function startIssue() {
@@ -559,6 +591,7 @@ export function InvoiceEditor({
     if (!id) return;
     lastSavedRef.current = JSON.stringify(payload());
     setConfirming(false);
+    setPreviewMode("issue");
     setPreviewOpen(true);
   }
 
@@ -650,6 +683,22 @@ export function InvoiceEditor({
     );
   };
 
+  // Read-only VAT for one row, mirroring issue_invoice() exactly. Zero while the
+  // centre is deregistered, which is why the cell renders an em dash rather than
+  // a column of 0.00s.
+  const lineVat = (l: EditorLine) =>
+    calcLineVat(
+      {
+        description: l.description,
+        qty: Math.max(1, Math.floor(Number(l.qty) || 1)),
+        govtFee: cellFils(l, "govt"),
+        serviceFee: cellFils(l, "service"),
+        extraFees: Object.fromEntries(columns.map((c) => [c.id, cellFils(l, c.id)])),
+      },
+      columns,
+      { vatRegistered, vatRateBp }
+    );
+
   const lastFeeCol: CellKey = columns.length > 0 ? columns[columns.length - 1].id : "delivery";
 
   const feeCell = (l: EditorLine, col: CellKey, label: string, isLastLine: boolean) => (
@@ -678,46 +727,89 @@ export function InvoiceEditor({
 
   return (
     <div className="space-y-6">
-      {/* Status banner — replaces the in-content title (the topbar carries it). */}
+      {/* Page header (owner redesign 2026-07-30) — title + the two actions that
+          are useful before the form is finished. Deliberately says "Generate",
+          not "Generate and send": there is no email-out path, and a button that
+          implies one would be a lie. */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/invoices")}
+            aria-label="Back to invoices"
+            title="Back to invoices"
+            className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
+          >
+            <ArrowLeft className="size-[18px]" />
+          </button>
+          <div>
+            <h1 className="text-[22px] leading-7 font-semibold tracking-[-0.01em] text-foreground">
+              {existing ? "Edit Draft" : "Create Invoice"}
+            </h1>
+            <p className="mt-0.5 text-[13px] leading-[19px] text-text-secondary">
+              Generate professional invoices for your clients
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={openLookPreview}>
+            <Eye /> Preview Invoice
+          </Button>
+          <Button size="sm" onClick={saveDraft} disabled={saving}>
+            <Save /> {saving ? "Saving…" : "Save as Draft"}
+          </Button>
+        </div>
+      </div>
+
       <div className="flex items-start gap-3 rounded-[12px] border border-accent-border bg-accent-soft px-4 py-3">
         <Info className="mt-0.5 size-[18px] shrink-0 text-primary" />
         <p className="text-[13px] leading-5 text-foreground">
           {vatRegistered
             ? `VAT ${ratePct}% applies per fee column.`
             : "VAT — deregistered: no VAT will be applied."}{" "}
-          The invoice number is allocated only at issue.
+          The invoice number is allocated only at issue and cannot be edited.
         </p>
       </div>
 
       {/* ① Bill to */}
-      <StepCard n={1} title="Bill to">
+      <StepCard n={1} title="Bill To">
         {customer ? (
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[15px] leading-[23px] font-[550] text-foreground">
-                {customer.name}
-              </p>
-              <p className="mt-0.5 text-[13px] leading-[19px] text-text-secondary">
-                {customer.type === "walk_in" ? "Walk-in" : "Regular"}
-                {customer.trn ? (
-                  <>
-                    {" · TRN "}
-                    <span className="mono">{customer.trn}</span>
-                  </>
+            <div className="flex min-w-0 items-start gap-3.5">
+              <span
+                aria-hidden="true"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-accent-border bg-accent-soft text-[14px] font-semibold text-primary"
+              >
+                {initials(customer.name)}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[15px] leading-[23px] font-[550] text-foreground">
+                  {customer.name}
+                </p>
+                <p className="mt-0.5 text-[13px] leading-[19px] text-text-secondary">
+                  {customer.type === "walk_in" ? "Walk-in" : "Regular"}
+                  {customer.trn ? (
+                    <>
+                      {" · TRN "}
+                      <span className="mono">{customer.trn}</span>
+                    </>
+                  ) : null}
+                  {customer.phone ? (
+                    <>
+                      {" · "}
+                      <span className="mono">{customer.phone}</span>
+                    </>
+                  ) : null}
+                </p>
+                {customer.address ? (
+                  <p className="text-[13px] leading-[19px] text-text-secondary">
+                    {customer.address}
+                  </p>
                 ) : null}
-                {customer.phone ? (
-                  <>
-                    {" · "}
-                    <span className="mono">{customer.phone}</span>
-                  </>
-                ) : null}
-              </p>
-              {customer.address ? (
-                <p className="text-[13px] leading-[19px] text-text-secondary">{customer.address}</p>
-              ) : null}
+              </div>
             </div>
             <Button variant="outline" size="sm" onClick={() => setCustomer(null)}>
-              Change
+              <UserCog /> Change Client
             </Button>
           </div>
         ) : walkInMode ? (
@@ -801,7 +893,7 @@ export function InvoiceEditor({
       {/* ② Invoice items */}
       <StepCard
         n={2}
-        title="Invoice items"
+        title="Invoice Items"
         actions={
           <div className="relative flex flex-wrap items-center gap-2">
             <Button
@@ -813,7 +905,7 @@ export function InvoiceEditor({
                 setColsOpen(false);
               }}
             >
-              <BookOpen /> Get from service catalogue
+              <BookOpen /> Add from Service Catalogue
             </Button>
             <Button
               variant="outline"
@@ -824,7 +916,7 @@ export function InvoiceEditor({
                 setColsOpen(false);
               }}
             >
-              <Clock /> Get from recent
+              <Clock /> Add from Recent
             </Button>
             <Button
               variant="outline"
@@ -937,30 +1029,44 @@ export function InvoiceEditor({
           </div>
         }
       >
-        {/* Line grid — quiet cells, §2.7 deliberate column widths */}
-        <div className="overflow-x-auto rounded-[10px] border border-border">
+        {/* Line grid — ruled header band and real bordered cells per the owner's
+            2026-07-30 mockup. Column set is unchanged: the Govt/Service split is
+            the centre's model (§3.3) and Delivery is D-30a. */}
+        <div className="overflow-x-auto rounded-[12px] border border-border">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-border bg-bg-sunken">
-                <th className={`w-10 px-3 py-2.5 ${captionClass}`}>#</th>
-                <th className={`px-2 py-2.5 ${captionClass}`}>Description</th>
-                <th className={`w-28 px-2 py-2.5 text-center ${captionClass}`}>Qty</th>
-                <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Govt fee</th>
-                <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Service fee</th>
+                <th className={`w-10 px-3 py-3 ${captionClass}`}>#</th>
+                <th className={`px-2 py-3 ${captionClass}`}>Description</th>
+                <th className={`w-28 px-2 py-3 text-center ${captionClass}`}>Qty</th>
+                <th className={`w-28 px-2 py-3 text-right ${captionClass}`}>Govt fee (AED)</th>
+                <th className={`w-28 px-2 py-3 text-right ${captionClass}`}>Service fee (AED)</th>
                 {/* Delivery sits beside the service fee (client, 2026-07-30).
                     Flat per row, not taxed, never on the FTA copy — D-30. */}
                 <th
-                  className={`w-28 px-2 py-2.5 text-right ${captionClass}`}
+                  className={`w-28 px-2 py-3 text-right ${captionClass}`}
                   title="Driver's fee collected with this bill. Flat per row (not multiplied by quantity), never shown on the FTA copy."
                 >
-                  Delivery
+                  Delivery (AED)
                 </th>
                 {columns.map((c) => (
-                  <th key={c.id} className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>
-                    {c.label}
+                  <th key={c.id} className={`w-28 px-2 py-3 text-right ${captionClass}`}>
+                    {c.label} (AED)
                   </th>
                 ))}
-                <th className={`w-28 px-3 py-2.5 text-right ${captionClass}`}>Line total</th>
+                {/* Computed, never editable: the rate is a snapshotted Settings
+                    value (D-16), not a per-line operator choice. */}
+                <th
+                  className={`w-28 px-2 py-3 text-right ${captionClass}`}
+                  title={
+                    vatRegistered
+                      ? `VAT at ${ratePct}%, calculated per line exactly as the seal does.`
+                      : "No VAT — the centre is not VAT-registered, so every line is 0%."
+                  }
+                >
+                  VAT amount (AED)
+                </th>
+                <th className={`w-28 px-3 py-3 text-right ${captionClass}`}>Line total (AED)</th>
                 <th className="w-9" />
               </tr>
             </thead>
@@ -1019,7 +1125,10 @@ export function InvoiceEditor({
                     {feeCell(l, "service", "Service fee", isLastLine)}
                     {feeCell(l, "delivery", "Delivery", isLastLine)}
                     {columns.map((c) => feeCell(l, c.id, c.label, isLastLine))}
-                    <td className="mono px-3 py-1 text-right text-[13px] font-medium text-foreground">
+                    <td className="mono px-2 py-1 text-right text-[13px] text-text-secondary">
+                      {vatRegistered ? formatAed(lineVat(l)) : "—"}
+                    </td>
+                    <td className="mono px-3 py-1 text-right text-[13px] font-semibold text-foreground">
                       {formatAed(lineTotal(l))}
                     </td>
                     <td className="px-1 py-1 text-center">
@@ -1049,10 +1158,11 @@ export function InvoiceEditor({
             FTA copy.
           </FieldHint>
         ) : null}
-        <div className="relative mt-3 flex gap-2">
+        <div className="relative mt-3 flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => addLine()}>
-            <Plus /> Add line
+            <Plus /> Add item
           </Button>
+          <span className="text-[13px] text-text-tertiary">or</span>
           <Button variant="ghost" size="sm" onClick={() => setSvcOpen((v) => !v)}>
             <BookOpen /> Add from service catalogue
           </Button>
@@ -1090,7 +1200,7 @@ export function InvoiceEditor({
 
       {/* ③ details + ④ summary */}
       <div className="grid items-start gap-6 lg:grid-cols-2">
-        <StepCard n={3} title="Invoice details" subtitle="Optional">
+        <StepCard n={3} title="Invoice Details" caption="Customize your invoice information">
           <div className="space-y-4">
             <div>
               <FieldLabel htmlFor="inv-date">Invoice date</FieldLabel>
@@ -1203,9 +1313,18 @@ export function InvoiceEditor({
             {totals.extrasNonVatable > 0 ? (
               <TotalsRow label="Other charges (non-taxable)" fils={totals.extrasNonVatable} />
             ) : null}
-            {vatRegistered && totals.vatAmount > 0 ? (
-              <TotalsRow label={`VAT (${ratePct}%) on taxable fees`} fils={totals.vatAmount} />
-            ) : null}
+            {/* Subtotal before VAT — the mockup's first line, and a useful
+                cross-check that the fee columns add up before tax. */}
+            <div className="mt-1 border-t border-accent-border pt-2">
+              <TotalsRow
+                label="Subtotal (before VAT)"
+                fils={totals.subtotalGovt + totals.subtotalService + totals.subtotalExtras}
+              />
+            </div>
+            <TotalsRow
+              label={vatRegistered ? `VAT (${ratePct}%) on taxable fees` : "VAT (not registered)"}
+              fils={vatRegistered ? totals.vatAmount : 0}
+            />
             {deliveryFils > 0 ? (
               <TotalsRow label="Delivery (collected for driver)" fils={deliveryFils} />
             ) : null}
@@ -1213,11 +1332,14 @@ export function InvoiceEditor({
               <span className="text-[15px] font-[550] text-foreground">
                 {deliveryFils > 0 ? "Customer pays" : "Net total"}
               </span>
-              <span className="mono text-[22px] leading-7 font-semibold text-primary">
+              <span className="mono text-[26px] leading-8 font-semibold text-primary">
                 <span className="mr-1.5 text-[13px] font-normal text-text-tertiary">AED</span>
                 {formatAed(customerTotal)}
               </span>
             </div>
+            <p className="mt-1 text-[12px] leading-4 text-text-secondary">
+              This is the total amount payable by the customer.
+            </p>
             {deliveryFils > 0 ? (
               <div className="mt-2 flex items-baseline justify-between">
                 <span className="text-[12px] leading-4 text-text-tertiary">
@@ -1242,10 +1364,13 @@ export function InvoiceEditor({
                 </span>
               </div>
             ) : null}
-            <p className="mt-2 text-[12px] leading-4 text-text-tertiary">
-              {isForeign
-                ? `Recorded in AED — the ${displayCurrency} figure is derived at the rate above.`
-                : "Display only — totals are recomputed and sealed server-side at issue."}
+            <p className="mt-3 flex items-start gap-1.5 border-t border-accent-border pt-3 text-[12px] leading-4 text-text-tertiary">
+              <Info className="mt-px size-3.5 shrink-0" />
+              <span>
+                {isForeign
+                  ? `Recorded in AED — the ${displayCurrency} figure is derived at the rate above. The full VAT breakdown is in the preview.`
+                  : "Display only — totals are recomputed and sealed server-side at issue. The full VAT breakdown is in the preview."}
+              </span>
             </p>
           </div>
         </StepCard>
@@ -1256,7 +1381,7 @@ export function InvoiceEditor({
           to sit under the Summary totals. Nothing is written until the invoice
           is sealed: a draft cannot hold payments, so this is the intent and
           confirmIssue posts it the moment the number is allocated. */}
-      <StepCard n={5} title="Payment">
+      <StepCard n={5} title="Payment" caption="Set payment preferences and due date">
         {methods.length === 0 ? (
           <p className="text-[13px] leading-[19px] text-text-secondary">
             No payment methods are configured, so this invoice will be issued unpaid. Add one in
@@ -1265,17 +1390,19 @@ export function InvoiceEditor({
           </p>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <PayChoice
                 selected={payWhen === "now"}
                 onSelect={() => setPayWhen("now")}
-                title="Paying now"
+                icon={<Zap className="size-[18px]" />}
+                title="Paying Now"
                 detail="Record the payment as the invoice is issued"
               />
               <PayChoice
                 selected={payWhen === "later"}
                 onSelect={() => setPayWhen("later")}
-                title="Paying later"
+                icon={<CalendarClock className="size-[18px]" />}
+                title="Paying Later"
                 detail="Issue it unpaid and collect the money afterwards"
               />
             </div>
@@ -1296,10 +1423,10 @@ export function InvoiceEditor({
                     aria-invalid={payInvalid || payExceeds || undefined}
                     className="mono w-full text-right text-[13px]"
                   />
-                  <FieldHint>Enter less than the total for a part payment.</FieldHint>
+                  <FieldHint>Less than the total for a part payment.</FieldHint>
                 </div>
                 <div>
-                  <FieldLabel htmlFor="pay-method">Method</FieldLabel>
+                  <FieldLabel htmlFor="pay-method">Payment method</FieldLabel>
                   <SelectNative
                     id="pay-method"
                     value={payMethodId}
@@ -1312,6 +1439,7 @@ export function InvoiceEditor({
                       </option>
                     ))}
                   </SelectNative>
+                  <FieldHint>How the money was taken.</FieldHint>
                 </div>
                 <div>
                   <FieldLabel htmlFor="pay-date">Received on</FieldLabel>
@@ -1322,6 +1450,7 @@ export function InvoiceEditor({
                     onChange={(e) => setPayReceivedOn(e.target.value)}
                     className="mono w-full text-[13px]"
                   />
+                  <FieldHint>The date the money changed hands.</FieldHint>
                 </div>
                 <div>
                   <FieldLabel htmlFor="pay-ref">Reference (optional)</FieldLabel>
@@ -1332,6 +1461,7 @@ export function InvoiceEditor({
                     placeholder="Receipt no., txn id…"
                     className="w-full text-[13px]"
                   />
+                  <FieldHint>Add a reference number if any.</FieldHint>
                 </div>
 
                 {/* Live read-out — a part payment must never be a surprise. */}
@@ -1376,6 +1506,39 @@ export function InvoiceEditor({
                 as many times as needed.
               </p>
             )}
+
+            {/* Due date stays visible in BOTH cases — deliberately not collapsed
+                with the payment fields, because it is the field that matters most
+                on a pay-later invoice. Blank by default (Q-11 unanswered). */}
+            <div className="mt-4 border-t border-border pt-4">
+              <FieldLabel htmlFor="pay-due">Due date (optional)</FieldLabel>
+              <Input
+                id="pay-due"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="mono w-52 text-[13px]"
+              />
+              <FieldHint>
+                {dueDate
+                  ? "After this date an unpaid or part-paid invoice is flagged Overdue in the invoice list and in the sidebar count."
+                  : "When the payment is due. Leave blank if you do not want this invoice tracked as overdue."}
+              </FieldHint>
+            </div>
+
+            {/* What will actually happen, in one line, before they commit. */}
+            <div className="mt-4 flex items-start gap-2.5 rounded-[10px] border border-accent-border bg-accent-soft px-3.5 py-3">
+              <Info className="mt-px size-[16px] shrink-0 text-primary" />
+              <p className="text-[13px] leading-[19px] text-foreground">
+                {payWhen === "later"
+                  ? "The invoice will be issued Not Paid until you record a payment against it."
+                  : payFils !== null && payFils > 0 && payRemaining <= 0
+                    ? "The invoice will be marked Paid once this payment is recorded."
+                    : payFils !== null && payFils > 0
+                      ? "The invoice will be marked Partially Paid once this payment is recorded."
+                      : "Enter an amount to record a payment as the invoice is issued."}
+              </p>
+            </div>
           </>
         )}
       </StepCard>
@@ -1402,11 +1565,11 @@ export function InvoiceEditor({
           <span className="mono mr-1 text-[13px] text-text-tertiary">{savedAt}</span>
         ) : null}
         <Button variant="outline" onClick={saveDraft} disabled={saving}>
-          <Save /> {saving ? "Saving…" : "Save as draft"}
+          <Save /> {saving ? "Saving…" : "Save as Draft"}
         </Button>
-        {/* The screen's only blue button. */}
+        {/* The one action that seals. */}
         <Button onClick={startIssue} disabled={saving}>
-          Issue invoice <ChevronRight />
+          <Send /> Issue Invoice
         </Button>
       </div>
 
@@ -1416,9 +1579,11 @@ export function InvoiceEditor({
       <ResponsiveSheet
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        title="Preview — confirm to issue"
+        title={previewMode === "look" ? "Invoice preview" : "Preview — confirm to issue"}
       >
-        <p className={`mb-4 ${captionClass}`}>Preview — confirm to issue</p>
+        <p className={`mb-4 ${captionClass}`}>
+          {previewMode === "look" ? "How this invoice will look" : "Preview — confirm to issue"}
+        </p>
         <InvoiceDoc
           company={company}
           vatRegistered={vatRegistered}
@@ -1453,49 +1618,67 @@ export function InvoiceEditor({
           exchangeRateE6={rateE6}
           deliveryFee={deliveryFils}
         />
-        <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
-          Issuing allocates the next invoice number and this invoice becomes permanent — it cannot
-          be edited afterwards. Totals are recomputed server-side at that moment; corrections happen
-          via a new document. Nothing is printed automatically: you land on the sealed invoice and
-          press Print there.
-        </p>
-        {/* Restate the step ⑤ decision at the point of no return. */}
-        <p className="mt-2 text-[13px] leading-[19px] text-text-secondary">
-          {payWhen === "now" && payFils && payFils > 0 ? (
-            payFils >= customerTotal ? (
-              <>
-                Payment: <span className="font-[550]">AED {formatAed(payFils)}</span> will be
-                recorded against this invoice — paid in full.
-              </>
-            ) : (
-              <>
-                Payment: <span className="font-[550]">AED {formatAed(payFils)}</span> will be
-                recorded, leaving AED {formatAed(customerTotal - payFils)} outstanding.
-              </>
-            )
-          ) : (
-            <>
-              Payment: none — this invoice is issued <span className="font-[550]">unpaid</span> and
-              the balance is collected later.
-            </>
-          )}
-        </p>
-        {issueError ? (
-          <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
-        ) : null}
-        <div className="mt-5 flex justify-end gap-3 pb-2">
-          <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={confirming}>
-            Keep editing
-          </Button>
-          <Button onClick={confirmIssue} disabled={confirming}>
-            {/* No "& print" any more — issuing no longer prints on its own. */}
-            {confirming
-              ? "Issuing…"
-              : payWhen === "now"
-                ? "Issue & record payment"
-                : "Issue unpaid"}
-          </Button>
-        </div>
+        {previewMode === "look" ? (
+          <>
+            <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
+              This is a look only — nothing has been saved and no number has been allocated. Close
+              this and use <span className="font-[550]">Issue Invoice</span> when you are ready to
+              seal it.
+            </p>
+            <div className="mt-5 flex justify-end pb-2">
+              <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-4 text-[13px] leading-[19px] text-text-secondary">
+              Issuing allocates the next invoice number and this invoice becomes permanent — it
+              cannot be edited afterwards. Totals are recomputed server-side at that moment;
+              corrections happen via a new document. Nothing is printed automatically: you land on
+              the sealed invoice and press Print there.
+            </p>
+            {/* Restate the step ⑤ decision at the point of no return. */}
+            <p className="mt-2 text-[13px] leading-[19px] text-text-secondary">
+              {payWhen === "now" && payFils && payFils > 0 ? (
+                payFils >= customerTotal ? (
+                  <>
+                    Payment: <span className="font-[550]">AED {formatAed(payFils)}</span> will be
+                    recorded against this invoice — paid in full.
+                  </>
+                ) : (
+                  <>
+                    Payment: <span className="font-[550]">AED {formatAed(payFils)}</span> will be
+                    recorded, leaving AED {formatAed(customerTotal - payFils)} outstanding.
+                  </>
+                )
+              ) : (
+                <>
+                  Payment: none — this invoice is issued <span className="font-[550]">unpaid</span>{" "}
+                  and the balance is collected later.
+                </>
+              )}
+              {dueDate ? <> Due {dueDate}.</> : null}
+            </p>
+            {issueError ? (
+              <p className="mt-2 text-[13px] leading-[19px] text-error">{issueError}</p>
+            ) : null}
+            <div className="mt-5 flex justify-end gap-3 pb-2">
+              <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={confirming}>
+                Keep editing
+              </Button>
+              <Button onClick={confirmIssue} disabled={confirming}>
+                {/* No "& print" any more — issuing no longer prints on its own. */}
+                {confirming
+                  ? "Issuing…"
+                  : payWhen === "now"
+                    ? "Issue & record payment"
+                    : "Issue unpaid"}
+              </Button>
+            </div>
+          </>
+        )}
       </ResponsiveSheet>
     </div>
   );
@@ -1507,30 +1690,39 @@ function StepCard({
   n,
   title,
   subtitle,
+  caption,
   actions,
   children,
 }: {
   n: number;
   title: string;
+  /** parenthetical after the title, e.g. "(Optional)" */
   subtitle?: string;
+  /** explanatory line under the title, per the owner's mockup */
+  caption?: string;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="rounded-[14px] border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-accent">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-accent">
             {n}
           </span>
-          <h2 className="text-[15px] font-semibold text-foreground">
-            {title}
-            {subtitle ? (
-              <span className="ml-1.5 text-[13px] font-normal text-text-tertiary">
-                ({subtitle})
-              </span>
+          <div>
+            <h2 className="text-[15px] font-semibold text-foreground">
+              {title}
+              {subtitle ? (
+                <span className="ml-1.5 text-[13px] font-normal text-text-tertiary">
+                  ({subtitle})
+                </span>
+              ) : null}
+            </h2>
+            {caption ? (
+              <p className="mt-0.5 text-[12px] leading-4 text-text-tertiary">{caption}</p>
             ) : null}
-          </h2>
+          </div>
         </div>
         {actions}
       </div>
@@ -1539,37 +1731,56 @@ function StepCard({
   );
 }
 
+// Two-letter monogram for the Bill To avatar — first letters of the first two
+// words, falling back to the first two characters of a single-word name.
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "—";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
 // Step ⑤ — the pay-now / pay-later decision. A real radio underneath (keyboard
 // and screen readers get proper group semantics); the card is just its label.
 function PayChoice({
   selected,
   onSelect,
+  icon,
   title,
   detail,
 }: {
   selected: boolean;
   onSelect: () => void;
+  icon: ReactNode;
   title: string;
   detail: string;
 }) {
   return (
     <label
-      className={`flex min-w-56 flex-1 cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-3 transition-colors ${
+      className={`flex cursor-pointer items-start gap-3 rounded-[12px] border px-4 py-3.5 transition-colors focus-within:border-primary focus-within:shadow-[var(--shadow-focus)] ${
         selected
-          ? "border-accent-border bg-accent-soft"
+          ? "border-primary bg-accent-soft"
           : "border-border bg-surface hover:border-border-strong"
       }`}
     >
+      {/* The radio is the real control; visually hidden because the whole card
+          is its label and carries the selected state. Still focusable. */}
       <input
         type="radio"
         name="pay-when"
         checked={selected}
         onChange={onSelect}
-        className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+        className="sr-only"
       />
+      <span
+        aria-hidden="true"
+        className={`mt-0.5 shrink-0 ${selected ? "text-primary" : "text-text-tertiary"}`}
+      >
+        {icon}
+      </span>
       <span className="min-w-0">
         <span
-          className={`block text-[13px] leading-[19px] font-[550] ${
+          className={`block text-[13.5px] leading-[19px] font-[550] ${
             selected ? "text-primary" : "text-foreground"
           }`}
         >

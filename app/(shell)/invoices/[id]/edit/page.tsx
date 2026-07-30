@@ -24,7 +24,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
       // invoices.delivery_fee is deliberately NOT read here: since 0017 the
       // grid owns delivery per line and the invoice's own column is the derived
       // sum, rewritten on every draft save.
-      "id, status, customer_id, created_by, issue_date, notes, terms, invoice_number, display_currency, exchange_rate_e6"
+      "id, status, customer_id, created_by, issue_date, due_date, notes, terms, invoice_number, display_currency, exchange_rate_e6"
     )
     .eq("id", id)
     .maybeSingle();
@@ -103,6 +103,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     id: invoice.id,
     customerId: invoice.customer_id,
     issueDate: invoice.issue_date,
+    dueDate: invoice.due_date,
     notes: invoice.notes,
     terms: invoice.terms,
     displayCurrency: invoice.display_currency ?? "AED",

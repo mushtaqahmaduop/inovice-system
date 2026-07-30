@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     .insert({
       customer_id: parsed.data.customerId,
       issue_date: parsed.data.issueDate ?? null,
+      due_date: parsed.data.dueDate ?? null,
       notes: parsed.data.notes ?? null,
       terms: parsed.data.terms ?? null,
       display_currency: parsed.data.displayCurrency,

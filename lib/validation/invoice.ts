@@ -33,6 +33,12 @@ export const draftInvoiceSchema = z
   .object({
     customerId: z.uuid(),
     issueDate: z.iso.date().nullish(),
+    // When the money is due. Editable while draft (transition matrix §4.1 already
+    // lists due_date) and frozen at issue. Feeds the EXISTING overdue predicate:
+    // an issued, not-fully-paid invoice past its due date reads "Overdue" in the
+    // list and counts toward the sidebar badge. Q-11 (the default convention) is
+    // still open — this is the explicit per-invoice date, not a default.
+    dueDate: z.iso.date().nullish(),
     notes: z
       .string()
       .trim()

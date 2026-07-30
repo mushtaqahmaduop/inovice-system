@@ -46,6 +46,20 @@ export default async function NewInvoicePage() {
   ]);
   const recent = await fetchRecentLines(supabase);
 
+  // Item count per open draft, for the Open Drafts panel (owner mockup
+  // 2026-07-30). A separate read rather than a PostgREST embedded aggregate:
+  // at most 8 drafts, and this needs no assumptions about aggregate support.
+  // Deliberately NO draft number — §3.2 forbids numbering a draft, so the rows
+  // are identified by client, date and size.
+  const draftIds = (drafts ?? []).map((d) => d.id);
+  const { data: draftLineRows } = draftIds.length
+    ? await supabase.from("invoice_lines").select("invoice_id").in("invoice_id", draftIds)
+    : { data: [] as { invoice_id: string }[] };
+  const itemCounts = new Map<string, number>();
+  for (const r of draftLineRows ?? []) {
+    itemCounts.set(r.invoice_id, (itemCounts.get(r.invoice_id) ?? 0) + 1);
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-5 py-6 md:px-8">
       <InvoiceEditor
@@ -78,6 +92,7 @@ export default async function NewInvoicePage() {
           created_at: d.created_at,
           created_by: d.created_by ?? null,
           customer_name: (d.customers as unknown as { name: string } | null)?.name ?? "—",
+          item_count: itemCounts.get(d.id) ?? 0,
         }))}
         viewerId={ctx.userId}
         viewerIsAdmin={ctx.role === "admin"}
