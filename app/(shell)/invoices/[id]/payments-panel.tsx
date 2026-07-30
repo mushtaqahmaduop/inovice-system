@@ -251,7 +251,7 @@ export function PaymentsPanel({
           <FieldLabel htmlFor="pay-ref">Reference (optional)</FieldLabel>
           <Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
         </div>
-        <Button onClick={record} disabled={busy || !methodId} className="w-full sm:w-auto">
+        <Button onClick={record} loading={busy} disabled={!methodId} className="w-full sm:w-auto">
           {busy ? "Saving…" : "Record payment"}
         </Button>
       </div>

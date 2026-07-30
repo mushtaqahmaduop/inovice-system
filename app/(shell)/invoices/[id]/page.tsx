@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
@@ -168,11 +169,13 @@ export default async function InvoicePage({
             <VoidControls invoiceId={invoice.id} />
           ) : null}
           <PrintButton invoiceId={invoice.id} />
+          {/* Owner 2026-07-30: this read as muted text, not a button. Now a
+              proper secondary pill matching Button variant="outline" size="sm". */}
           <Link
             href="/invoices/new"
-            className="inline-flex h-8 items-center rounded-[8px] border border-border bg-surface px-3 text-[13px] text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border-strong px-3.5 text-[13px] font-[550] text-foreground transition-colors hover:bg-bg-sunken"
           >
-            New invoice
+            <Plus className="size-3.5" /> New invoice
           </Link>
         </div>
       </div>

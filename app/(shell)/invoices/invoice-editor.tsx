@@ -218,10 +218,10 @@ export function InvoiceEditor({
   const [payMethodId, setPayMethodId] = useState(methods[0]?.id ?? "");
   const [payReceivedOn, setPayReceivedOn] = useState(todayInDubai);
   const [payReference, setPayReference] = useState("");
-  // The amount tracks the live total until the operator types their own figure
-  // (a part payment), then stops — otherwise editing a line would silently
-  // overwrite the number they just entered.
-  const [payAmountEdited, setPayAmountEdited] = useState(false);
+  // Deliberately NOT prefilled (owner 2026-07-30): the field starts empty and
+  // shows the total as a placeholder only, so the amount is always something an
+  // employee typed on purpose rather than a number the form put there. Issuing
+  // with it blank is refused, never silently treated as "the full amount".
 
   const [custQuery, setCustQuery] = useState("");
   const [custOpen, setCustOpen] = useState(false);
@@ -259,6 +259,37 @@ export function InvoiceEditor({
     setPendingFocusKey(null);
   }, [pendingFocusKey]);
 
+  // BUG FIX (owner 2026-07-30): the Columns / catalogue / recent popovers only
+  // closed by clicking their own trigger again — a click anywhere else left them
+  // hanging over the grid. They are plain conditional divs, not a popover
+  // primitive, so dismissal has to be wired by hand.
+  //
+  // pointerdown in the CAPTURE phase, and triggers are skipped by marker
+  // attribute: otherwise this would close the popover on pointerdown and the
+  // trigger's own onClick would immediately reopen it.
+  useEffect(() => {
+    if (!svcOpen && !recentOpen && !colsOpen) return;
+    const closeAll = () => {
+      setSvcOpen(false);
+      setRecentOpen(false);
+      setColsOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      const el = e.target instanceof Element ? e.target : null;
+      if (el?.closest("[data-editor-popover], [data-editor-popover-trigger]")) return;
+      closeAll();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeAll();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [svcOpen, recentOpen, colsOpen]);
+
   const ratePct = (vatRateBp / 100).toString();
 
   const totals = useMemo(() => {
@@ -285,13 +316,6 @@ export function InvoiceEditor({
   );
   // What the customer hands over = the sealed supply + the driver's fee (D-30).
   const customerTotal = totals.grandTotal + deliveryFils;
-
-  // Step ⑤ — keep the "paying now" amount pinned to the live total until the
-  // operator overrides it for a part payment.
-  useEffect(() => {
-    if (payAmountEdited) return;
-    setPayAmount(customerTotal > 0 ? filsToInput(customerTotal) : "");
-  }, [customerTotal, payAmountEdited]);
 
   // Payment intent, derived. `payFils` is what will be posted the moment the
   // invoice is sealed; anything left over stays outstanding on the ledger.
@@ -755,7 +779,7 @@ export function InvoiceEditor({
           <Button variant="outline" size="sm" onClick={openLookPreview}>
             <Eye /> Preview Invoice
           </Button>
-          <Button size="sm" onClick={saveDraft} disabled={saving}>
+          <Button size="sm" onClick={saveDraft} loading={saving}>
             <Save /> {saving ? "Saving…" : "Save as Draft"}
           </Button>
         </div>
@@ -899,6 +923,8 @@ export function InvoiceEditor({
             <Button
               variant="outline"
               size="sm"
+              data-editor-popover-trigger
+              aria-expanded={svcOpen}
               onClick={() => {
                 setSvcOpen((v) => !v);
                 setRecentOpen(false);
@@ -910,6 +936,8 @@ export function InvoiceEditor({
             <Button
               variant="outline"
               size="sm"
+              data-editor-popover-trigger
+              aria-expanded={recentOpen}
               onClick={() => {
                 setRecentOpen((v) => !v);
                 setSvcOpen(false);
@@ -921,6 +949,8 @@ export function InvoiceEditor({
             <Button
               variant="outline"
               size="sm"
+              data-editor-popover-trigger
+              aria-expanded={colsOpen}
               onClick={() => {
                 setColsOpen((v) => !v);
                 setSvcOpen(false);
@@ -937,7 +967,10 @@ export function InvoiceEditor({
 
             {/* Get-from-recent popover — recently-used line items. */}
             {recentOpen ? (
-              <div className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
+              <div
+                data-editor-popover
+                className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]"
+              >
                 <input
                   value={recentQuery}
                   onChange={(e) => setRecentQuery(e.target.value)}
@@ -970,7 +1003,10 @@ export function InvoiceEditor({
 
             {/* Columns popover — fee-column manager (D-24). */}
             {colsOpen ? (
-              <div className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised p-3 shadow-[var(--shadow-popover)]">
+              <div
+                data-editor-popover
+                className="absolute top-10 right-0 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised p-3 shadow-[var(--shadow-popover)]"
+              >
                 <p className={`mb-2 ${captionClass}`}>Fee columns</p>
                 <div className="mb-3 flex flex-wrap gap-1.5">
                   <FeeColumnChip label="Govt fee" vat="0% VAT" />
@@ -1163,11 +1199,20 @@ export function InvoiceEditor({
             <Plus /> Add item
           </Button>
           <span className="text-[13px] text-text-tertiary">or</span>
-          <Button variant="ghost" size="sm" onClick={() => setSvcOpen((v) => !v)}>
-            <BookOpen /> Add from service catalogue
+          <Button
+            variant="ghost"
+            size="sm"
+            data-editor-popover-trigger
+            aria-expanded={svcOpen}
+            onClick={() => setSvcOpen((v) => !v)}
+          >
+            <BookOpen /> Add from Service Catalogue
           </Button>
           {svcOpen ? (
-            <div className="absolute top-10 left-24 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]">
+            <div
+              data-editor-popover
+              className="absolute top-10 left-24 z-30 w-80 overflow-hidden rounded-[12px] border border-border bg-surface-raised shadow-[var(--shadow-popover)]"
+            >
               <input
                 value={svcQuery}
                 onChange={(e) => setSvcQuery(e.target.value)}
@@ -1414,16 +1459,17 @@ export function InvoiceEditor({
                   <Input
                     id="pay-amt"
                     value={payAmount}
-                    onChange={(e) => {
-                      setPayAmountEdited(true);
-                      setPayAmount(e.target.value);
-                    }}
+                    onChange={(e) => setPayAmount(e.target.value)}
                     inputMode="decimal"
                     placeholder={filsToInput(customerTotal) || "0.00"}
                     aria-invalid={payInvalid || payExceeds || undefined}
                     className="mono w-full text-right text-[13px]"
                   />
-                  <FieldHint>Less than the total for a part payment.</FieldHint>
+                  <FieldHint>
+                    {customerTotal > 0
+                      ? `Full amount is AED ${formatAed(customerTotal)} — type less for a part payment.`
+                      : "Type less than the total for a part payment."}
+                  </FieldHint>
                 </div>
                 <div>
                   <FieldLabel htmlFor="pay-method">Payment method</FieldLabel>
@@ -1564,11 +1610,11 @@ export function InvoiceEditor({
         {savedAt ? (
           <span className="mono mr-1 text-[13px] text-text-tertiary">{savedAt}</span>
         ) : null}
-        <Button variant="outline" onClick={saveDraft} disabled={saving}>
+        <Button variant="outline" onClick={saveDraft} loading={saving}>
           <Save /> {saving ? "Saving…" : "Save as Draft"}
         </Button>
         {/* The one action that seals. */}
-        <Button onClick={startIssue} disabled={saving}>
+        <Button onClick={startIssue} loading={saving}>
           <Send /> Issue Invoice
         </Button>
       </div>
@@ -1668,7 +1714,7 @@ export function InvoiceEditor({
               <Button variant="outline" onClick={() => setPreviewOpen(false)} disabled={confirming}>
                 Keep editing
               </Button>
-              <Button onClick={confirmIssue} disabled={confirming}>
+              <Button onClick={confirmIssue} loading={confirming}>
                 {/* No "& print" any more — issuing no longer prints on its own. */}
                 {confirming
                   ? "Issuing…"

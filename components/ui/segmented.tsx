@@ -39,9 +39,13 @@ export function Segmented<T extends string>({
             className={cn(
               "h-[30px] cursor-pointer rounded-full px-3.5 text-[13px] whitespace-nowrap transition-colors duration-150 outline-none",
               "focus-visible:ring-2 focus-visible:ring-ring",
+              // Owner feedback 2026-07-30: the active segment was too faint to
+              // read as selected (Customer/FTA copy, English/العربية). It now
+              // takes the accent fill — §5 permits the single accent on active
+              // states, and this is the clearest legitimate use of it.
               active
-                ? "border border-border bg-surface font-[550] text-foreground"
-                : "border border-transparent text-text-secondary hover:text-foreground"
+                ? "border border-primary bg-primary font-[550] text-on-accent"
+                : "border border-transparent text-text-secondary hover:bg-surface hover:text-foreground"
             )}
           >
             {o.label}
