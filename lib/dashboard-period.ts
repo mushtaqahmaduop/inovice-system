@@ -5,13 +5,15 @@
 // and the server clock is UTC on Vercel, so mixing in a local timezone here
 // would shift invoices across month boundaries.
 //
-// The cash-flow chart is monthly (owner's request) and shows one CALENDAR
-// HALF-YEAR — Jan–Jun or Jul–Dec (owner, 2026-07-31). Six buckets, never a
-// rolling twelve, so the axis labels stay readable and the window is a period
-// the client already thinks in. It auto-advances: the half is derived from the
-// selected period's last month, so on 1 January the chart flips from Jul–Dec
-// to Jan–Jun of the new year with no code change. `monthKeys` is the seam a
-// five-year panel would hang off later.
+// The cash-flow chart is monthly (owner's request). Its window depends on the
+// period (owner, 2026-07-31):
+//   • "This year" → all TWELVE months of the year, Jan–Dec. Picking the year
+//     is asking for the year; halving it there would hide half the answer.
+//   • every other period → one CALENDAR HALF-YEAR, Jan–Jun or Jul–Dec, six
+//     buckets. Fewer, wider months read better for a month-scale view.
+// The half auto-advances: it is derived from the selected period's last month,
+// so on 1 January the chart flips from Jul–Dec to Jan–Jun of the new year with
+// no code change. `monthKeys` is the seam a five-year panel would hang off.
 
 export const PERIODS = [
   { key: "this-month", label: "This month" },
@@ -35,8 +37,8 @@ export type Period = {
   /** The comparable previous window, or null when a trend is meaningless. */
   prevStart: string | null;
   prevEndEx: string | null;
-  /** The six YYYY-MM buckets of the calendar half-year holding the period's
-   *  last month — Jan–Jun or Jul–Dec. */
+  /** Chart buckets: twelve YYYY-MM (Jan–Dec) for "this year", otherwise the
+   *  six of the calendar half-year holding the period's last month. */
   monthKeys: string[];
 };
 
@@ -90,13 +92,15 @@ export function resolvePeriod(key: string | null | undefined, now: Date): Period
   const lastDay = new Date(Date.parse(endEx + "T00:00:00Z") - 86400000);
   const lm = lastDay.getUTCMonth();
   const ly = lastDay.getUTCFullYear();
-  // Snap to the calendar half-year that month sits in: months 0–5 → Jan–Jun,
-  // months 6–11 → Jul–Dec. Months still to come stay in the window as empty
-  // buckets, so the client sees the shape of the whole half at a glance.
-  const halfStart = lm < 6 ? 0 : 6;
+  // "This year" spans the whole year; every other period snaps to the calendar
+  // half that month sits in — months 0–5 → Jan–Jun, months 6–11 → Jul–Dec.
+  // Months still to come stay in the window as empty buckets, so the client
+  // sees the shape of the whole span at a glance.
+  const span = k === "this-year" ? 12 : 6;
+  const first = k === "this-year" ? 0 : lm < 6 ? 0 : 6;
   const monthKeys: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const d = utc(ly, halfStart + i);
+  for (let i = 0; i < span; i++) {
+    const d = utc(ly, first + i);
     monthKeys.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
   }
 

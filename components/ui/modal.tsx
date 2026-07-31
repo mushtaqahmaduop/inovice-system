@@ -81,8 +81,15 @@ export function Modal({
   }, []);
 
   return (
+    // Owner, 2026-07-31: the taller forms ("Add regular client", "Edit
+    // walk-in") were cut off — their Save button sat below the fold on a
+    // laptop. The panel is now capped to the viewport and scrolls INSIDE
+    // itself, with the footer pinned to its bottom edge, so the actions are
+    // always reachable however long the form gets. 100dvh, not 100vh: on
+    // mobile browsers the URL bar makes vh taller than what is actually
+    // visible, which is what would clip the footer again.
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-[10vh] dark:bg-black/60"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4 dark:bg-black/60"
       onMouseDown={(e) => {
         if (dismissable && e.target === e.currentTarget) onClose();
       }}
@@ -94,11 +101,11 @@ export function Modal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "w-full rounded-[14px] border border-border bg-surface-raised shadow-[var(--shadow-drawer)] outline-none",
+          "flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-[14px] border border-border bg-surface-raised shadow-[var(--shadow-drawer)] outline-none",
           size === "sm" ? "max-w-sm" : "max-w-md"
         )}
       >
-        <div className="border-b border-border px-5 py-4">
+        <div className="shrink-0 border-b border-border px-5 py-4">
           <h2
             id={titleId}
             className={cn(
@@ -112,13 +119,20 @@ export function Modal({
             <p className="mt-1 text-[13px] leading-[19px] text-text-secondary">{description}</p>
           ) : null}
         </div>
-        <div className="p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );
 }
 
 // Standard right-aligned Cancel / confirm footer used by the modal forms.
+// Sticky to the bottom of the modal's scrolling body: the negative margins
+// cancel that body's p-5 so the bar spans the full panel width and its opaque
+// background hides the fields scrolling underneath it.
 export function ModalFooter({ children }: { children: React.ReactNode }) {
-  return <div className="mt-5 flex justify-end gap-2">{children}</div>;
+  return (
+    <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex justify-end gap-2 border-t border-border bg-surface-raised px-5 py-3">
+      {children}
+    </div>
+  );
 }

@@ -40,7 +40,8 @@ export default async function DashboardPage({
 
   const now = new Date();
   const period = resolvePeriod((await searchParams).period, now);
-  // The chart's twelve monthly buckets bound the payments we need to read.
+  // The chart's monthly buckets bound the payments we need to read — six for
+  // a half-year window, twelve for "this year".
   const chartStart = period.monthKeys[0] + "-01";
 
   const [
@@ -118,7 +119,7 @@ export default async function DashboardPage({
   // ── Cash-flow: MONTHLY invoiced (issue_date) + net paid (received_on) ─────
   // Owner, 2026-07-27: monthly, not daily. Each point is that month's own
   // total — no running sum, which only existed to keep a lumpy daily series
-  // legible. Twelve buckets ending with the selected period's last month.
+  // legible. The bucket span comes from the period — see lib/dashboard-period.
   const invByMonth = new Map<string, number>();
   for (const r of rows) {
     if (!r.issue_date) continue;
@@ -531,10 +532,17 @@ function ActivityIcon({ type }: { type: string }) {
 // card still reads as a deliberate block rather than a grid with a hole.
 function QuickActions({ isAdmin }: { isAdmin: boolean }) {
   const actions = [
-    { href: "/invoices/new", icon: <Plus className="size-4" />, label: "New invoice", primary: true },
+    {
+      href: "/invoices/new",
+      icon: <Plus className="size-4" />,
+      label: "New invoice",
+      primary: true,
+    },
     { href: "/customers", icon: <UserPlus className="size-4" />, label: "Add customer" },
     { href: "/services", icon: <ListPlus className="size-4" />, label: "Add service" },
-    ...(isAdmin ? [{ href: "/admin/users", icon: <UserCog className="size-4" />, label: "Add user" }] : []),
+    ...(isAdmin
+      ? [{ href: "/admin/users", icon: <UserCog className="size-4" />, label: "Add user" }]
+      : []),
   ];
 
   return (
