@@ -187,7 +187,10 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
               <span className="block truncate text-[15px] leading-5 font-semibold tracking-tight text-shell-fg">
                 Prestige Land
               </span>
-              <span className="block truncate text-[13px] leading-4 font-medium text-[#d9a441]">
+              {/* Blue, matching the login lockup (owner, 2026-07-31) — the
+                  shell-safe tint of it, since the login card is light and this
+                  ground is navy. Gold now survives only as the login hairline. */}
+              <span className="block truncate text-[13px] leading-4 font-medium text-shell-accent">
                 Typing Center
               </span>
             </span>
@@ -197,8 +200,16 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
             onClick={toggleCollapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`hidden size-7 shrink-0 items-center justify-center rounded-full text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:inline-flex ${
-              collapsed ? "md:hidden" : ""
+            // Owner, 2026-07-31: collapsed, the mark looked cut off / tilted.
+            // Cause: `md:inline-flex` and `md:hidden` were both applied at the
+            // same breakpoint and the generated stylesheet — not the order they
+            // are written here — decided the winner. inline-flex won, so this
+            // 28px button stayed in a 64px rail beside a 36px mark, overflowing
+            // the row and shoving the mark off-centre. One branch per state, no
+            // conflicting utilities. Collapsed, the expand control below the nav
+            // is the way back.
+            className={`size-7 shrink-0 items-center justify-center rounded-full text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+              collapsed ? "hidden" : "hidden md:inline-flex"
             }`}
           >
             <ChevronsLeft className="size-4" strokeWidth={1.75} />

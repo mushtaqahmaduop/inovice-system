@@ -21,6 +21,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,6 +243,14 @@ export function InvoicesTable({
   const [toDate, setToDate] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const dirtyFilters = filter !== "all" || query !== "" || fromDate !== "" || toDate !== "";
+  const resetFilters = () => {
+    setFilter("all");
+    setQuery("");
+    setFromDate("");
+    setToDate("");
+  };
+
   const today = new Date().toISOString().slice(0, 10);
   const isOverdue = (r: InvoiceListRow): boolean => {
     if (r.status !== "issued" || r.payment_status === "paid") return false;
@@ -413,6 +422,21 @@ export function InvoicesTable({
           className="mono h-8 w-36 text-[12px]"
           aria-label="To date"
         />
+        {/* Owner, 2026-07-31: a way back to the unfiltered list. It clears the
+            whole toolbar — status, search AND range — because a half-cleared
+            toolbar is exactly the state people get stuck in, staring at an
+            empty table wondering which of the four filters is still on. Shown
+            only when something is actually filtering. */}
+        {dirtyFilters ? (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-[8px] border border-border px-2.5 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
+          >
+            <RotateCcw className="size-3.5" />
+            Reset
+          </button>
+        ) : null}
       </div>
 
       {/* Below sm the table becomes stacked cards keyed by the mono number;

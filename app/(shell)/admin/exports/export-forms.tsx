@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, CreditCard, BarChart3, Download, type LucideIcon } from "lucide-react";
+import {
+  FileText,
+  CreditCard,
+  BarChart3,
+  Download,
+  RotateCcw,
+  type LucideIcon,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { FieldLabel } from "@/components/ui/field";
 
@@ -74,6 +81,21 @@ export function ExportForms() {
             className="mono h-10 w-52 text-[13px]"
           />
         </div>
+        {/* Owner, 2026-07-31: clearing two date inputs by hand is fiddly, and
+            a stale range silently narrows every download on this page. */}
+        {from || to ? (
+          <button
+            type="button"
+            onClick={() => {
+              setFrom("");
+              setTo("");
+            }}
+            className="mb-1 inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-[8px] border border-border px-3 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
+          >
+            <RotateCcw className="size-3.5" />
+            Reset dates
+          </button>
+        ) : null}
         <p className="pb-2.5 text-[13px] text-text-tertiary">Leave empty for everything.</p>
       </div>
 

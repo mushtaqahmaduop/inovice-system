@@ -63,6 +63,13 @@
   --shell-fg: #e8ecf5;
   --shell-fg-muted: #93a1bd;
   --shell-hover: #1b2846;
+  /* Federal Blue as it must appear ON the navy shell (owner, 2026-07-31: make
+     the sidebar's "Typing Center" the login page's blue, not gold). The login
+     card is light, so it uses --accent (#1d4ed8) directly; that same hex on
+     this navy is ~2:1 contrast and effectively unreadable. This is the same
+     blue lifted to ~6.7:1 on --shell. Identical in both themes, because the
+     shell is navy in both. */
+  --shell-accent: #60a5fa;
 
   --ring-color: #1d4ed8;
 
@@ -152,6 +159,7 @@
   --shell-fg: #e8ecf5;
   --shell-fg-muted: #8593b0;
   --shell-hover: #16233c;
+  --shell-accent: #60a5fa;
 
   --ring-color: #3b82f6;
 
@@ -220,6 +228,7 @@
   --color-shell-fg: var(--shell-fg);
   --color-shell-fg-muted: var(--shell-fg-muted);
   --color-shell-hover: var(--shell-hover);
+  --color-shell-accent: var(--shell-accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);

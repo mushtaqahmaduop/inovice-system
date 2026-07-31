@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Calendar, Check, ChevronDown } from "lucide-react";
+import { Calendar, Check, ChevronDown, RotateCcw } from "lucide-react";
 import { PERIODS, type PeriodKey } from "@/lib/dashboard-period";
 
 // The dashboard's period chip. Was decorative until the owner asked for it to
@@ -41,42 +41,57 @@ export function PeriodFilter({ value }: { value: PeriodKey }) {
   };
 
   const current = PERIODS.find((p) => p.key === value) ?? PERIODS[0];
+  // "This month" IS the reset state, so the button only exists once the view
+  // has actually been moved off it — a permanently-lit Reset teaches nothing.
+  const dirty = value !== "this-month";
 
   return (
-    <div ref={boxRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:border-border-strong"
-      >
-        <Calendar className="size-4 text-text-tertiary" />
-        {current.label}
-        <ChevronDown className="size-4 text-text-tertiary" />
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute top-[calc(100%+4px)] right-0 z-30 w-44 overflow-hidden rounded-[10px] border border-border bg-surface-raised py-1 shadow-[var(--shadow-popover)]"
+    <div className="flex items-center gap-2">
+      {dirty ? (
+        <button
+          type="button"
+          onClick={() => choose("this-month")}
+          className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-surface px-2.5 py-1.5 text-[13px] font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-foreground"
         >
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              role="menuitemradio"
-              aria-checked={p.key === value}
-              onClick={() => choose(p.key)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
-            >
-              <Check
-                className={`size-4 ${p.key === value ? "text-primary" : "text-transparent"}`}
-              />
-              {p.label}
-            </button>
-          ))}
-        </div>
+          <RotateCcw className="size-3.5" />
+          Reset
+        </button>
       ) : null}
+      <div ref={boxRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:border-border-strong"
+        >
+          <Calendar className="size-4 text-text-tertiary" />
+          {current.label}
+          <ChevronDown className="size-4 text-text-tertiary" />
+        </button>
+        {open ? (
+          <div
+            role="menu"
+            className="absolute top-[calc(100%+4px)] right-0 z-30 w-44 overflow-hidden rounded-[10px] border border-border bg-surface-raised py-1 shadow-[var(--shadow-popover)]"
+          >
+            {PERIODS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                role="menuitemradio"
+                aria-checked={p.key === value}
+                onClick={() => choose(p.key)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-bg-sunken"
+              >
+                <Check
+                  className={`size-4 ${p.key === value ? "text-primary" : "text-transparent"}`}
+                />
+                {p.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
