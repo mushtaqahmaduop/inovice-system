@@ -36,12 +36,7 @@ import {
   formatForeign,
   formatRateFromE6,
 } from "@/lib/currency";
-import {
-  calcInvoiceTotals,
-  calcLineVat,
-  type DraftLine,
-  type ExtraColumn,
-} from "@/lib/invoice-calc";
+import { calcInvoiceTotals, type DraftLine, type ExtraColumn } from "@/lib/invoice-calc";
 
 // Invoice draft editor (tasks 4.1a + 4.1b), rebuilt for the Cool White /
 // Federal Blue system (redesign slice 6 → owner-mockup pass). Numbered
@@ -707,21 +702,11 @@ export function InvoiceEditor({
     );
   };
 
-  // Read-only VAT for one row, mirroring issue_invoice() exactly. Zero while the
-  // centre is deregistered, which is why the cell renders an em dash rather than
-  // a column of 0.00s.
-  const lineVat = (l: EditorLine) =>
-    calcLineVat(
-      {
-        description: l.description,
-        qty: Math.max(1, Math.floor(Number(l.qty) || 1)),
-        govtFee: cellFils(l, "govt"),
-        serviceFee: cellFils(l, "service"),
-        extraFees: Object.fromEntries(columns.map((c) => [c.id, cellFils(l, c.id)])),
-      },
-      columns,
-      { vatRegistered, vatRateBp }
-    );
+  // NOTE: the per-line VAT helper lived here and rendered a read-only "VAT
+  // amount" column, mirroring issue_invoice(). The column was removed on the
+  // owner's request (2026-07-31) and the helper went with it. Restoring the
+  // column means restoring a calcLineVat() call — the seal's own maths is
+  // unchanged and remains the single source of truth either way.
 
   const lastFeeCol: CellKey = columns.length > 0 ? columns[columns.length - 1].id : "delivery";
 
@@ -1090,18 +1075,13 @@ export function InvoiceEditor({
                     {c.label} (AED)
                   </th>
                 ))}
-                {/* Computed, never editable: the rate is a snapshotted Settings
-                    value (D-16), not a per-line operator choice. */}
-                <th
-                  className={`w-28 px-2 py-3 text-right ${captionClass}`}
-                  title={
-                    vatRegistered
-                      ? `VAT at ${ratePct}%, calculated per line exactly as the seal does.`
-                      : "No VAT — the centre is not VAT-registered, so every line is 0%."
-                  }
-                >
-                  VAT amount (AED)
-                </th>
+                {/* Owner, 2026-07-31: the per-line "VAT amount" column is out
+                    — it is back when it is needed. Nothing about the invoice
+                    changed: VAT is still computed by issue_invoice() at the
+                    seal, still shown in the totals panel below this grid, and
+                    still printed on the FTA copy. This was a display column
+                    only. The taxable/0% badges stay on the fee headers, so it
+                    is still visible WHICH fees carry VAT. */}
                 <th className={`w-28 px-3 py-3 text-right ${captionClass}`}>Line total (AED)</th>
                 <th className="w-9" />
               </tr>
@@ -1161,9 +1141,6 @@ export function InvoiceEditor({
                     {feeCell(l, "service", "Service fee", isLastLine)}
                     {feeCell(l, "delivery", "Delivery", isLastLine)}
                     {columns.map((c) => feeCell(l, c.id, c.label, isLastLine))}
-                    <td className="mono px-2 py-1 text-right text-[13px] text-text-secondary">
-                      {vatRegistered ? formatAed(lineVat(l)) : "—"}
-                    </td>
                     <td className="mono px-3 py-1 text-right text-[13px] font-semibold text-foreground">
                       {formatAed(lineTotal(l))}
                     </td>
@@ -1171,10 +1148,23 @@ export function InvoiceEditor({
                       <Button
                         variant="ghost"
                         size="icon-xs"
-                        onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
-                        disabled={lines.length === 1}
-                        aria-label={`Remove line ${idx + 1}`}
-                        title="Remove line"
+                        // Owner, 2026-07-31: "delete doesn't work". It was
+                        // disabled whenever one line was left — and adding a
+                        // single service from the catalogue lands you at
+                        // exactly one line, because addFromCatalogue drops the
+                        // blank row it replaces. So the common case was a dead
+                        // button. The grid still needs a row to exist, so
+                        // deleting the last one empties it instead of removing
+                        // it: the click always does something visible.
+                        onClick={() =>
+                          setLines((ls) =>
+                            ls.length === 1 ? [blankLine()] : ls.filter((x) => x.key !== l.key)
+                          )
+                        }
+                        aria-label={
+                          lines.length === 1 ? "Clear this line" : `Remove line ${idx + 1}`
+                        }
+                        title={lines.length === 1 ? "Clear this line" : "Remove line"}
                         className="text-text-tertiary hover:text-danger"
                       >
                         <Trash2 />
