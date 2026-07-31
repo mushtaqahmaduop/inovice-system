@@ -135,6 +135,10 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
     return best;
   }, [pathname]);
 
+  // /help sits in the footer rather than NAV_SECTIONS, so it tracks its own
+  // active state.
+  const helpActive = pathname === "/help" || pathname.startsWith("/help/");
+
   // Desktop collapse to the icon rail (persisted). Below md the sidebar is
   // always the rail, so the toggle only matters at md+.
   const [collapsed, setCollapsed] = useState(false);
@@ -303,24 +307,34 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
         </div>
       ) : null}
 
+      {/* Owner request 2026-07-31: this used to open the GitHub README in a new
+          tab. Staff must never be sent to the repository — it now opens the
+          in-app support page, which routes every request to the owner. */}
       <div className="border-t border-shell-border p-2">
-        <a
-          href="https://github.com/mushtaqahmaduop/inovice-system#readme"
-          target="_blank"
-          rel="noreferrer"
-          title="Need help? View documentation"
-          className={`flex h-[34px] items-center gap-2.5 rounded-full px-3 text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${rowJustify}`}
+        <Link
+          href="/help"
+          title="Need help? Contact support"
+          aria-current={helpActive ? "page" : undefined}
+          className={
+            helpActive
+              ? `flex h-[34px] items-center gap-2.5 rounded-full bg-primary px-3 text-on-accent shadow-[0_1px_2px_rgba(0,0,0,0.3)] outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
+              : `flex h-[34px] items-center gap-2.5 rounded-full px-3 text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${rowJustify}`
+          }
         >
           <HelpCircle className="size-4 shrink-0" strokeWidth={1.75} />
           <span className={`min-w-0 flex-1 ${label}`}>
-            <span className="block text-[13px] leading-4 font-medium text-shell-fg">
+            <span
+              className={`block text-[13px] leading-4 font-medium ${helpActive ? "text-on-accent" : "text-shell-fg"}`}
+            >
               Need help?
             </span>
-            <span className="block truncate text-[12px] leading-4 text-shell-fg-muted">
-              View documentation
+            <span
+              className={`block truncate text-[12px] leading-4 ${helpActive ? "text-on-accent/75" : "text-shell-fg-muted"}`}
+            >
+              Contact support
             </span>
           </span>
-        </a>
+        </Link>
       </div>
     </aside>
   );

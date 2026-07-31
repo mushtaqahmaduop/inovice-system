@@ -12,6 +12,11 @@ import { NAV_SECTIONS } from "./nav-items";
 // additionally show a breadcrumb — extend crumbFor as new ones land.
 type Crumb = { title: string; parent: { label: string; href: string } };
 
+// Pages that are real destinations but deliberately not sidebar nav items —
+// /help lives in the sidebar footer, so the registry lookup below misses it
+// and the title would fall back to the company name.
+const EXTRA_TITLES: Record<string, string> = { "/help": "Need help?" };
+
 function crumbFor(pathname: string): Crumb | null {
   if (pathname === "/invoices/new") {
     return { title: "New Invoice", parent: { label: "Invoices", href: "/invoices" } };
@@ -65,7 +70,7 @@ export function PageTitle() {
 
   return (
     <h1 className="truncate text-[17px] leading-6 font-semibold tracking-tight text-foreground">
-      {match?.label ?? "Prestige Land"}
+      {match?.label ?? EXTRA_TITLES[pathname] ?? "Prestige Land"}
     </h1>
   );
 }
