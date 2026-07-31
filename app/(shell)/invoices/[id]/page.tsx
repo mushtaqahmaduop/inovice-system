@@ -82,7 +82,7 @@ export default async function InvoicePage({
     supabase
       .from("invoice_lines")
       .select(
-        "position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)"
+        "position, description, qty, govt_fee, service_fee, delivery_fee, invoice_line_fees(column_id, amount)"
       )
       .eq("invoice_id", id)
       .order("position"),
@@ -118,6 +118,11 @@ export default async function InvoicePage({
       govtFee: l.govt_fee,
       serviceFee: l.service_fee,
       extraFees,
+      // D-30a row total (per line since 0017). Sealed invoices written before
+      // that migration have 0 here and carry the fee only on the invoice, which
+      // InvoiceDoc detects and keeps spreading — do NOT default this to the
+      // invoice figure.
+      deliveryFee: l.delivery_fee ?? 0,
     };
   });
 

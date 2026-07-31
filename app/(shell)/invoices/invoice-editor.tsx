@@ -1645,6 +1645,9 @@ export function InvoiceEditor({
             govtFee: cellFils(l, "govt"),
             serviceFee: cellFils(l, "service"),
             extraFees: columns.map((c) => cellFils(l, c.id)),
+            // Row total, never × qty — the customer copy charges this row
+            // exactly what the grid above shows for it.
+            deliveryFee: cellFils(l, "delivery"),
           }))}
           totals={{
             subtotalGovt: totals.subtotalGovt,
