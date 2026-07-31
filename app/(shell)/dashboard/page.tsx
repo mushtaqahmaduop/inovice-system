@@ -41,8 +41,9 @@ export default async function DashboardPage({
   const now = new Date();
   const period = resolvePeriod((await searchParams).period, now);
   // The chart's monthly buckets bound the payments we need to read — six for
-  // a half-year window, twelve for "this year".
-  const chartStart = period.monthKeys[0] + "-01";
+  // a half-year window, twelve for "this year". We read from the PREVIOUS
+  // window's start, because the summary strip under the chart compares the two.
+  const chartStart = period.prevMonthKeys[0] + "-01";
 
   const [
     { data: issued },
@@ -136,6 +137,27 @@ export default async function DashboardPage({
     invoiced: (invByMonth.get(k) ?? 0) / 100,
     paid: (paidByMonth.get(k) ?? 0) / 100,
   }));
+
+  // ── The chart's own summary strip (owner mockup redesign2.png) ────────────
+  // The card stretches to match Top Customers beside it, which left dead space
+  // under the month labels. These four figures fill it, and they are the
+  // chart's OWN window — not the period chip's — so the strip always adds up
+  // to the two lines drawn above it. All four come from buckets already in
+  // memory; the only extra cost is reading payments one window further back.
+  const sum = (keys: string[], m: Map<string, number>) =>
+    keys.reduce((s, k) => s + (m.get(k) ?? 0), 0);
+  const winInvoiced = sum(period.monthKeys, invByMonth);
+  const winPaid = sum(period.monthKeys, paidByMonth);
+  const prevInvoiced = sum(period.prevMonthKeys, invByMonth);
+  const prevPaid = sum(period.prevMonthKeys, paidByMonth);
+  // Collected minus billed. Negative is the normal, healthy state for a month
+  // still in progress — it means invoices are out that nobody has paid yet.
+  const winNet = winPaid - winInvoiced;
+  const prevNet = prevPaid - prevInvoiced;
+  // What share of what we billed actually came in. Undefined, not 0%, when
+  // nothing was billed — 0% would read as "we collected nothing".
+  const collection = winInvoiced > 0 ? (winPaid / winInvoiced) * 100 : null;
+  const prevCollection = prevInvoiced > 0 ? (prevPaid / prevInvoiced) * 100 : null;
 
   // ── Top customers in the selected period ─────────────────────────────────
   const tc = new Map<string, { name: string; count: number; invoiced: number; paid: number }>();
@@ -259,7 +281,11 @@ export default async function DashboardPage({
           ctx.role === "admin" ? "lg:grid-cols-[1.4fr_1fr_1fr]" : "lg:grid-cols-[1.7fr_1fr]"
         }`}
       >
-        <section className="rounded-[14px] border border-border bg-surface p-4">
+        {/* flex-col + mt-auto on the strip: the card stretches to whatever the
+            tallest card in this row is, and the strip takes up the slack, so
+            the dead space under the month labels is where the summary lives
+            rather than being empty (owner mockup redesign2.png). */}
+        <section className="flex flex-col rounded-[14px] border border-border bg-surface p-4">
           {/* Title, legend and window on ONE line — the legend used to sit on
               its own row under the title and cost ~22px of fold. */}
           <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
@@ -274,6 +300,40 @@ export default async function DashboardPage({
             </span>
           </div>
           <CashFlowChart data={cashFlow} />
+          <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border pt-3 sm:grid-cols-4">
+            <ChartStat
+              label="Total invoiced"
+              value={`AED ${formatAed(winInvoiced)}`}
+              trend={pctTrend(winInvoiced, prevInvoiced)}
+            />
+            <ChartStat
+              label="Total paid"
+              value={`AED ${formatAed(winPaid)}`}
+              tone="success"
+              trend={pctTrend(winPaid, prevPaid)}
+            />
+            <ChartStat
+              label="Net cash flow"
+              // Signed on purpose: "AED -9,612.00" is the honest reading of
+              // collected-minus-billed, and the sign is the whole message.
+              value={`AED ${winNet < 0 ? "-" : ""}${formatAed(Math.abs(winNet))}`}
+              tone={winNet < 0 ? "warn" : "success"}
+              trend={pctTrend(winNet, prevNet)}
+            />
+            <ChartStat
+              label="Collection rate"
+              value={collection === null ? "—" : `${collection.toFixed(1)}%`}
+              // Percentage POINTS, not a percentage of a percentage: 40% → 50%
+              // is +10pp, and calling that "+25%" would be misleading.
+              note={
+                collection !== null && prevCollection !== null
+                  ? `${collection - prevCollection >= 0 ? "+" : "−"}${Math.abs(
+                      collection - prevCollection
+                    ).toFixed(1)}pp vs previous`
+                  : undefined
+              }
+            />
+          </div>
         </section>
 
         <section className="rounded-[14px] border border-border bg-surface p-4">
@@ -460,6 +520,50 @@ function KpiCard({
       <span className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-[10px] bg-accent-soft text-primary">
         {icon}
       </span>
+    </div>
+  );
+}
+
+// One figure in the chart card's summary strip. Two lines, so four of them fit
+// in the slack under the month labels without pushing the fold down: a small
+// caption, then the value with its delta chip inline beside it.
+function ChartStat({
+  label,
+  value,
+  trend,
+  note,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  trend?: Trend;
+  note?: string;
+  tone?: "default" | "success" | "warn";
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[11px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase">
+        {label}
+      </p>
+      <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
+        <span
+          className={`mono truncate text-[14px] leading-5 font-semibold ${
+            tone === "success" ? "text-success" : tone === "warn" ? "text-warn" : "text-foreground"
+          }`}
+        >
+          {value}
+        </span>
+        {trend ? (
+          <span
+            className={`mono text-[11px] leading-4 font-medium ${
+              trend.dir === "down" ? "text-danger" : "text-success"
+            }`}
+          >
+            {trend.dir === "down" ? "↓" : "↑"} {trend.pct}
+          </span>
+        ) : null}
+        {note ? <span className="text-[11px] leading-4 text-text-tertiary">{note}</span> : null}
+      </p>
     </div>
   );
 }

@@ -40,6 +40,9 @@ export type Period = {
   /** Chart buckets: twelve YYYY-MM (Jan–Dec) for "this year", otherwise the
    *  six of the calendar half-year holding the period's last month. */
   monthKeys: string[];
+  /** The equally-long window directly before `monthKeys`, for the summary
+   *  strip's "vs previous" deltas. */
+  prevMonthKeys: string[];
 };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -98,10 +101,18 @@ export function resolvePeriod(key: string | null | undefined, now: Date): Period
   // sees the shape of the whole span at a glance.
   const span = k === "this-year" ? 12 : 6;
   const first = k === "this-year" ? 0 : lm < 6 ? 0 : 6;
-  const monthKeys: string[] = [];
-  for (let i = 0; i < span; i++) {
+  const bucket = (i: number) => {
     const d = utc(ly, first + i);
-    monthKeys.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  };
+  const monthKeys: string[] = [];
+  const prevMonthKeys: string[] = [];
+  for (let i = 0; i < span; i++) {
+    monthKeys.push(bucket(i));
+    // The equally-long window immediately before this one — Jan–Jun behind
+    // Jul–Dec, 2025 behind 2026. It exists only to give the summary strip
+    // something honest to compare against.
+    prevMonthKeys.push(bucket(i - span));
   }
 
   return {
@@ -113,6 +124,7 @@ export function resolvePeriod(key: string | null | undefined, now: Date): Period
     prevStart,
     prevEndEx,
     monthKeys,
+    prevMonthKeys,
   };
 }
 

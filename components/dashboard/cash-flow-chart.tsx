@@ -56,7 +56,7 @@ export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
     // the labels were crowding the baseline. mt-1 drops the whole plot, and the
     // XAxis dy below pushes the month names further clear of the axis; the
     // bottom margin is the room they need so nothing clips.
-    <div className="mt-1 h-[188px] w-full">
+    <div className="mt-1 h-[172px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: -8 }}>
           <defs>
