@@ -11,8 +11,9 @@ import {
   YAxis,
 } from "recharts";
 
-// Cash-flow overview (dashboard). Two real series over twelve MONTHS (owner,
-// 2026-07-27 — it used to be days): Invoiced (sealed customer totals by
+// Cash-flow overview (dashboard). Two real series over one calendar HALF-YEAR
+// — Jan–Jun or Jul–Dec, six monthly buckets (owner, 2026-07-31; it was twelve
+// rolling months, and days before that): Invoiced (sealed customer totals by
 // issue_date) as a filled area, and Paid (net payments by received_on) as a
 // dashed line. Each point is that month's own total, not a running sum.
 // Values arrive in AED decimals already — the server does the fils→AED
@@ -51,7 +52,7 @@ function TooltipBox({
 
 export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
   return (
-    <div className="h-[220px] w-full">
+    <div className="h-[176px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
           <defs>

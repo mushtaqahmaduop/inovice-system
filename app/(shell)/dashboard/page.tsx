@@ -10,11 +10,9 @@ import {
   Wallet,
   Percent,
   Plus,
-  Users,
   ListPlus,
-  Download,
   UserCog,
-  Settings,
+  UserPlus,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
@@ -225,8 +223,12 @@ export default async function DashboardPage({
         <PeriodFilter value={period.key} />
       </header>
 
-      {/* KPI row — the client's named figure leads as a filled accent hero. */}
-      <div className="mb-3 grid gap-3 lg:grid-cols-3">
+      {/* KPI row — the client's named figure leads as a filled accent hero.
+          Owner, 2026-07-31: Quick Actions moved up beside the VAT figure and
+          cut to the four that get used, so the whole row sits on one line and
+          the page below it climbs. The three KPIs give up width to make room;
+          the hero keeps a little extra because its figure is the longest. */}
+      <div className="mb-3 grid gap-3 lg:grid-cols-[1.15fr_1fr_1fr_1fr]">
         <HeroCard total={outstandingTotal} settled={debtors.size === 0} count={debtors.size} />
         <KpiCard
           label={`Invoiced ${period.suffix}`}
@@ -243,6 +245,7 @@ export default async function DashboardPage({
           trend={pctTrend(periodVat, prevVat)}
           trendNote={period.key === "this-year" ? "vs last year" : "vs the period before"}
         />
+        <QuickActions isAdmin={ctx.role === "admin"} />
       </div>
 
       {/* Cash flow + top customers (+ online employees, admin only).
@@ -256,16 +259,17 @@ export default async function DashboardPage({
         }`}
       >
         <section className="rounded-[14px] border border-border bg-surface p-4">
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-            <div>
+          {/* Title, legend and window on ONE line — the legend used to sit on
+              its own row under the title and cost ~22px of fold. */}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
               <h2 className="text-[15px] font-semibold text-foreground">Cash Flow Overview</h2>
-              <div className="mt-1.5 flex items-center gap-4">
-                <Legend dash={false} label="Invoiced" />
-                <Legend dash label="Paid" />
-              </div>
+              <Legend dash={false} label="Invoiced" />
+              <Legend dash label="Paid" />
             </div>
             <span className="text-[12px] text-text-tertiary">
-              Monthly · {monthLabel(period.monthKeys[0])} – {monthLabel(period.monthKeys[11])}
+              {monthLabel(period.monthKeys[0])} –{" "}
+              {monthLabel(period.monthKeys[period.monthKeys.length - 1])}
             </span>
           </div>
           <CashFlowChart data={cashFlow} />
@@ -288,7 +292,7 @@ export default async function DashboardPage({
               <li key={c.id}>
                 <Link
                   href={`/customers/${c.id}`}
-                  className="-mx-2 flex items-center gap-3 rounded-[8px] px-2 py-2 transition-colors hover:bg-bg-sunken"
+                  className="-mx-2 flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 transition-colors hover:bg-bg-sunken"
                 >
                   <Avatar name={c.name} />
                   <span className="min-w-0 flex-1">
@@ -376,54 +380,6 @@ export default async function DashboardPage({
         </ul>
       </section>
 
-      {/* Quick Actions (owner mockup 2026-07-30). Admins get the three
-          administration destinations as well — the mockup's "View Reports" maps
-          to the real Exports page rather than becoming a dead button, and there
-          is no reports screen to point at. Staff never see the admin row: those
-          pages are admin-only server-side, so offering them would only produce
-          a redirect. */}
-      <section className="rounded-[14px] border border-border bg-surface p-4">
-        <h2 className="mb-3 text-[15px] font-semibold text-foreground">Quick Actions</h2>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <QuickAction
-            href="/invoices/new"
-            icon={<Plus className="size-4" />}
-            label="New invoice"
-            primary
-          />
-          <QuickAction href="/customers" icon={<Users className="size-4" />} label="Add customer" />
-          <QuickAction
-            href="/services"
-            icon={<ListPlus className="size-4" />}
-            label="Add service"
-          />
-          <QuickAction
-            href="/invoices"
-            icon={<FileText className="size-4" />}
-            label="All invoices"
-          />
-          {ctx.role === "admin" ? (
-            <>
-              <QuickAction
-                href="/admin/exports"
-                icon={<Download className="size-4" />}
-                label="Exports & reports"
-              />
-              <QuickAction
-                href="/admin/users"
-                icon={<UserCog className="size-4" />}
-                label="Manage users"
-              />
-              <QuickAction
-                href="/admin/settings"
-                icon={<Settings className="size-4" />}
-                label="Settings"
-              />
-            </>
-          ) : null}
-        </div>
-      </section>
-
       <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-text-tertiary">
         Signed in as {ctx.fullName}
         {ctx.aal === "aal2" ? " (two-factor verified)" : ""}. All figures derive from sealed
@@ -445,20 +401,20 @@ function pctTrend(cur: number, prev: number): Trend {
 
 function HeroCard({ total, settled, count }: { total: number; settled: boolean; count: number }) {
   return (
-    <div className="relative overflow-hidden rounded-[14px] bg-primary p-5 text-white">
+    <div className="relative overflow-hidden rounded-[14px] bg-primary p-4 text-white">
       <p className="text-[12px] font-medium tracking-[0.04em] text-white/75 uppercase">
         Outstanding — who owes us
       </p>
-      <p className="mt-3 text-[30px] leading-9 font-semibold">
+      <p className="mt-2.5 text-[30px] leading-9 font-semibold">
         <span className="mr-1.5 align-middle text-[15px] font-normal text-white/70">AED</span>
         <AedFlow fils={total} className="mono tracking-tight" />
       </p>
-      <p className="mt-3 text-[13px] text-white/80">
+      <p className="mt-2 text-[13px] text-white/80">
         {settled
           ? "All sealed invoices are settled."
           : `Across ${count} customer${count === 1 ? "" : "s"} with open balances.`}
       </p>
-      <FileText className="absolute top-5 right-5 size-11 rounded-[10px] bg-white/15 p-2.5" />
+      <FileText className="absolute top-4 right-4 size-10 rounded-[10px] bg-white/15 p-2.5" />
     </div>
   );
 }
@@ -479,15 +435,15 @@ function KpiCard({
   trendNote?: string;
 }) {
   return (
-    <div className="relative rounded-[14px] border border-border bg-surface p-5">
-      <p className="text-[12px] font-medium tracking-[0.04em] text-text-tertiary uppercase">
+    <div className="relative rounded-[14px] border border-border bg-surface p-4">
+      <p className="pr-12 text-[12px] font-medium tracking-[0.04em] text-text-tertiary uppercase">
         {label}
       </p>
-      <p className="mt-3 text-[26px] leading-8 font-semibold text-foreground">
+      <p className="mt-2.5 text-[26px] leading-8 font-semibold text-foreground">
         <span className="mr-1.5 align-middle text-[14px] font-normal text-text-tertiary">AED</span>
         <AedFlow fils={valueFils} className="mono tracking-tight" />
       </p>
-      <div className="mt-3 flex items-center gap-2 text-[12px]">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         {trend ? (
           <span
             className={`mono inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
@@ -500,7 +456,7 @@ function KpiCard({
         {foot ? <span className="text-text-tertiary">{foot}</span> : null}
         {trend ? <span className="text-text-tertiary">{trendNote}</span> : null}
       </div>
-      <span className="absolute top-5 right-5 flex size-11 items-center justify-center rounded-[10px] bg-accent-soft text-primary">
+      <span className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-[10px] bg-accent-soft text-primary">
         {icon}
       </span>
     </div>
@@ -566,6 +522,42 @@ function ActivityIcon({ type }: { type: string }) {
   );
 }
 
+// Quick Actions as the fourth KPI-row card (owner, 2026-07-31). Only the four
+// creating actions live here — the navigational tiles this replaced ("All
+// invoices", "Exports & reports", "Settings") are all permanent sidebar items,
+// so nothing became unreachable. "Add user" is admin-only: /admin/users is
+// guarded server-side, so offering it to staff would only produce a redirect;
+// staff get the three remaining actions and the last one spans the row so the
+// card still reads as a deliberate block rather than a grid with a hole.
+function QuickActions({ isAdmin }: { isAdmin: boolean }) {
+  const actions = [
+    { href: "/invoices/new", icon: <Plus className="size-4" />, label: "New invoice", primary: true },
+    { href: "/customers", icon: <UserPlus className="size-4" />, label: "Add customer" },
+    { href: "/services", icon: <ListPlus className="size-4" />, label: "Add service" },
+    ...(isAdmin ? [{ href: "/admin/users", icon: <UserCog className="size-4" />, label: "Add user" }] : []),
+  ];
+
+  return (
+    <section className="rounded-[14px] border border-border bg-surface p-4">
+      <p className="text-[12px] font-medium tracking-[0.04em] text-text-tertiary uppercase">
+        Quick actions
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        {actions.map((a, i) => (
+          <QuickAction
+            key={a.href}
+            href={a.href}
+            icon={a.icon}
+            label={a.label}
+            primary={a.primary}
+            wide={actions.length % 2 === 1 && i === actions.length - 1}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // One Quick Action tile. `primary` marks the single accent-filled action so the
 // row still has one obvious lead (§5 — the accent carries primary actions).
 function QuickAction({
@@ -573,20 +565,24 @@ function QuickAction({
   icon,
   label,
   primary = false,
+  wide = false,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   primary?: boolean;
+  wide?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={
+      className={`flex h-9 items-center justify-center gap-1.5 rounded-[10px] px-2.5 text-[13px] font-[550] transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+        wide ? "col-span-2" : ""
+      } ${
         primary
-          ? "flex h-10 items-center justify-center gap-2 rounded-[10px] bg-primary px-3 text-[13px] font-[550] text-on-accent transition-colors hover:bg-[var(--accent-hover)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          : "flex h-10 items-center justify-center gap-2 rounded-[10px] border border-border-strong px-3 text-[13px] font-[550] text-foreground transition-colors hover:bg-bg-sunken focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      }
+          ? "bg-primary text-on-accent hover:bg-[var(--accent-hover)]"
+          : "border border-border-strong text-foreground hover:bg-bg-sunken"
+      }`}
     >
       {icon}
       <span className="truncate">{label}</span>
@@ -602,7 +598,7 @@ function Avatar({ name }: { name: string }) {
     .map((w) => w[0]?.toUpperCase())
     .join("");
   return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-semibold text-primary">
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-semibold text-primary">
       {initials || "—"}
     </span>
   );
