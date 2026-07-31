@@ -51,6 +51,19 @@
   --error: #b91c1c;
   --nav-active: #e9ebf1; /* §5.5 active nav pill — soft cool gray */
 
+  /* Navy shell (owner redesign 2026-07-30). The sidebar is a fixed DARK
+     surface in both themes — a deliberate two-tone shell — so it gets its own
+     tokens instead of reusing --surface/--bg-sunken, which flip with the
+     theme. The active nav pill on this ground is the accent fill: §5.5's
+     "soft-gray, NOT a blue fill" was written for a light sidebar and is
+     illegible on navy. */
+  --shell: #101a30;
+  --shell-raised: #16233f;
+  --shell-border: #223357;
+  --shell-fg: #e8ecf5;
+  --shell-fg-muted: #93a1bd;
+  --shell-hover: #1b2846;
+
   --ring-color: #1d4ed8;
 
   /* §4.4 elevation — floating layers only (cool slate shadow) */
@@ -131,6 +144,15 @@
   --error: #f87171;
   --nav-active: #2b2f38;
 
+  /* Dark theme: the shell goes a shade deeper than the light-theme navy so it
+     still separates from the (now dark) content area. */
+  --shell: #0b1220;
+  --shell-raised: #111c31;
+  --shell-border: #1c2b49;
+  --shell-fg: #e8ecf5;
+  --shell-fg-muted: #8593b0;
+  --shell-hover: #16233c;
+
   --ring-color: #3b82f6;
 
   --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -192,6 +214,12 @@
   --color-neutral-soft: var(--neutral-soft);
   --color-error: var(--error);
   --color-nav-active: var(--nav-active);
+  --color-shell: var(--shell);
+  --color-shell-raised: var(--shell-raised);
+  --color-shell-border: var(--shell-border);
+  --color-shell-fg: var(--shell-fg);
+  --color-shell-fg-muted: var(--shell-fg-muted);
+  --color-shell-hover: var(--shell-hover);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);

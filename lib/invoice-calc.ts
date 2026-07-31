@@ -35,6 +35,27 @@ function componentVat(qty: number, unitFils: number, rateBp: number): number {
   return Math.floor((qty * unitFils * rateBp + 5000) / 10000);
 }
 
+// Per-line VAT, same kernel and same order of operations as calcInvoiceTotals
+// below (and therefore as the SQL): service fee + every VAT-able extra column,
+// each rounded on its own before being added. Display only — the editor shows
+// it as a read-only column; the sealed figure is written by issue_invoice().
+export function calcLineVat(
+  line: DraftLine,
+  columns: ExtraColumn[],
+  opts: { vatRegistered: boolean; vatRateBp: number }
+): number {
+  const rate = opts.vatRegistered ? opts.vatRateBp : 0;
+  if (rate === 0) return 0;
+  let vat = componentVat(line.qty, line.serviceFee, rate);
+  for (const col of columns) {
+    if (!col.vatable) continue;
+    const unit = line.extraFees[col.id] ?? 0;
+    if (unit === 0) continue;
+    vat += componentVat(line.qty, unit, rate);
+  }
+  return vat;
+}
+
 export function calcInvoiceTotals(
   lines: DraftLine[],
   columns: ExtraColumn[],

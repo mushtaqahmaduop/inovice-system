@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { formatAed } from "@/lib/money";
 import { formatForeign, formatRateFromE6, isForeignCurrency } from "@/lib/currency";
 import { Segmented } from "@/components/ui/segmented";
@@ -370,11 +371,27 @@ export function InvoiceDoc({
         ) : null}
 
         {/* ── Header: logo block leading, INVOICE title + address trailing ── */}
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
-            {/* Logo placeholder — swaps for the real logo file when provided */}
-            <div className="inline-block bg-[#1a1a1a] px-5 py-3">
-              <p className="text-[16px] leading-tight font-semibold text-white">{companyName}</p>
+            {/* Owner request 2026-07-30: the real mark prints BEFORE the company
+                name. It is a black-on-white JPEG, so it sits in its own bordered
+                white square rather than inside the dark name block, which would
+                have shown as a white patch. Loaded eagerly on purpose — a lazy
+                image can still be unloaded when the print dialog snapshots the
+                page, and .print-doc already sets print-color-adjust: exact so it
+                is not stripped as a "background". */}
+            <div className="flex items-center gap-3">
+              <Image
+                src="/brand/pl-monogram.jpg"
+                alt=""
+                width={112}
+                height={112}
+                priority
+                className="size-14 shrink-0 border border-[#ddd] bg-white object-contain p-0.5"
+              />
+              <div className="inline-block bg-[#1a1a1a] px-5 py-3">
+                <p className="text-[16px] leading-tight font-semibold text-white">{companyName}</p>
+              </div>
             </div>
             {/* Tagline sits under the name block and above the contact lines. */}
             {secTagline ? (
@@ -401,11 +418,15 @@ export function InvoiceDoc({
                 : null}
             </div>
           </div>
-          <div className="shrink-0 text-end">
-            <h1 className="text-[34px] leading-none font-bold tracking-tight uppercase">
+          {/* min-w-0 (not shrink-0): at the preview sheet's width the fixed
+              right column could not give way, so the address ran into the
+              INVOICE title. It may now shrink and wrap; the title itself stays
+              on one line. */}
+          <div className="min-w-0 text-end">
+            <h1 className="text-[30px] leading-none font-bold tracking-tight whitespace-nowrap uppercase">
               {title(L)}
             </h1>
-            <div className="mt-1.5 space-y-0.5 text-[12px] leading-snug">
+            <div className="mt-1.5 space-y-0.5 text-[12px] leading-snug break-words">
               {secAddressLines.map((l, i) => (
                 <p key={i}>{l}</p>
               ))}

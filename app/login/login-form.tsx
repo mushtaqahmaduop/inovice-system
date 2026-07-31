@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +26,39 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
   const [code, setCode] = useState("");
   const [error, setError] = useState(reason ? (REASON_MESSAGES[reason] ?? "") : "");
   const [busy, setBusy] = useState(false);
+  // Reveal the password (owner request 2026-07-30) — typo-proofing at the
+  // counter. Resets to hidden whenever the step changes so a revealed password
+  // is never left on screen behind the MFA challenge.
+  const [showPassword, setShowPassword] = useState(false);
+
+  // "Remember me" (owner request 2026-07-30). It remembers the EMAIL ADDRESS
+  // only — it deliberately does NOT extend the session or keep anyone signed in.
+  //
+  // Why: session lifetime here is cookie-based through @supabase/ssr and is
+  // refreshed by the middleware on every request, so changing it means changing
+  // it in the browser client, the server client and the middleware together —
+  // an auth-critical change that also interacts with the mandatory admin TOTP
+  // and with admin session revocation (§4). A checkbox is not worth that risk,
+  // and a checkbox that silently lengthened a session on a shared counter
+  // machine would be worse than no checkbox at all. The hint under it says
+  // plainly what it does, so nobody is misled into thinking they stay logged in.
+  const [rememberMe, setRememberMe] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("login:email");
+      if (saved) {
+        setEmail(saved);
+        setRememberMe(true);
+      }
+    } catch {
+      // localStorage unavailable (private mode / blocked) — just start empty.
+    }
+  }, []);
 
   useEffect(() => {
     setError((e) => (step === "password" ? e : ""));
     setCode("");
+    setShowPassword(false);
   }, [step]);
 
   async function submitPassword(e: React.FormEvent) {
@@ -40,6 +70,14 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
       setError("Invalid email or password.");
       setBusy(false);
       return;
+    }
+    // Only persist the address once the credentials are known good, so a typo
+    // is never the value that gets remembered.
+    try {
+      if (rememberMe) localStorage.setItem("login:email", email);
+      else localStorage.removeItem("login:email");
+    } catch {
+      // best-effort convenience only
     }
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
@@ -105,46 +143,95 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
 
   if (step === "password") {
     return (
-      <form onSubmit={submitPassword} className="space-y-4">
+      <form
+        onSubmit={submitPassword}
+        aria-busy={busy || undefined}
+        className={`space-y-4 ${busy ? "cursor-wait" : ""}`}
+      >
         {error && <p className="text-sm text-error">{error}</p>}
         <div>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <FieldLabel htmlFor="email">Email address</FieldLabel>
+          <div className="relative">
+            <Mail
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-text-tertiary"
+            />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
         <div>
           <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="relative">
+            <Lock
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-text-tertiary"
+            />
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pr-10 pl-9"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              title={showPassword ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-[8px] text-text-tertiary transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
         </div>
-        <Button type="submit" className="w-full" disabled={busy}>
+        {/* One row, one line each side — the two-line hint under "Remember me"
+            was pushing the Sign in button off a laptop viewport, so it moved
+            into the title attribute where it costs no height. */}
+        <div className="flex items-center justify-between gap-3">
+          <label
+            className="flex cursor-pointer items-center gap-2 text-[13px] leading-[19px] text-foreground"
+            title="Fills in your email next time. It does not keep you signed in."
+          >
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="size-4 shrink-0 accent-[var(--accent)]"
+            />
+            Remember my email
+          </label>
+          <a
+            href="/forgot-password"
+            className="shrink-0 text-[13px] text-primary underline-offset-2 hover:underline"
+          >
+            Forgot password?
+          </a>
+        </div>
+        <Button type="submit" className="w-full" loading={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
-        <a
-          href="/forgot-password"
-          className="block text-center text-xs text-text-tertiary underline-offset-2 hover:underline"
-        >
-          Forgot password?
-        </a>
       </form>
     );
   }
 
   const isRecovery = step === "recovery";
   return (
-    <form onSubmit={isRecovery ? submitRecovery : submitTotp} className="space-y-4">
+    <form
+      onSubmit={isRecovery ? submitRecovery : submitTotp}
+      aria-busy={busy || undefined}
+      className={`space-y-4 ${busy ? "cursor-wait" : ""}`}
+    >
       <p className="text-sm leading-relaxed text-text-secondary">
         {isRecovery
           ? "Enter one of your saved recovery codes. It will be consumed, and you will re-enroll a new authenticator."
@@ -172,7 +259,7 @@ export function LoginForm({ startAtMfa, reason }: { startAtMfa: boolean; reason?
           onChange={(e) => setCode(e.target.value)}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={busy}>
+      <Button type="submit" className="w-full" loading={busy}>
         {busy ? "Verifying…" : isRecovery ? "Use recovery code" : "Verify"}
       </Button>
       <button

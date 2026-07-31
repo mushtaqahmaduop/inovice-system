@@ -40,7 +40,8 @@
     "test:db:currency": "node --env-file=.env.local db/tests/task-currency.test.mjs",
     "test:db:badges": "node --env-file=.env.local db/tests/ui-badges.test.mjs",
     "test:db:draft-delete": "node --env-file=.env.local db/tests/task-draft-delete.test.mjs",
-    "test:db:search": "node --env-file=.env.local db/tests/search.test.mjs"
+    "test:db:search": "node --env-file=.env.local db/tests/search.test.mjs",
+    "audit:db": "node --env-file=.env.local db/tests/audit-readonly.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -292,6 +292,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .update({
       customer_id: d.customerId,
       issue_date: d.issueDate ?? null,
+      due_date: d.dueDate ?? null,
       notes: d.notes ?? null,
       terms: d.terms ?? null,
       display_currency: d.displayCurrency,

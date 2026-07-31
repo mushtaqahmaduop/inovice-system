@@ -95,7 +95,7 @@ function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; v
       className={
         kind === "overdue"
           ? "mono min-w-[18px] rounded-full border border-danger/40 bg-danger-soft px-1.5 text-center text-[11px] leading-[17px] text-danger"
-          : "mono min-w-[18px] rounded-full border border-border-strong bg-neutral-soft px-1.5 text-center text-[11px] leading-[17px] text-text-secondary"
+          : "mono min-w-[18px] rounded-full border border-shell-border bg-shell-hover px-1.5 text-center text-[11px] leading-[17px] text-shell-fg"
       }
       title={
         kind === "overdue" ? `${value} overdue` : `${value} open draft${value === 1 ? "" : "s"}`
@@ -106,10 +106,18 @@ function CountBadge({ kind, value }: { kind: NonNullable<NavItem["countKey"]>; v
   );
 }
 
-// Brand mark — navy badge, gold crown over a "PL" monogram (owner's logo
-// direction, logoo.png). Hand-built placeholder until the final logo asset
-// lands; the navy/gold are intentionally literal brand colors, not design
-// tokens (same exception as the print document and the MFA QR).
+// Navy shell (owner redesign 2026-07-30). The sidebar is a fixed DARK surface in
+// both themes, on its own --shell-* tokens rather than --surface/--bg-sunken,
+// which flip with the theme.
+//
+// STRUCTURE IS UNCHANGED and that is deliberate: the owner's mockup showed only
+// Dashboard / Invoices / New Invoice / Customers / Services, which would have
+// locked admins out of Users, Exports and Settings. Ledger / Records /
+// Administration all stay, along with collapse-to-rail and the live count badges.
+//
+// The active pill is now the ACCENT FILL. §5.5 said "soft-gray, NOT a blue
+// fill" — that was written for a light sidebar and is illegible on navy; §5
+// permits the single accent on active states, and the mockup draws it filled.
 export function Sidebar({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
   const counts = useNavCounts(pathname);
@@ -160,14 +168,14 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
     // 64px icon rail, at md+ it expands to 240px unless collapsed.
     <aside
       data-collapsed={collapsed}
-      className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-bg-sunken print:!hidden ${
+      className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-shell-border bg-shell print:!hidden ${
         collapsed ? "w-16" : "w-16 md:w-60"
       }`}
     >
       <div className="px-2 pt-4 pb-2 md:px-3">
         <div
           className={`flex items-center gap-2 rounded-[12px] ${
-            collapsed ? "" : "md:border md:border-border md:bg-surface md:p-2"
+            collapsed ? "" : "md:border md:border-shell-border md:bg-shell-raised md:p-2"
           }`}
         >
           <Link
@@ -176,10 +184,10 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
           >
             <BrandMark />
             <span className={`min-w-0 flex-1 ${label}`}>
-              <span className="block truncate text-[15px] leading-5 font-semibold tracking-tight text-foreground">
+              <span className="block truncate text-[15px] leading-5 font-semibold tracking-tight text-shell-fg">
                 Prestige Land
               </span>
-              <span className="block truncate text-[13px] leading-4 font-medium text-primary">
+              <span className="block truncate text-[13px] leading-4 font-medium text-[#d9a441]">
                 Typing Center
               </span>
             </span>
@@ -189,14 +197,14 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
             onClick={toggleCollapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`hidden size-7 shrink-0 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:inline-flex ${
+            className={`hidden size-7 shrink-0 items-center justify-center rounded-full text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:inline-flex ${
               collapsed ? "md:hidden" : ""
             }`}
           >
             <ChevronsLeft className="size-4" strokeWidth={1.75} />
           </button>
         </div>
-        <p className={`mt-2 px-1 text-[11px] leading-4 text-text-tertiary ${label}`}>
+        <p className={`mt-2 px-1 text-[11px] leading-4 text-shell-fg-muted ${label}`}>
           Business Services · Government Transactions · Clearance & Follow-up
         </p>
       </div>
@@ -205,7 +213,7 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
         {NAV_SECTIONS.filter((s) => !s.adminOnly || role === "admin").map((section) => (
           <div key={section.label} className="mb-3">
             <p
-              className={`mt-3 px-3 pb-1 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase ${label}`}
+              className={`mt-3 px-3 pb-1 text-[12px] leading-4 font-medium tracking-[0.04em] text-shell-fg-muted uppercase ${label}`}
             >
               {section.label}
             </p>
@@ -219,14 +227,14 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                   return (
                     <span
                       key={item.href}
-                      className={`flex h-[34px] cursor-default items-center gap-2.5 rounded-full px-3 text-[14px] text-text-tertiary ${rowJustify}`}
+                      className={`flex h-[34px] cursor-default items-center gap-2.5 rounded-full px-3 text-[14px] text-shell-fg-muted/70 ${rowJustify}`}
                       aria-disabled="true"
                       title={`${item.label} — arrives with task ${item.task}`}
                     >
                       <NavIcon icon={item.icon} />
                       <span className={`flex-1 ${label}`}>{item.label}</span>
                       <span
-                        className={`mono text-[10px] tracking-[0.08em] text-text-tertiary ${labelInline}`}
+                        className={`mono text-[10px] tracking-[0.08em] text-shell-fg-muted/70 ${labelInline}`}
                       >
                         {item.task}
                       </span>
@@ -243,8 +251,8 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
                       // §5.5: full-width pill, 34px; active = soft-gray pill
                       // (NOT a blue fill), hover = neutral-soft.
                       active
-                        ? `relative flex h-[34px] items-center gap-2.5 rounded-full bg-nav-active px-3 text-[14px] font-[550] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
-                        : `relative flex h-[34px] items-center gap-2.5 rounded-full px-3 text-[14px] font-medium text-text-secondary transition-colors duration-150 outline-none hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
+                        ? `relative flex h-[34px] items-center gap-2.5 rounded-full bg-primary px-3 text-[14px] font-[550] text-on-accent shadow-[0_1px_2px_rgba(0,0,0,0.3)] outline-none focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
+                        : `relative flex h-[34px] items-center gap-2.5 rounded-full px-3 text-[14px] font-medium text-shell-fg-muted transition-colors duration-150 outline-none hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring ${rowJustify}`
                     }
                   >
                     <NavIcon icon={item.icon} />
@@ -277,27 +285,27 @@ export function Sidebar({ role }: { role: "admin" | "staff" }) {
             onClick={toggleCollapsed}
             aria-label="Expand sidebar"
             title="Expand sidebar"
-            className="flex size-9 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="flex size-9 items-center justify-center rounded-full text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <ChevronsRight className="size-4" strokeWidth={1.75} />
           </button>
         </div>
       ) : null}
 
-      <div className="border-t border-border p-2">
+      <div className="border-t border-shell-border p-2">
         <a
           href="https://github.com/mushtaqahmaduop/inovice-system#readme"
           target="_blank"
           rel="noreferrer"
           title="Need help? View documentation"
-          className={`flex h-[34px] items-center gap-2.5 rounded-full px-3 text-text-secondary transition-colors hover:bg-neutral-soft hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${rowJustify}`}
+          className={`flex h-[34px] items-center gap-2.5 rounded-full px-3 text-shell-fg-muted transition-colors hover:bg-shell-hover hover:text-shell-fg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${rowJustify}`}
         >
           <HelpCircle className="size-4 shrink-0" strokeWidth={1.75} />
           <span className={`min-w-0 flex-1 ${label}`}>
-            <span className="block text-[13px] leading-4 font-medium text-foreground">
+            <span className="block text-[13px] leading-4 font-medium text-shell-fg">
               Need help?
             </span>
-            <span className="block truncate text-[12px] leading-4 text-text-tertiary">
+            <span className="block truncate text-[12px] leading-4 text-shell-fg-muted">
               View documentation
             </span>
           </span>

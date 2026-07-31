@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Trash2, FileText, ArrowRight } from "lucide-react";
 import { canDeleteDraft, useDeleteDraft } from "@/components/invoice/use-delete-draft";
 
 export type StripDraft = {
@@ -9,7 +9,21 @@ export type StripDraft = {
   created_at: string;
   customer_name: string;
   created_by: string | null;
+  item_count: number;
 };
+
+// "3h ago" — relative to when the draft was CREATED. Deliberately not labelled
+// "modified": drafts carry no updated_at, and autosave would make an invented
+// modified time wrong in exactly the cases the operator would rely on it.
+function relativeAge(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
+}
 
 // Open-drafts strip on /invoices/new — the resume path for drafts, which have
 // no number and stay out of global search. Client-side only because of the
@@ -47,25 +61,43 @@ export function DraftsStrip({
   if (drafts.length === 0) return null;
 
   return (
-    <div className="mt-12 border-t border-border pt-6">
-      <p className="mb-3 text-[12px] leading-4 font-medium tracking-[0.04em] text-text-tertiary uppercase">
-        Open drafts
-      </p>
-      <div className="divide-y divide-border overflow-hidden rounded-[12px] border border-border bg-surface">
+    <div className="mt-10 rounded-[14px] border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <p className="mb-3 text-[13px] font-semibold text-foreground">Open Drafts</p>
+      <div className="divide-y divide-border overflow-hidden rounded-[12px] border border-border">
         {drafts.map((d) => (
           <div
             key={d.id}
-            className="flex items-center gap-3 pr-2 text-[13px] leading-[19px] transition-colors hover:bg-bg-sunken"
+            className="flex items-center gap-3 pr-2 transition-colors hover:bg-bg-sunken"
           >
             <Link
               href={`/invoices/${d.id}/edit`}
-              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-foreground"
+              className="flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3"
             >
-              <span className="min-w-0 flex-1 truncate">{d.customer_name}</span>
-              <span className="mono text-[13px] text-text-tertiary">
-                {fmtDraftDate(d.created_at)}
+              <span
+                aria-hidden="true"
+                className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-accent-border bg-accent-soft text-primary"
+              >
+                <FileText className="size-[17px]" />
               </span>
-              <span className="text-[13px] text-text-secondary">Resume →</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] leading-[19px] font-[550] text-foreground">
+                  {d.customer_name}
+                </span>
+                <span className="block text-[12px] leading-4 text-text-tertiary">
+                  {d.item_count} {d.item_count === 1 ? "item" : "items"} · draft
+                </span>
+              </span>
+              <span className="hidden shrink-0 text-end sm:block">
+                <span className="mono block text-[12.5px] leading-[18px] text-text-secondary">
+                  {fmtDraftDate(d.created_at)}
+                </span>
+                <span className="block text-[12px] leading-4 text-text-tertiary">
+                  Created {relativeAge(d.created_at)}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1 text-[13px] text-primary">
+                Continue <ArrowRight className="size-3.5" />
+              </span>
             </Link>
             {canDeleteDraft(
               { status: "draft", created_by: d.created_by },
