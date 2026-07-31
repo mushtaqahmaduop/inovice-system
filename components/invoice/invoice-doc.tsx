@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatAed } from "@/lib/money";
+import { calcCustomerLineAmounts, customerLineNet } from "@/lib/invoice-calc";
 import { formatForeign, formatRateFromE6, isForeignCurrency } from "@/lib/currency";
 import { Segmented } from "@/components/ui/segmented";
 
@@ -54,6 +55,13 @@ export type DocLine = {
   govtFee: number; // "Unit Price" column, unit fils
   serviceFee: number;
   extraFees: number[]; // by column index, unit fils
+  /** Third-party delivery attributed to THIS row (D-30a, per line since 0017),
+   *  AED fils. DELIBERATE exception to the unit-fee convention above: this is
+   *  the ROW TOTAL and is never multiplied by qty — a driver's fee is flat for
+   *  the trip. Outside the sealed totals, so only the customer copy adds it.
+   *  Omitted (undefined) on pre-0017 invoices, which carried delivery only at
+   *  invoice level; see `custLineAmounts` for that fallback. */
+  deliveryFee?: number;
 };
 export type DocTotals = {
   subtotalGovt: number;
@@ -251,57 +259,20 @@ export function InvoiceDoc({
   const rateStr = foreign
     ? `1 ${displayCurrency} = ${formatRateFromE6(exchangeRateE6 as number)} AED`
     : "";
-  const lineAmount = (l: DocLine) =>
-    l.qty * (l.govtFee + l.serviceFee + l.extraFees.reduce((s, v) => s + v, 0));
+  const lineAmount = (l: DocLine) => customerLineNet(l);
   // What the customer actually hands over: the sealed supply plus the driver's
   // fee we collected on their behalf (D-30). grand_total stays the centre's
   // supply, and is the only figure the FTA copy is ever shown.
   const customerTotal = totals.grandTotal + Math.max(0, deliveryFee);
-  // Customer-copy per-line amounts: the sealed net blended amount plus the
-  // sealed VAT distributed across the lines (proportional to each line's
-  // VAT-able base, largest-remainder), so the displayed lines sum EXACTLY to
-  // the sealed grand total. This is a DISPLAY layer only (cf. D-27 foreign
-  // currency) — no sealed money is recomputed or altered; hiding the separate
-  // VAT row must not leave a visible gap that would leak the service fee.
-  const custLineAmounts: number[] = (() => {
-    const nets = lines.map(lineAmount);
-    const out = nets.slice();
-    // Spread `amount` across the lines in proportion to `weights`, integer fils,
-    // largest-remainder so the parts sum back to `amount` exactly.
-    const spread = (amount: number, weights: number[]) => {
-      const totalWeight = weights.reduce((s, v) => s + v, 0);
-      if (amount <= 0 || totalWeight <= 0) return null;
-      const raw = weights.map((w) => (amount * w) / totalWeight);
-      const share = raw.map((r) => Math.floor(r));
-      let leftover = amount - share.reduce((s, v) => s + v, 0);
-      const order = raw
-        .map((r, i) => ({ i, frac: r - Math.floor(r) }))
-        .sort((a, b) => b.frac - a.frac);
-      for (let k = 0; k < order.length && leftover > 0; k++, leftover--) share[order[k].i] += 1;
-      return share;
-    };
-    const vat = vatRegistered ? totals.vatAmount : 0;
-    if (vat > 0 && nets.length > 0) {
-      const base = (l: DocLine) =>
-        l.qty *
-        (l.serviceFee + l.extraFees.reduce((s, v, i) => s + (columns[i]?.vatable ? v : 0), 0));
-      const share = spread(vat, lines.map(base));
-      if (share) for (let i = 0; i < out.length; i++) out[i] += share[i];
-    }
-    // Delivery (D-30) rides inside the customer's line amounts, proportional to
-    // each line's net, so it never appears as a nameable row the FTA copy would
-    // have to explain. Weightless edge case (all-zero lines) falls through to
-    // the residual absorber below.
-    if (deliveryFee > 0 && nets.length > 0) {
-      const share = spread(deliveryFee, nets);
-      if (share) for (let i = 0; i < out.length; i++) out[i] += share[i];
-    }
-    // Absorb any residual (e.g. seal rounding) into the last line so the copy
-    // always foots to the exact figure printed as its total.
-    const delta = customerTotal - out.reduce((s, v) => s + v, 0);
-    if (delta !== 0 && out.length > 0) out[out.length - 1] += delta;
-    return out;
-  })();
+  // Customer-copy per-line amounts — see calcCustomerLineAmounts for the rules
+  // (sealed VAT distributed across lines, per-line delivery charged as entered,
+  // residual absorbed so the printed lines foot to the printed total).
+  const custLineAmounts: number[] = calcCustomerLineAmounts(lines, columns, {
+    vatRegistered,
+    vatAmount: totals.vatAmount,
+    grandTotal: totals.grandTotal,
+    deliveryFee,
+  });
   // Arrears: on a partial or unpaid issued invoice, spell out what was paid and
   // what remains. AED fils in, rendered in the display currency.
   //

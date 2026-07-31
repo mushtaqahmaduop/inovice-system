@@ -97,6 +97,90 @@ export function calcInvoiceTotals(
   };
 }
 
+// ── Customer-copy line amounts (D-30) ───────────────────────────────────────
+// The customer copy hides the govt/service split and the VAT row, printing ONE
+// blended amount per line. This derives those amounts. It is a DISPLAY layer
+// only (cf. D-27 foreign currency): no sealed money is recomputed or altered,
+// the parts are just redistributed so the printed lines foot EXACTLY to the
+// printed total — hiding the VAT row must not leave a visible gap that would
+// leak the service fee.
+
+export type CustomerCopyLine = {
+  qty: number;
+  govtFee: number; // UNIT fils
+  serviceFee: number; // UNIT fils
+  extraFees: number[]; // UNIT fils, by column index
+  /** D-30a ROW TOTAL fils, never × qty. Undefined/0 on pre-0017 invoices. */
+  deliveryFee?: number;
+};
+
+/** Spread `amount` across `weights` in integer fils, largest-remainder, so the
+ *  parts sum back to `amount` exactly. Null when there is nothing to spread. */
+function spread(amount: number, weights: number[]): number[] | null {
+  const totalWeight = weights.reduce((s, v) => s + v, 0);
+  if (amount <= 0 || totalWeight <= 0) return null;
+  const raw = weights.map((w) => (amount * w) / totalWeight);
+  const share = raw.map((r) => Math.floor(r));
+  let leftover = amount - share.reduce((s, v) => s + v, 0);
+  const order = raw.map((r, i) => ({ i, frac: r - Math.floor(r) })).sort((a, b) => b.frac - a.frac);
+  for (let k = 0; k < order.length && leftover > 0; k++, leftover--) share[order[k].i] += 1;
+  return share;
+}
+
+/** Net (pre-VAT, pre-delivery) blended amount for one line: the figure the FTA
+ *  copy prints in its Amount column. */
+export function customerLineNet(l: CustomerCopyLine): number {
+  return l.qty * (l.govtFee + l.serviceFee + l.extraFees.reduce((s, v) => s + v, 0));
+}
+
+export function calcCustomerLineAmounts(
+  lines: CustomerCopyLine[],
+  columns: { vatable: boolean }[],
+  opts: { vatRegistered: boolean; vatAmount: number; grandTotal: number; deliveryFee: number }
+): number[] {
+  const nets = lines.map(customerLineNet);
+  const out = nets.slice();
+  const delivery = Math.max(0, opts.deliveryFee);
+
+  // Sealed VAT, distributed proportional to each line's VAT-able base.
+  const vat = opts.vatRegistered ? opts.vatAmount : 0;
+  if (vat > 0 && nets.length > 0) {
+    const base = (l: CustomerCopyLine) =>
+      l.qty *
+      (l.serviceFee + l.extraFees.reduce((s, v, i) => s + (columns[i]?.vatable ? v : 0), 0));
+    const share = spread(vat, lines.map(base));
+    if (share) for (let i = 0; i < out.length; i++) out[i] += share[i];
+  }
+
+  // Delivery (D-30) rides inside the line amounts, so it never appears as a
+  // nameable row the FTA copy would have to explain.
+  //
+  // Since 0017 delivery is entered PER LINE, so each row carries its own figure
+  // and must be charged exactly that: the editor grid shows
+  // qty×(govt+service+extras) + that row's delivery, and the customer copy has
+  // to agree line for line. Pro-rating the invoice-level total by net weight
+  // instead (the pre-0017 rule) silently rewrote every amount — a 53/57 split
+  // across two rows printed as 47.14/62.86: right total, wrong lines (owner
+  // report 2026-07-31).
+  //
+  // Pre-0017 invoices sealed delivery only at invoice level with the line
+  // column at 0. Those are immutable and must keep printing exactly what the
+  // customer was handed, so they still spread proportionally. The per-line
+  // figures are authoritative only when they account for the whole fee.
+  if (delivery > 0 && nets.length > 0) {
+    const perLine = lines.map((l) => Math.max(0, l.deliveryFee ?? 0));
+    const perLineTotal = perLine.reduce((s, v) => s + v, 0);
+    const share = perLineTotal === delivery ? perLine : spread(delivery, nets);
+    if (share) for (let i = 0; i < out.length; i++) out[i] += share[i];
+  }
+
+  // Absorb any residual (e.g. seal rounding) into the last line so the copy
+  // always foots to the exact figure printed as its total.
+  const delta = opts.grandTotal + delivery - out.reduce((s, v) => s + v, 0);
+  if (delta !== 0 && out.length > 0) out[out.length - 1] += delta;
+  return out;
+}
+
 // Roman numeral row indices — an editorial detail from the approved
 // prototype (CLAUDE.md §5).
 const ROMAN: [number, string][] = [
