@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireUserApi, requireAdminApi } from "@/lib/auth/api-guards";
 import { createClient } from "@/lib/supabase/server";
 import { draftInvoiceSchema } from "@/lib/validation/invoice";
-import { insertChildren } from "@/lib/invoices/draft-children";
+import { insertChildren, sumLineDelivery } from "@/lib/invoices/draft-children";
 import { broadcastInvoicesChanged } from "@/lib/realtime";
 
 // Draft invoice mutations (task 4.1b): update_draft replaces the invoice's
@@ -123,12 +123,47 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Replacement = a NEW ordinary draft carrying replaces_invoice_id;
     // financials of the voided original stay frozen (corrections are new
     // documents, CLAUDE.md §3.1). Children are copied as fresh draft rows.
+    //
+    // Children are read BEFORE the shell is inserted so the shell's own
+    // delivery_fee (D-30) can be seeded from the copied lines in one go — it is
+    // editable only while draft, so it must be right from the first write.
+    const [{ data: cols }, { data: lines }] = await Promise.all([
+      supabase
+        .from("invoice_extra_columns")
+        .select("id, label, vatable, position")
+        .eq("invoice_id", id)
+        .order("position"),
+      supabase
+        .from("invoice_lines")
+        .select(
+          "id, position, description, qty, govt_fee, service_fee, delivery_fee, invoice_line_fees(column_id, amount)"
+        )
+        .eq("invoice_id", id)
+        .order("position"),
+    ]);
+    const colIndexById = new Map((cols ?? []).map((c, i) => [c.id, i]));
+    const copiedLines = (lines ?? []).map((l) => ({
+      description: l.description,
+      qty: l.qty,
+      govtFee: l.govt_fee,
+      serviceFee: l.service_fee,
+      deliveryFee: l.delivery_fee ?? 0,
+      extraFees: Object.fromEntries(
+        ((l.invoice_line_fees as { column_id: string; amount: number }[]) ?? [])
+          .filter((f) => colIndexById.has(f.column_id))
+          .map((f) => [String(colIndexById.get(f.column_id)), f.amount])
+      ),
+    }));
+
     const { data: replacement, error: repErr } = await supabase
       .from("invoices")
       .insert({
         customer_id: voidedRow.customer_id,
         notes: voidedRow.notes,
         terms: voidedRow.terms,
+        // The driver's fee travels with the replacement, same as every other
+        // line figure — the original's own delivery_fee stays frozen.
+        delivery_fee: sumLineDelivery(copiedLines),
         replaces_invoice_id: id,
         created_by: admin.ctx.userId,
       })
@@ -141,34 +176,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       );
     }
 
-    const [{ data: cols }, { data: lines }] = await Promise.all([
-      supabase
-        .from("invoice_extra_columns")
-        .select("id, label, vatable, position")
-        .eq("invoice_id", id)
-        .order("position"),
-      supabase
-        .from("invoice_lines")
-        .select(
-          "id, position, description, qty, govt_fee, service_fee, invoice_line_fees(column_id, amount)"
-        )
-        .eq("invoice_id", id)
-        .order("position"),
-    ]);
-    const colIndexById = new Map((cols ?? []).map((c, i) => [c.id, i]));
     const childErr = await insertChildren(supabase, replacement.id, {
       columns: (cols ?? []).map((c) => ({ label: c.label, vatable: c.vatable })),
-      lines: (lines ?? []).map((l) => ({
-        description: l.description,
-        qty: l.qty,
-        govtFee: l.govt_fee,
-        serviceFee: l.service_fee,
-        extraFees: Object.fromEntries(
-          ((l.invoice_line_fees as { column_id: string; amount: number }[]) ?? [])
-            .filter((f) => colIndexById.has(f.column_id))
-            .map((f) => [String(colIndexById.get(f.column_id)), f.amount])
-        ),
-      })),
+      lines: copiedLines,
     });
     if (childErr) {
       await supabase.from("invoices").delete().eq("id", replacement.id);
@@ -286,7 +296,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       terms: d.terms ?? null,
       display_currency: d.displayCurrency,
       exchange_rate_e6: d.displayCurrency === "AED" ? null : (d.exchangeRateE6 ?? null),
-      delivery_fee: d.deliveryFee,
+      // D-30 — derived from the lines' delivery cells, never sent by the client.
+      delivery_fee: sumLineDelivery(d.lines),
     })
     .eq("id", id);
   if (updErr) {

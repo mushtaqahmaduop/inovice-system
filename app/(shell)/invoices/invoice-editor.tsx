@@ -71,18 +71,22 @@ export type ExistingDraft = {
   terms: string | null;
   displayCurrency: string | null;
   exchangeRateE6: number | null;
-  deliveryFee: number | null;
   columns: { label: string; vatable: boolean }[];
   lines: {
     description: string;
     qty: number;
     govtFee: number;
     serviceFee: number;
+    /** D-30 delivery for this row (a row total, never per-unit) */
+    deliveryFee: number;
     extraFees: Record<string, number>; // keyed by column INDEX as string
   }[];
 };
 
-type CellKey = "govt" | "service" | string;
+// "delivery" is a first-class cell alongside govt/service, not an extra column:
+// it is excluded from the sealed totals and never printed on the FTA copy (D-30),
+// which no user-defined extra column can express.
+type CellKey = "govt" | "service" | "delivery" | string;
 type EditorLine = { key: number; description: string; qty: string; fees: Record<CellKey, string> };
 
 let nextKey = 1;
@@ -149,6 +153,7 @@ export function InvoiceEditor({
           fees: {
             govt: filsToInput(l.govtFee),
             service: filsToInput(l.serviceFee),
+            delivery: filsToInput(l.deliveryFee),
             ...Object.fromEntries(
               Object.entries(l.extraFees).map(([idx, v]) => [`col-${idx}`, filsToInput(v)])
             ),
@@ -172,15 +177,6 @@ export function InvoiceEditor({
   const isForeign = isForeignCurrency(displayCurrency);
   const rateE6 = isForeign ? parseRateToE6(rateInput) : null;
   const rateInvalid = isForeign && rateInput.trim() !== "" && rateE6 === null;
-  // Delivery charge collected for a third-party driver (D-30). Never enters the
-  // sealed totals — issue_invoice() computes grand_total without it — so the
-  // FTA copy can print the supply alone while the customer copy, the payments
-  // panel and the ledger all work from grand_total + delivery.
-  const [deliveryInput, setDeliveryInput] = useState(
-    existing?.deliveryFee ? filsToInput(existing.deliveryFee) : ""
-  );
-  const deliveryFils = deliveryInput.trim() === "" ? 0 : (aedToFils(deliveryInput) ?? 0);
-  const deliveryInvalid = deliveryInput.trim() !== "" && aedToFils(deliveryInput) === null;
   // Prefill today's date so the picker shows a concrete day (existing drafts
   // keep their saved date; a blank one still falls back to today). The user
   // can change it; the server re-defaults to the issue day only if cleared.
@@ -241,8 +237,18 @@ export function InvoiceEditor({
     return calcInvoiceTotals(draftLines, columns, { vatRegistered, vatRateBp });
   }, [lines, columns, vatRegistered, vatRateBp]);
 
+  // Delivery collected for a third-party driver (D-30), now a COLUMN in the grid
+  // (client request 2026-07-30). The invoice's figure is simply the sum of the
+  // cells — NOT multiplied by qty, unlike every other fee cell: a driver's fee is
+  // flat for the trip. It never enters calcInvoiceTotals (nor issue_invoice()),
+  // so totals.grandTotal stays the centre's supply and the only figure the FTA
+  // copy prints, while the customer copy, payments panel and ledger all work
+  // from grand_total + delivery.
+  const deliveryFils = useMemo(
+    () => lines.reduce((s, l) => s + cellFils(l, "delivery"), 0),
+    [lines]
+  );
   // What the customer hands over = the sealed supply + the driver's fee (D-30).
-  // totals.grandTotal remains the figure the FTA copy prints.
   const customerTotal = totals.grandTotal + deliveryFils;
 
   const custMatches = useMemo(() => {
@@ -373,13 +379,15 @@ export function InvoiceEditor({
       displayCurrency,
       // AED carries no rate; a foreign draft may still be rate-less mid-edit.
       exchangeRateE6: displayCurrency === "AED" ? null : rateE6,
-      deliveryFee: deliveryFils,
       columns: columns.map((c) => ({ label: c.label, vatable: c.vatable })),
       lines: lines.map((l) => ({
         description: l.description.trim(),
         qty: Math.max(1, Math.floor(Number(l.qty) || 1)),
         govtFee: cellFils(l, "govt"),
         serviceFee: cellFils(l, "service"),
+        // Row total, not a unit fee — the server sums these into
+        // invoices.delivery_fee and never trusts a client-side total.
+        deliveryFee: cellFils(l, "delivery"),
         extraFees: Object.fromEntries(
           columns
             .map((c, idx) => [String(idx), cellFils(l, c.id)] as const)
@@ -392,7 +400,9 @@ export function InvoiceEditor({
   function validateForSave(): string | null {
     if (!customer) return "Pick a customer first — every invoice has one.";
     const invalid = lines.some((l) =>
-      (["govt", "service", ...columns.map((c) => c.id)] as CellKey[]).some((c) => cellInvalid(l, c))
+      (["govt", "service", "delivery", ...columns.map((c) => c.id)] as CellKey[]).some((c) =>
+        cellInvalid(l, c)
+      )
     );
     if (invalid) return "Fix the highlighted amounts (AED, max 2 decimals).";
     return null;
@@ -580,17 +590,21 @@ export function InvoiceEditor({
     setConfirming(false);
   }
 
+  // What this row costs the customer. Delivery is added FLAT (not × qty) and is
+  // the one part of this figure the FTA copy never shows — the Summary spells
+  // that out with its own "Invoice total on the FTA copy" line.
   const lineTotal = (l: EditorLine) => {
     const qty = Math.max(1, Math.floor(Number(l.qty) || 1));
     return (
       qty *
-      (cellFils(l, "govt") +
-        cellFils(l, "service") +
-        columns.reduce((s, c) => s + cellFils(l, c.id), 0))
+        (cellFils(l, "govt") +
+          cellFils(l, "service") +
+          columns.reduce((s, c) => s + cellFils(l, c.id), 0)) +
+      cellFils(l, "delivery")
     );
   };
 
-  const lastFeeCol: CellKey = columns.length > 0 ? columns[columns.length - 1].id : "service";
+  const lastFeeCol: CellKey = columns.length > 0 ? columns[columns.length - 1].id : "delivery";
 
   const feeCell = (l: EditorLine, col: CellKey, label: string, isLastLine: boolean) => (
     <td key={col} className="px-1 py-1">
@@ -826,6 +840,9 @@ export function InvoiceEditor({
                     label="Service fee"
                     vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
                   />
+                  {/* Built in, and not removable: delivery is the one column the
+                      FTA copy must never show (D-30). */}
+                  <FeeColumnChip label="Delivery" vat="not taxed · customer copy only" />
                   {columns.map((c) => (
                     <FeeColumnChip
                       key={c.id}
@@ -884,6 +901,14 @@ export function InvoiceEditor({
                 <th className={`w-28 px-2 py-2.5 text-center ${captionClass}`}>Qty</th>
                 <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Govt fee</th>
                 <th className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>Service fee</th>
+                {/* Delivery sits beside the service fee (client, 2026-07-30).
+                    Flat per row, not taxed, never on the FTA copy — D-30. */}
+                <th
+                  className={`w-28 px-2 py-2.5 text-right ${captionClass}`}
+                  title="Driver's fee collected with this bill. Flat per row (not multiplied by quantity), never shown on the FTA copy."
+                >
+                  Delivery
+                </th>
                 {columns.map((c) => (
                   <th key={c.id} className={`w-28 px-2 py-2.5 text-right ${captionClass}`}>
                     {c.label}
@@ -946,6 +971,7 @@ export function InvoiceEditor({
                     </td>
                     {feeCell(l, "govt", "Govt fee", isLastLine)}
                     {feeCell(l, "service", "Service fee", isLastLine)}
+                    {feeCell(l, "delivery", "Delivery", isLastLine)}
                     {columns.map((c) => feeCell(l, c.id, c.label, isLastLine))}
                     <td className="mono px-3 py-1 text-right text-[13px] font-medium text-foreground">
                       {formatAed(lineTotal(l))}
@@ -969,6 +995,14 @@ export function InvoiceEditor({
             </tbody>
           </table>
         </div>
+        {/* Only worth saying once the column is actually in use. */}
+        {deliveryFils > 0 ? (
+          <FieldHint>
+            Delivery totals AED {formatAed(deliveryFils)} — charged flat per row (quantity does not
+            multiply it), added to the customer&rsquo;s total and balance, and never shown on the
+            FTA copy.
+          </FieldHint>
+        ) : null}
         <div className="relative mt-3 flex gap-2">
           <Button variant="outline" size="sm" onClick={() => addLine()}>
             <Plus /> Add line
@@ -1069,29 +1103,8 @@ export function InvoiceEditor({
                 </div>
               ) : null}
             </div>
-            {/* Delivery collected for a third-party driver (D-30). Charged to
-                the customer, kept out of the sealed supply — so it shows on the
-                customer copy and every balance, and never on the FTA copy. */}
-            <div>
-              <FieldLabel htmlFor="inv-delivery">Delivery charge (optional)</FieldLabel>
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] text-text-tertiary">AED</span>
-                <Input
-                  id="inv-delivery"
-                  value={deliveryInput}
-                  onChange={(e) => setDeliveryInput(e.target.value)}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  aria-invalid={deliveryInvalid}
-                  className="mono w-40 text-right text-[13px]"
-                />
-              </div>
-              <FieldHint>
-                {deliveryInvalid
-                  ? "Enter an amount in AED with at most 2 decimals."
-                  : "Driver's fee collected with this bill. Added to the customer's total and their balance; never shown on the FTA copy."}
-              </FieldHint>
-            </div>
+            {/* Delivery used to live here as one invoice-level field; since
+                2026-07-30 it is the Delivery column in the items grid above. */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <div className="flex items-baseline justify-between">
