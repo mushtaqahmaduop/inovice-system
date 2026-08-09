@@ -21,16 +21,24 @@ are recreatable; the ledger is not.
 1. PostgreSQL 17 client/server binaries — no install needed, unzip is
    enough: <https://github.com/theseus-rs/postgresql-binaries/releases>
    (pick `17.x` / `x86_64-pc-windows-msvc`), or any PostgreSQL 17 install.
-2. Set `PG_BIN` to the unzipped `bin` directory when running the scripts
-   (or have the tools on PATH for `backup.mjs`).
+   Match the server: Supabase runs **17.6**, and `pg_dump` must never be
+   older than the server it dumps.
+2. Set `PG_BIN` to the unzipped `bin` directory. Put it in `.env.local` —
+   it is machine-local, gitignored, and both scripts already load that
+   file, so nothing has to be exported per shell.
 3. `.env.local` with `DATABASE_URL_MIGRATIONS` (session pooler `:5432` —
    pg_dump cannot use the transaction pooler `:6543`).
+
+**This laptop (Mushtaq's), done 2026-08-10:** binaries unzipped to
+`C:\pgsql\17\postgresql-17.6.0-x86_64-pc-windows-msvc\bin`, and
+`PG_BIN=C:/pgsql/17/postgresql-17.6.0-x86_64-pc-windows-msvc/bin` is in
+`.env.local` (forward slashes — a `\p`/`\b` in a dotenv value is a trap).
+Nothing further is needed; the commands below run as written.
 
 ## Monthly ritual (operator: Mushtaq — 1st of each month)
 
 ```powershell
 cd C:\Inovice-system
-$env:PG_BIN = "<path>\postgresql-17.6.0-x86_64-pc-windows-msvc\bin"
 node --env-file=.env.local scripts/backup.mjs
 ```
 
@@ -48,19 +56,25 @@ node --env-file=.env.local scripts/backup.mjs
 
 ```powershell
 cd C:\Inovice-system
-$env:PG_BIN = "<path>\postgresql-17.6.0-x86_64-pc-windows-msvc\bin"
 node --env-file=.env.local scripts/restore-drill.mjs backups\invoice-ledger-YYYY-MM-DD.dump
 ```
 
 The drill needs no Supabase project and no admin rights: it boots a
 throwaway local PostgreSQL (initdb into a temp dir), restores the dump,
-and verifies **every sealed invoice**:
+and verifies:
 
+- **reference data** — all nine ledger tables exist and every row count
+  equals live (this is the "the dump is not empty" guard; it has to be a
+  row-count check rather than "are there invoices?", because a shop that
+  went live this morning legitimately has none yet);
 - sealed subtotals + VAT recompute exactly from the restored lines
   (`sum(qty × unit fee)` in integer fils);
 - totals, line counts and payment sums equal the live database
   row-for-row;
 - the append-only `invoice_events` log is fully present.
+
+With an empty ledger the three sealed-invoice checks are vacuous and the
+drill says so in its output rather than quietly counting them as proof.
 
 Exit code 0 + `0 failed` = the done-criterion ("a restored invoice matches
 its sealed totals") holds for the whole ledger. The scratch server is
@@ -86,7 +100,8 @@ hours or accept payment-sum drift as the only legitimate difference.
 ## Recovery (the day it's actually needed)
 
 1. Create a fresh Supabase project (or any PostgreSQL 15+).
-2. Run repo migrations 0001–0010 (`pnpm db:migrate`) so triggers, RLS and
+2. Run every repo migration (`pnpm db:migrate`, currently 0001–0018) so
+   triggers, RLS and
    functions exist, then `pg_restore --data-only --disable-triggers` the
    dump — or for a bare "read the ledger for the FTA" scenario, restore
    the dump as in the drill and query directly.

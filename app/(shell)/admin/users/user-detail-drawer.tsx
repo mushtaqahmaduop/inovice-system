@@ -320,8 +320,8 @@ export function UserDetailDrawer({
                       placeholder="At least 10 characters"
                     />
                     <p className="mt-1.5 text-[12px] leading-[17px] text-text-secondary">
-                      Signs every device out and requires them to set their own password next
-                      time. Hand this one over in person.
+                      Signs every device out and requires them to set their own password next time.
+                      Hand this one over in person.
                     </p>
                     <div className="mt-2.5 flex justify-end gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setShowReset(false)}>
@@ -430,9 +430,9 @@ export function UserDetailDrawer({
                       </Button>
                     )}
                     <p className="text-[12px] leading-[17px] text-text-secondary">
-                      Archiving disables the account and hides it from this list. The record
-                      itself stays, because sealed invoices name the person who issued them and
-                      that has to keep resolving for five years.
+                      Archiving disables the account and hides it from this list. The record itself
+                      stays, because sealed invoices name the person who issued them and that has to
+                      keep resolving for five years.
                     </p>
                   </div>
                 </>

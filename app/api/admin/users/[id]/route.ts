@@ -61,10 +61,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Deactivating, archiving or demoting yourself would orphan the shop
     // with no reachable admin; forcing your own password change just locks
     // you into the reset form.
-    return NextResponse.json(
-      { error: "You cannot do that to your own account." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "You cannot do that to your own account." }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -119,10 +116,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   if (Object.keys(patch).length > 0) {
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update(patch)
-      .eq("id", targetId);
+    const { error: updateError } = await supabase.from("profiles").update(patch).eq("id", targetId);
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
@@ -131,10 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // A password the admin typed is a temporary one by definition. Force the
     // change and clear the old devices so the interim password cannot be
     // left in service on a session that never saw it.
-    await supabase
-      .from("profiles")
-      .update({ must_change_password: true })
-      .eq("id", targetId);
+    await supabase.from("profiles").update({ must_change_password: true }).eq("id", targetId);
   }
 
   // Anything that revokes authority takes the existing sessions with it —
