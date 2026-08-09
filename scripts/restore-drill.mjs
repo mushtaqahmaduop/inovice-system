@@ -8,6 +8,10 @@
 //      lines (sum of qty × unit fee) match the sealed columns;
 //   2. source equality — sealed totals, line counts/sums and payment sums
 //      in the restored copy equal the live database row-for-row.
+// Before those, it checks the reference data — every ledger table present,
+// every row count equal to live. That is the "the dump is not empty" proof,
+// and it has to be, because a ledger with no sealed invoices yet (a fresh
+// go-live) is a legitimate state that must still drill green.
 // Done-criterion (BUILD_PHASES 7.6): a restored invoice matches its sealed
 // totals.
 //
@@ -181,7 +185,60 @@ try {
       await new Promise((res) => setTimeout(res, 5000));
     }
   }
-  ok(restored.length > 0, `restored copy contains sealed invoices (${restored.length})`);
+  /* ── reference data ─────────────────────────────────────────────────── */
+  // Asking "did any sealed invoice come back?" was the emptiness guard until
+  // the go-live wipe made an empty ledger correct. The guard belongs here
+  // instead: every ledger table has to exist and hold exactly what live
+  // holds — which on day one is 0 invoices but 60-odd customers, so a dump
+  // that restored nothing still cannot pass.
+  const LEDGER_TABLES = [
+    "customers",
+    "services",
+    "settings",
+    "profiles",
+    "payment_methods",
+    "invoices",
+    "invoice_lines",
+    "payments",
+    "invoice_events",
+  ];
+  const present = await drill`
+    select table_name from information_schema.tables
+     where table_schema = 'public' and table_name = any(${LEDGER_TABLES})`;
+  const missing = LEDGER_TABLES.filter((t) => !present.some((p) => p.table_name === t));
+  ok(
+    missing.length === 0,
+    `restored copy has every ledger table (${present.length}/${LEDGER_TABLES.length})` +
+      (missing.length ? ` — missing: ${missing.join(", ")}` : "")
+  );
+
+  const countTables = async (sql) => {
+    const out = {};
+    for (const t of LEDGER_TABLES) {
+      const [{ n }] = await sql`select count(*)::int as n from ${sql(t)}`;
+      out[t] = n;
+    }
+    return out;
+  };
+  if (missing.length === 0) {
+    const drillCounts = await countTables(drill);
+    const liveCounts = await countTables(live);
+    const off = LEDGER_TABLES.filter((t) => drillCounts[t] !== liveCounts[t]);
+    for (const t of off)
+      console.error(`    row count: ${t} restored ${drillCounts[t]} vs live ${liveCounts[t]}`);
+    ok(
+      off.length === 0,
+      `every ledger table restored row-for-row (${LEDGER_TABLES.map((t) => `${t} ${drillCounts[t]}`).join(", ")})`
+    );
+  }
+
+  if (source.length === 0) {
+    console.log(
+      "  · live ledger holds no sealed invoices yet — the sealed-invoice checks below are vacuous by definition; the row-for-row check above is what proves this dump."
+    );
+  } else {
+    ok(restored.length > 0, `restored copy contains sealed invoices (${restored.length})`);
+  }
   ok(
     restored.length === source.length,
     `sealed invoice count matches live (${restored.length} = ${source.length})`
