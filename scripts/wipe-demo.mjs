@@ -4,6 +4,12 @@
 // the business set up: settings (company details), services, payment methods,
 // user accounts and their MFA.
 //
+// --keep-customers spares the customer book as well. That is the go-live case
+// the owner actually wants: the practice invoices are throwaway, but the
+// customers typed in while testing are real people who will be invoiced for
+// real tomorrow. Safe to keep, because the FK runs invoices → customers, not
+// the other way round: clearing invoices never touches a customer row.
+//
 // Why a script and not a screen button: issued invoices are immutable by law
 // (CLAUDE.md §3.1) — the app and RLS have NO delete path for them, and DB
 // triggers block UPDATE/DELETE. TRUNCATE is the one sanctioned way to clear
@@ -12,6 +18,7 @@
 // Usage (from C:\Inovice-system):
 //   node --env-file=.env.local scripts/wipe-demo.mjs            # DRY RUN — shows counts, changes nothing
 //   node --env-file=.env.local scripts/wipe-demo.mjs --confirm  # actually wipes (writes a JSON backup first)
+//   node --env-file=.env.local scripts/wipe-demo.mjs --confirm --keep-customers
 //   pnpm db:wipe-demo            (dry run)
 //   pnpm db:wipe-demo -- --confirm
 //
@@ -28,6 +35,7 @@ if (!dbUrl) {
   process.exit(1);
 }
 const confirm = process.argv.includes("--confirm");
+const keepCustomers = process.argv.includes("--keep-customers");
 
 // Order matters only for the backup read; TRUNCATE ... CASCADE handles FKs.
 const CLEAR = [
@@ -37,10 +45,17 @@ const CLEAR = [
   "invoice_extra_columns",
   "invoice_events",
   "invoices",
-  "customers",
+  ...(keepCustomers ? [] : ["customers"]),
   "invoice_counters",
 ];
-const KEEP = ["settings", "services", "payment_methods", "profiles", "mfa_recovery_codes"];
+const KEEP = [
+  "settings",
+  "services",
+  "payment_methods",
+  "profiles",
+  "mfa_recovery_codes",
+  ...(keepCustomers ? ["customers"] : []),
+];
 
 const sql = postgres(dbUrl, { prepare: false, max: 1 });
 
