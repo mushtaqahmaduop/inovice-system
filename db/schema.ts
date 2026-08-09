@@ -41,6 +41,13 @@ export const profiles = pgTable(
     fullName: text("full_name").notNull(),
     role: text("role").notNull(),
     isActive: boolean("is_active").notNull().default(true),
+    // Address-book number, NOT auth.users.phone (that one is an SMS-login
+    // identity — see 0018). Nullable: staff predate the field.
+    phone: text("phone"),
+    // Admin-set, user-cleared at /update-password; enforced in middleware.
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
+    // Archive, not delete — invoice_events.actor_id must keep resolving.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [check("profiles_role_check", sql`${t.role} in ('admin','staff')`)]

@@ -12,7 +12,7 @@ type Step = "password" | "totp" | "done";
 // aal2 for auth.updateUser on those accounts even inside a valid recovery
 // session, so a second-factor challenge is threaded in here before the
 // password write is retried. Staff accounts (no MFA) go straight to "done".
-export function UpdatePasswordForm() {
+export function UpdatePasswordForm({ required = false }: { required?: boolean }) {
   const supabase = createClient();
   const [step, setStep] = useState<Step>("password");
   const [password, setPassword] = useState("");
@@ -24,6 +24,11 @@ export function UpdatePasswordForm() {
   async function applyPassword() {
     const { error } = await supabase.auth.updateUser({ password });
     if (!error) {
+      // An admin-forced reset holds this account on this page until the flag
+      // clears (lib/supabase/middleware.ts). Failing here is not fatal — the
+      // password did change; they would just be asked again — so the step
+      // advances regardless.
+      await fetch("/api/account/password-changed", { method: "POST" }).catch(() => {});
       setStep("done");
       return;
     }
@@ -145,6 +150,20 @@ export function UpdatePasswordForm() {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Updating…" : "Update password"}
       </Button>
+      {required ? (
+        // Without this the forced-reset screen is a room with no door: the
+        // shell (and its sign-out menu) is unreachable while the flag is set.
+        <button
+          type="button"
+          className="w-full cursor-pointer text-center text-[13px] text-text-secondary underline-offset-2 hover:underline"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            window.location.assign("/login");
+          }}
+        >
+          Sign out instead
+        </button>
+      ) : null}
     </form>
   );
 }
