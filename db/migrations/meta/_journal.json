@@ -127,6 +127,13 @@
       "when": 1785408968290,
       "tag": "0017_line_delivery_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786308067313,
+      "tag": "0018_profiles_admin_fields",
+      "breakpoints": true
     }
   ]
 }

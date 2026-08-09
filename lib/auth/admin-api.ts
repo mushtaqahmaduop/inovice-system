@@ -40,6 +40,15 @@ export function createAuthUser(email: string, password: string): Promise<{ id: s
   return gotrueAdmin("POST", "/users", { email, password, email_confirm: true });
 }
 
+// Admin-set password. There is still no email infrastructure (Resend is
+// blocked on Q-11–17), so a forgotten password is handled the way this shop
+// already handles a new account: the owner sets one and hands it over in
+// person. Pair it with require_password_change so the temporary one cannot
+// stay in use.
+export function setAuthUserPassword(userId: string, password: string): Promise<unknown> {
+  return gotrueAdmin("PUT", `/users/${userId}`, { password });
+}
+
 // Global sign-out: kills every session for the user. This project's GoTrue
 // version exposes NO admin revocation endpoint (POST /admin/users/:id/logout
 // and DELETE …/sessions both 404), so we revoke at the source of truth:

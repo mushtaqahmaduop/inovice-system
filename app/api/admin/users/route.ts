@@ -13,6 +13,11 @@ const bodySchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(10).max(200),
   role: z.enum(["admin", "staff"]),
+  phone: z.string().trim().max(40).optional(),
+  // The initial password is handed over in person, so it is temporary by
+  // construction; defaulting this on means it cannot quietly become the
+  // account's permanent one.
+  requirePasswordChange: z.boolean().optional().default(true),
 });
 
 // POST — create a staff/admin account (admin + aal2 only).
@@ -27,7 +32,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { fullName, email, password, role } = parsed.data;
+  const { fullName, email, password, role, phone, requirePasswordChange } = parsed.data;
 
   let userId: string;
   try {
@@ -41,9 +46,14 @@ export async function POST(request: Request) {
 
   // Profile via the ADMIN'S OWN client — RLS profiles_insert_admin authorizes.
   const supabase = await createClient();
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .insert({ id: userId, full_name: fullName, role, is_active: true });
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: userId,
+    full_name: fullName,
+    role,
+    is_active: true,
+    phone: phone?.trim() ? phone.trim() : null,
+    must_change_password: requirePasswordChange,
+  });
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }

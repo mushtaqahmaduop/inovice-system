@@ -15,6 +15,9 @@ import { NextResponse, type NextRequest } from "next/server";
 //   the reset form — the form itself demands the TOTP step before it will
 //   actually write the new password (see update-password-form.tsx).
 // - role=staff                  → /admin/* is never reachable.
+// - must_change_password        → nothing but /update-password is reachable,
+//   for staff and admins alike, until they set their own password. Checked
+//   after the MFA gates so an admin still enrolls/challenges first.
 // Admin-only surface = everything under /admin.
 
 const PUBLIC_PATHS = ["/login", "/forgot-password", "/auth/callback"];
@@ -75,7 +78,7 @@ export async function updateSession(request: NextRequest) {
   // deactivated user reads their own profile as "not found".)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, must_change_password")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -105,6 +108,16 @@ export async function updateSession(request: NextRequest) {
   } else if (path === "/admin" || path.startsWith("/admin/")) {
     // Staff never reach admin routes — server-side, not just hidden nav.
     return redirect("/dashboard");
+  }
+
+  // An admin set this account's password by hand, so it is a temporary one:
+  // nothing but the reset form is reachable until the user replaces it. The
+  // check sits AFTER the MFA gates on purpose — an admin still enrolls and
+  // passes TOTP first, so the password is never changed from a session that
+  // only cleared one factor. /update-password clears the flag itself once the
+  // write succeeds.
+  if (profile.must_change_password && path !== "/update-password") {
+    return redirect("/update-password?required=1");
   }
 
   if (isPublic) {
