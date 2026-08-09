@@ -528,8 +528,9 @@ export function UsersManager({ rows, selfId }: { rows: UserRow[]; selfId: string
           {visible.length > 0 ? (
             <div className="flex flex-wrap items-center gap-4 border-t border-border px-5 py-3">
               <p className="text-[13px] text-text-secondary">
-                Showing {current * PAGE_SIZE + 1}–{Math.min(visible.length, (current + 1) * PAGE_SIZE)}{" "}
-                of {visible.length} user{visible.length === 1 ? "" : "s"}
+                Showing {current * PAGE_SIZE + 1}–
+                {Math.min(visible.length, (current + 1) * PAGE_SIZE)} of {visible.length} user
+                {visible.length === 1 ? "" : "s"}
               </p>
               {pageCount > 1 ? (
                 <div className="ml-auto flex items-center gap-1.5">
