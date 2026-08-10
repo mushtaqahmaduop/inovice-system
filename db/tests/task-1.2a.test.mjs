@@ -11,16 +11,13 @@
 
 import postgres from "postgres";
 
-const STAGING_REF = "kxtbxgcvwxvlsoygjvvi";
+import { assertNotProduction } from "../guard.mjs";
 const url = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL_MIGRATIONS not set — run via: pnpm test:db:1.2a");
   process.exit(1);
 }
-if (!url.includes(STAGING_REF)) {
-  console.error("Refusing to run: connection string is not the staging project.");
-  process.exit(1);
-}
+assertNotProduction("task-1.2a");
 
 // DNS on *.pooler.supabase.com is flaky on this machine — retry ENOTFOUND.
 async function connectWithRetry() {

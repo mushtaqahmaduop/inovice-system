@@ -8,15 +8,12 @@
 import { spawn } from "node:child_process";
 import postgres from "postgres";
 
-const STAGING_REF = "kxtbxgcvwxvlsoygjvvi";
+import { assertNotProduction } from "../guard.mjs";
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const dbUrl = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
-if (!dbUrl?.includes(STAGING_REF) || !SUPA_URL?.includes(STAGING_REF)) {
-  console.error("Refusing to run: not the staging project.");
-  process.exit(1);
-}
+assertNotProduction("task-7.1");
 const APP = "http://127.0.0.1:3126";
 const PASSWORD = "Dash-Test-Only-2026!";
 const sql = postgres(dbUrl, { max: 2, onnotice: () => {} });

@@ -21,6 +21,11 @@
 
 import postgres from "postgres";
 import { randomBytes } from "node:crypto";
+import { assertNotProduction } from "./guard.mjs";
+
+// Writes fixture data (settings row, admin user, catalogue, optional demo
+// customers). Never against the client's live ledger — audit F-3.
+assertNotProduction("db:seed");
 
 const url = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
 const AUTH_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`;
