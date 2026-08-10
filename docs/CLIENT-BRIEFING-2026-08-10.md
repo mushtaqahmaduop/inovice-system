@@ -147,11 +147,24 @@ Your retention is a **monthly export** of the complete ledger to storage that
 works. The scripts and the written procedure for this are built and tested
 already.
 
-**What we need from you: where do those monthly files go?** Options — the
-business's Google Drive or Microsoft account, a USB drive kept in the office
-safe, or both. Until you choose, the only copies sit on our laptop, which is not
-good enough for a legal retention obligation. **This is the single most
-important answer we need from you today.**
+**Since you have chosen to stay on the free plan for now, we have already put a
+safety net in place at no cost.** Every night at 2am the entire ledger is
+copied out automatically, encrypted, and stored in a private location outside
+this office. We tested it by restoring a copy and checking every invoice's
+totals recomputed correctly — it works, and your first real invoices are
+already protected by it.
+
+Two honest limits you should know about:
+
+- It runs **nightly**, so in the worst case a failure could cost that day's
+  invoices. The paid plan's continuous backups are what remove that gap.
+- The copies currently sit in **our** account, not yours.
+
+**So we still need one answer: where should your own copy live?** The business's
+Google Drive or Microsoft account, a USB drive kept in the office safe, or both.
+Once you tell us, we point the same automatic process at your storage and the
+records are genuinely in your hands. **This remains the most important answer
+we need from you.**
 
 ---
 
