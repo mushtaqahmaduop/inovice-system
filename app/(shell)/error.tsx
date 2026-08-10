@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 
 // Route error boundary for every shell page (task 7.2). Renders INSIDE the
@@ -15,7 +16,10 @@ export default function ShellError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Server log only until Sentry lands (7.2's blocked half).
+    // Reported to Sentry (task 7.2 complete) AND logged, because the console
+    // line is what the operator has locally and in `vercel logs`. Sentry is a
+    // no-op until a DSN is configured, so the log is never the only record.
+    Sentry.captureException(error);
     console.error(error);
   }, [error]);
 
