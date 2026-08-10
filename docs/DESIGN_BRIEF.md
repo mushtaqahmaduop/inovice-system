@@ -4,7 +4,8 @@
 > prompts, or import wholesale. The current build is functional but visually
 > flat — this brief defines what a **professional** pass looks like WITHOUT
 > breaking the locked design rules below. Every screen listed exists and works
-> at https://inovice-system.vercel.app — redesigns must map 1:1 onto them.
+> at https://inovice-system-lyart.vercel.app — redesigns must map 1:1 onto them.
+> (URL corrected 2026-08-10; the old one 404s.)
 
 ---
 

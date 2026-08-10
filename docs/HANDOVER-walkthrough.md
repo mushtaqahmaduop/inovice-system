@@ -1,9 +1,17 @@
 # Handover — admin walkthrough notes (task 7.5, draft)
 
-**App:** https://inovice-system.vercel.app (no custom domain — client's decision, Q-16)
+**App:** https://inovice-system-lyart.vercel.app
+> ⚠ **Corrected 2026-08-10.** This document previously gave
+> `inovice-system.vercel.app`, which returns 404 `DEPLOYMENT_NOT_FOUND` — that
+> host does not exist. The address above is the live one, and is what the uptime
+> monitor has always probed. No custom domain yet (client's decision, Q-16 —
+> **reopened for the client in `CLIENT-BRIEFING-2026-08-10.md`**, because an
+> address owned by the hosting company is exactly what caused this).
+
 **Trainee:** Mr Sahil (client's answer, Q-17). **Operator:** Mushtaq.
-**Status:** DRAFT — usable for training on the current environment today; the
-"production cutover" section at the end lists what still needs credentials.
+**Status:** live — the ledger was cleared for go-live on 2026-08-10 and the
+first real invoice will be INV-1. Outstanding items are in
+`AUDIT_2026-08-10.md`; the cutover table at the end reflects them.
 
 ---
 
@@ -83,25 +91,37 @@ alongside; the activity feed shows recent actions with who did them.
 ## Part 3 — Operator runbook pointers (Mushtaq)
 
 - Deploy: merge to `main`, then `vercel deploy --prod` from the repo.
-- Uptime: GitHub Actions pings production every 15 min; a failure emails you
-  (`.github/workflows/uptime.yml`).
+- Uptime: GitHub Actions pings production and a failure emails you
+  (`.github/workflows/uptime.yml`). The cron asks for every 15 min, but GitHub
+  throttles scheduled runs on free runners — **observed cadence is 35–120 min**.
+  Treat it as an hourly check, not a 15-minute one. It probes the login page
+  only, so it proves the site is up, not that issuing an invoice works.
 - Monthly backup + quarterly restore drill: `pnpm db:backup`, `pnpm db:drill`
   — full ritual in RUNBOOK-backup-restore.md. **Destination for the monthly
   file is still an open client question.**
 - After destructive test runs on staging: `pnpm db:reseed`.
 
-## Part 4 — Production cutover checklist (blocked items)
+## Part 4 — Production cutover checklist
 
-| # | Step | Needs |
-|---|------|-------|
-| 1 | Supabase production project → **Pro tier** (daily backups, FTA retention) | client/Mushtaq payment |
-| 2 | Run migrations 0001–0010 + `pnpm db:reseed` against production | prod connection string |
-| 3 | Vercel env vars → production Supabase creds; redeploy | prod creds |
-| 4 | Rotate staging keys (they passed through chat during development) | 5 min in dashboard |
-| 5 | Set access-token TTL ~10 min in Supabase dashboard (staging AND prod) | manual dashboard step |
-| 6 | Change the admin temp password; enroll TOTP on the real device | first login |
-| 7 | Upload the real logo once the client sends the file (6.1) | logo file |
-| 8 | Point `db:backup`/`db:drill` at production per the runbook | prod creds |
-| 9 | Walk Mr Sahil through Parts 1–2 of this document, live | scheduling |
+Re-verified 2026-08-10. Full detail and evidence in `AUDIT_2026-08-10.md`.
+
+| # | Step | Status |
+|---|------|--------|
+| 1 | Ledger cleared for go-live; counter reset → next invoice is INV-1 | ✅ done (PR #103/#105) |
+| 2 | Test/demo accounts removed; only the 4 real staff remain | ✅ done (PR #106) |
+| 3 | Migrations applied (0000–0018) and verified | ✅ 19 tracked, audit clean |
+| 4 | Database invariants verified (`pnpm audit:db`) | ✅ 46 passed · 0 failed |
+| 5 | Backup + restore drill scripted and exercised | ✅ done (PR #105) |
+| 6 | **Fix Supabase `site_url` / `uri_allow_list`** — still the dead host, so password-reset emails link to a 404 | ⛔ **DO FIRST** — dashboard |
+| 7 | Confirm Supabase = **Pro** (daily backups, no auto-pause) and the Vercel plan permits commercial use | ⛔ dashboard, unverifiable from the repo |
+| 8 | Copy `backups/` off this laptop to client-owned storage | ⛔ blocked on the client's answer (briefing Q1) |
+| 9 | Guard `pnpm test:db:*` / `db:reseed` against the production database | ⛔ code — currently aimed at live data |
+| 10 | Sentry install + alert rules (task 7.2 never completed) | ⛔ no error monitoring in production |
+| 11 | Security headers in `next.config.ts` (CSP, X-Frame-Options, …) | ⛔ code, ~30 min |
+| 12 | Access-token TTL ~10 min on production | ⛔ dashboard |
+| 13 | Admin passwords changed; TOTP enrolled on real devices | ✅ 2 admins, 16 recovery codes live |
+| 14 | Real logo uploaded (not the placeholder block) | ⚠ confirm |
+| 15 | Manual print check: sealed invoice → PDF on A4 **and** A5 | ⚠ 2 min, owed |
+| 16 | Walk Mr Sahil through Parts 1–2 live | ⚠ scheduling |
 
 *Line endings, formatting and print CSS notes live in FINDINGS.md / DECISIONS.md.*
