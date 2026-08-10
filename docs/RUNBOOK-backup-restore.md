@@ -35,7 +35,52 @@ are recreatable; the ledger is not.
 `.env.local` (forward slashes — a `\p`/`\b` in a dotenv value is a trap).
 Nothing further is needed; the commands below run as written.
 
-## Monthly ritual (operator: Mushtaq — 1st of each month)
+## Automated nightly backup (added 2026-08-10 — read this first)
+
+**The manual ritual below is now the fallback, not the primary.** A scheduled
+job runs every night at 22:00 UTC (02:00 Gulf) in a **private** repo:
+
+> **`mushtaqahmaduop/inovice-system-backups`**
+
+| Output | Retention | Purpose |
+|---|---|---|
+| Workflow artifact | 30 days | recent recovery point |
+| Release asset, on the 1st | never expires | FTA retention copy |
+
+Every file is `pg_dump --format=custom --schema=public`, then **GPG AES-256**
+encrypted before it leaves the runner; the plaintext is shredded there. Secrets
+`DATABASE_URL_MIGRATIONS` and `BACKUP_PASSPHRASE` live in that repo.
+
+**Why a separate private repo:** this application repo is public, and GitHub
+artifacts and release assets on a public repo are downloadable by anyone. The
+client's ledger cannot be stored there, encrypted or not — a file that has been
+downloaded can never be un-published. Keeping the job in its own private repo
+also means it needs no Personal Access Token: a workflow can write releases in
+its own repository with the built-in `GITHUB_TOKEN`.
+
+**Why it exists at all:** the client is staying on Supabase's **free** plan,
+which has no automatic backups whatsoever (D-06 assumed Pro from day one —
+see `docs/AUDIT_2026-08-10.md` F-6). This job is not a convenience; it is the
+only backup the business has.
+
+**Proven, not assumed.** The first run was verified end to end on 2026-08-10:
+artifact downloaded, decrypted, and put through `restore-drill.mjs` — **7
+passed, 0 failed**, every ledger table row-for-row and every sealed invoice's
+subtotal and VAT recomputed from the restored lines.
+
+> ⚠ **Restore gotcha.** `gpg` failing with `decryption failed: Bad session key`
+> looks like a wrong passphrase and usually is not. PowerShell's
+> `Set-Content -Encoding utf8` writes a **byte-order mark**, so a passphrase
+> read back from a file carries three invisible leading bytes. Keep the
+> passphrase in a password manager; if it must be in a file, strip the BOM.
+
+**Still open:** these copies live in the operator's GitHub account, not the
+client's storage. The briefing's question 1 stands — until it is answered,
+periodically download a retention release and put it somewhere the client owns.
+
+---
+
+## Monthly ritual (operator: Mushtaq — 1st of each month) — fallback
 
 ```powershell
 cd C:\Inovice-system
