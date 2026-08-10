@@ -87,7 +87,9 @@ try {
 
   console.log("\n  KEEP:");
   for (const p of keep) {
-    console.log(`    ${(p.full_name ?? "").padEnd(22)} ${(p.role ?? "").padEnd(6)} ${p.email ?? "(no login)"}`);
+    console.log(
+      `    ${(p.full_name ?? "").padEnd(22)} ${(p.role ?? "").padEnd(6)} ${p.email ?? "(no login)"}`
+    );
   }
   console.log("\n  DELETE:");
   for (const p of targets) {
@@ -130,7 +132,9 @@ try {
     await sql.end();
     process.exit(1);
   }
-  console.log("\n  Ledger reference check: clean (no invoices, events, payments or settings name them).");
+  console.log(
+    "\n  Ledger reference check: clean (no invoices, events, payments or settings name them)."
+  );
 
   if (!confirm) {
     console.log("\n  DRY RUN — nothing was changed.\n  Re-run with  --confirm  to delete.\n");
@@ -148,10 +152,14 @@ try {
   const dir = path.join(process.cwd(), "backups");
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `pre-purge-accounts-${stamp}.json`);
-  fs.writeFileSync(file, JSON.stringify({ profiles: backupProfiles, auth_users: backupAuth }, null, 2));
+  fs.writeFileSync(
+    file,
+    JSON.stringify({ profiles: backupProfiles, auth_users: backupAuth }, null, 2)
+  );
   console.log(`\n  Backup written: ${file}`);
 
-  const deleted = await sql`DELETE FROM auth.users WHERE id = ANY(${ids}::uuid[]) RETURNING id, email`;
+  const deleted =
+    await sql`DELETE FROM auth.users WHERE id = ANY(${ids}::uuid[]) RETURNING id, email`;
   const left = await sql`SELECT count(*)::int AS n FROM public.profiles`;
   console.log(`\n  Deleted ${deleted.length} account(s). profiles now holds ${left[0].n} row(s).`);
   console.log(

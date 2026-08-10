@@ -6,7 +6,10 @@ terminology, how the system works, and step-by-step instructions for both
 **Admin** and **Staff** users. It is written to be handed to a new user for
 training.
 
-Live app: **https://inovice-system.vercel.app**
+Live app: **https://inovice-system-lyart.vercel.app**
+
+> Corrected 2026-08-10 — the address previously printed here
+> (`inovice-system.vercel.app`) does not exist and returns a 404 page.
 
 ---
 
