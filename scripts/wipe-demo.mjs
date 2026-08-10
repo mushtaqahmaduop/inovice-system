@@ -44,6 +44,15 @@ const CLEAR = [
   "invoice_lines",
   "invoice_extra_columns",
   "invoice_events",
+  // deleted_drafts is the D-31 log of drafts staff removed. It is append-only
+  // (UPDATE and DELETE both blocked by trigger), so it survived the first
+  // go-live wipe and left 21 rows describing demo drafts of invoices that no
+  // longer exist. Drafts are not sealed documents — no FTA retention attaches
+  // to them — so the demo log is throwaway like the drafts it describes.
+  // It must be cleared, not merely ignored: its FK to profiles is ON DELETE
+  // SET NULL, which the append-only trigger rejects, so a stale row here
+  // blocks deleting any user it names.
+  "deleted_drafts",
   "invoices",
   ...(keepCustomers ? [] : ["customers"]),
   "invoice_counters",
