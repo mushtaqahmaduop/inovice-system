@@ -117,7 +117,7 @@ Re-verified 2026-08-10. Full detail and evidence in `AUDIT_2026-08-10.md`.
 | 8 | Copy `backups/` off this laptop to client-owned storage | ⛔ blocked on the client's answer (briefing Q1) |
 | 9 | Guard `pnpm test:db:*` / `db:reseed` against the production database | ✅ done (PR #108) — `db/guard.mjs`, fails closed |
 | 10 | Sentry SDK wired (task 7.2) | ✅ code done — **needs an account + DSN in Vercel to switch on** |
-| 11 | Security headers in `next.config.ts` (CSP, X-Frame-Options, …) | ⛔ code, ~30 min |
+| 11 | Security headers in `next.config.ts` (CSP, X-Frame-Options, …) | ✅ done — click-through check owed in a browser |
 | 12 | Access-token TTL ~10 min on production | ⛔ dashboard |
 | 13 | Admin passwords changed; TOTP enrolled on real devices | ✅ 2 admins, 16 recovery codes live |
 | 14 | Real logo uploaded (not the placeholder block) | ⚠ confirm |
