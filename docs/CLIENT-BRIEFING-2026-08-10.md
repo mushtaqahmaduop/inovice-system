@@ -14,8 +14,11 @@ Nothing here is a change to the software. The software is done.
 
 ## Where things stand today
 
-- The system is live and working. Your 43 services, your 62 customers, your
-  payment methods and your company details are all loaded.
+- The system is live and working. Your **43 services**, your **25 customers**,
+  your payment methods and your company details are all loaded.
+  *(The customer table also holds 38 older entries from the testing period.
+  They are hidden from everyone and from every search — kept only so nothing is
+  ever silently destroyed. Your working book is the 25.)*
 - All practice invoices have been deleted. **Your first real invoice will be
   numbered INV-1.**
 - Four accounts exist: two admin (yourself and Noor) and two staff (Fawad and
