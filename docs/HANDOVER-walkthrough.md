@@ -105,6 +105,14 @@ alongside; the activity feed shows recent actions with who did them.
 
 Re-verified 2026-08-10. Full detail and evidence in `AUDIT_2026-08-10.md`.
 
+> **The original "cut over to the production Supabase project" steps are gone.**
+> They described a migration that events overtook: go-live happened on the
+> *staging* project, so that project **is** production now, and moving a live
+> ledger of sealed invoices for the sake of a name is not worth the risk.
+> How the environments should actually be arranged — two Supabase databases,
+> one Vercel project with three environment scopes, and who wires each part —
+> is in **`docs/ENVIRONMENTS.md`**.
+
 | # | Step | Status |
 |---|------|--------|
 | 1 | Ledger cleared for go-live; counter reset → next invoice is INV-1 | ✅ done (PR #103/#105) |
@@ -113,8 +121,11 @@ Re-verified 2026-08-10. Full detail and evidence in `AUDIT_2026-08-10.md`.
 | 4 | Database invariants verified (`pnpm audit:db`) | ✅ 46 passed · 0 failed |
 | 5 | Backup + restore drill scripted and exercised | ✅ done (PR #105) |
 | 6 | **Fix Supabase `site_url` / `uri_allow_list`** — still the dead host, so password-reset emails link to a 404 | ⛔ **DO FIRST** — dashboard |
-| 7 | Confirm Supabase = **Pro** (daily backups, no auto-pause) and the Vercel plan permits commercial use | ⛔ dashboard, unverifiable from the repo |
-| 8 | Copy `backups/` off this laptop to client-owned storage | ⛔ blocked on the client's answer (briefing Q1) |
+| 7 | ~~Confirm Supabase = **Pro**~~ — client chose to stay on **free** (contradicts D-06, raised in the audit). Confirm instead that the Vercel plan permits commercial use | ⚠ dashboard, unverifiable from the repo |
+| 8 | ~~Copy `backups/` off this laptop~~ — automated nightly encrypted backups now run in the private repo `inovice-system-backups`, verified by restore drill | ✅ done — **client-owned destination still open** (briefing Q1) |
+| 8a | **Rename both Supabase projects so the names match reality** — the one called *staging* is production | ⛔ dashboard, 1 min. See `ENVIRONMENTS.md` |
+| 8b | **Check Vercel's Preview environment does not point at the live database** — if it does, opening a PR can write to the real ledger | ⛔ dashboard, 2 min. See `ENVIRONMENTS.md` §5 |
+| 8c | Resume the empty project as **staging**, then migrations + seed + test-suite proof | ⛔ owner does 3 dashboard steps; the rest is scripted. See `ENVIRONMENTS.md` §6 |
 | 9 | Guard `pnpm test:db:*` / `db:reseed` against the production database | ✅ done (PR #108) — `db/guard.mjs`, fails closed |
 | 10 | Sentry (task 7.2) — SDK wired, project `zeerak-services/invoice-system` created, delivery + alert rule verified end to end | ⚠ **one step left: add `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` in Vercel, then redeploy** — until then production is still silent |
 | 11 | Security headers in `next.config.ts` (CSP, X-Frame-Options, …) | ✅ done — click-through check owed in a browser |
