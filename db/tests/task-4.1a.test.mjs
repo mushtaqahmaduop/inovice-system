@@ -16,12 +16,9 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 
-const STAGING_REF = "kxtbxgcvwxvlsoygjvvi";
+import { assertNotProduction } from "../guard.mjs";
 const dbUrl = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
-if (!dbUrl?.includes(STAGING_REF)) {
-  console.error("Refusing to run: not the staging project.");
-  process.exit(1);
-}
+assertNotProduction("task-4.1a");
 
 let passed = 0;
 let failed = 0;

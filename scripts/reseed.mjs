@@ -17,6 +17,14 @@
 
 import { spawnSync } from "node:child_process";
 import postgres from "postgres";
+import { assertNotProduction } from "../db/guard.mjs";
+
+// TRUNCATEs settings and re-seeds fixture data. This is the single most
+// destructive script in the repo and it had no environment check at all until
+// audit F-3 (2026-08-10) — on the operator's machine, `.env.local` now points
+// at production, so one absent-minded `pnpm db:reseed` would have overwritten
+// the client's company details with placeholders.
+assertNotProduction("db:reseed");
 
 const dbUrl = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
 if (!dbUrl) {

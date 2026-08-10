@@ -9,16 +9,10 @@
 
 import postgres from "postgres";
 
-const STAGING_REF = "kxtbxgcvwxvlsoygjvvi";
+import { assertNotProduction } from "../guard.mjs";
+
+assertNotProduction("task-1.3");
 const url = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
-if (!url || !url.includes(STAGING_REF)) {
-  console.error("Refusing to run: connection string is not the staging project.");
-  process.exit(1);
-}
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.includes(STAGING_REF)) {
-  console.error("Refusing to run: SUPABASE_URL is not the staging project.");
-  process.exit(1);
-}
 
 async function connectWithRetry() {
   for (let attempt = 1; ; attempt++) {

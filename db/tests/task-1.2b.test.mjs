@@ -10,12 +10,9 @@
 
 import postgres from "postgres";
 
-const STAGING_REF = "kxtbxgcvwxvlsoygjvvi";
+import { assertNotProduction } from "../guard.mjs";
 const url = process.env.DATABASE_URL_MIGRATIONS ?? process.env.DATABASE_URL;
-if (!url || !url.includes(STAGING_REF)) {
-  console.error("Refusing to run: connection string is not the staging project.");
-  process.exit(1);
-}
+assertNotProduction("task-1.2b");
 
 async function connectWithRetry() {
   for (let attempt = 1; ; attempt++) {
