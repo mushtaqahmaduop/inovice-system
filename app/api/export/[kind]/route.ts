@@ -129,7 +129,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
             // Deliberately NO delivery column (D-30): delivery is money
             // collected for a third-party driver, not part of the centre's
             // supply, so grand_total_aed here is the taxable document total and
-            // matches the Copy 2 exactly. Cash reconciliation belongs to the
+            // matches the FTA copy exactly. Cash reconciliation belongs to the
             // invoices export, which carries delivery_aed and
             // customer_total_aed.
             [

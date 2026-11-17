@@ -13,8 +13,8 @@ ALTER TABLE "invoice_lines" ADD CONSTRAINT "invoice_lines_delivery_fee_non_negat
 -- Everything downstream of invoices.delivery_fee is therefore untouched:
 -- issue_invoice() still never sees delivery (grand_total stays the centre's
 -- supply, byte-identical), invoice_list.customer_total / payment_status still
--- settle against grand_total + delivery_fee, the Copy 2 still prints the
--- supply alone, and the Copy  1 still blends the fee into its line
+-- settle against grand_total + delivery_fee, the FTA copy still prints the
+-- supply alone, and the customer copy still blends the fee into its line
 -- amounts. No view is re-created and no function is re-declared here.
 --
 -- DELIBERATE CONVENTION EXCEPTION: every other per-line fee column stores a

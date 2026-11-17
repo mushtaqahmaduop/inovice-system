@@ -19,7 +19,7 @@ CREATE INDEX "deleted_drafts_deleted_at_idx" ON "deleted_drafts" USING btree ("d
 /* ═══════════════════════════════════════════════════════════════════════════
    D-31 — deleting a draft (owner request, 2026-07-27)
    ═══════════════════════════════════════════════════════════════════════════
-   A draft carries no invoice number, no VAT, no Copy  1 and no payment:
+   A draft carries no invoice number, no VAT, no customer copy and no payment:
    it is scratch, and §4.1 always intended it to be deletable (the RLS DELETE
    policy `invoices_delete_draft` and the `invoices_draft_only_delete` trigger
    both already permit it). The one thing standing in the way was §4.2's

@@ -150,8 +150,8 @@ export const invoices = pgTable(
     grandTotal: fils("grand_total"),
     // Third-party delivery collected on the customer's behalf (D-30). NOT part
     // of the centre's supply, so it is deliberately OUTSIDE grand_total: the
-    // Copy 2 prints grand_total and never mentions delivery, while the
-    // Copy  1 and every payment/ledger figure use grand_total +
+    // FTA copy prints grand_total and never mentions delivery, while the
+    // customer copy and every payment/ledger figure use grand_total +
     // delivery_fee. Editable while draft (transition matrix §4.1), frozen at
     // issue like every other money column — issue_invoice() never touches it.
     deliveryFee: fils("delivery_fee").notNull().default(0),
@@ -207,7 +207,7 @@ export const invoiceLines = pgTable(
     // qty. A driver's fee is a flat charge for the trip — multiplying it by "3
     // typing jobs" would silently treble what the customer is charged.
     // Excluded from the sealed totals: issue_invoice() never reads it, so
-    // grand_total stays the centre's supply alone and the Copy 2 never sees
+    // grand_total stays the centre's supply alone and the FTA copy never sees
     // delivery. invoices.delivery_fee is the SUM of this column, written by the
     // draft-save path (never accepted from the client) and frozen at issue.
     deliveryFee: fils("delivery_fee").notNull().default(0),
@@ -332,7 +332,7 @@ export const invoiceCounters = pgTable("invoice_counters", {
 });
 
 /* ── 2.13 deleted_drafts — tombstones for erased drafts (D-31) ──────────────
-      A draft is scratch: no number, no VAT, no Copy  1 — nothing an
+      A draft is scratch: no number, no VAT, no customer copy — nothing an
       auditor needs. So delete_draft() erases the row and its events outright
       (§4.2's append-only guard stays absolute for everything else) and leaves
       ONE tombstone here so an admin can still see who deleted what. There is

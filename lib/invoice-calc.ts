@@ -98,7 +98,7 @@ export function calcInvoiceTotals(
 }
 
 // ── Customer-copy line amounts (D-30) ───────────────────────────────────────
-// The Copy  1 hides the govt/service split and the VAT row, printing ONE
+// The customer copy hides the govt/service split and the VAT row, printing ONE
 // blended amount per line. This derives those amounts. It is a DISPLAY layer
 // only (cf. D-27 foreign currency): no sealed money is recomputed or altered,
 // the parts are just redistributed so the printed lines foot EXACTLY to the
@@ -153,11 +153,11 @@ export function calcCustomerLineAmounts(
   }
 
   // Delivery (D-30) rides inside the line amounts, so it never appears as a
-  // nameable row the Copy 2 would have to explain.
+  // nameable row the FTA copy would have to explain.
   //
   // Since 0017 delivery is entered PER LINE, so each row carries its own figure
   // and must be charged exactly that: the editor grid shows
-  // qty×(govt+service+extras) + that row's delivery, and the Copy  1 has
+  // qty×(govt+service+extras) + that row's delivery, and the customer copy has
   // to agree line for line. Pro-rating the invoice-level total by net weight
   // instead (the pre-0017 rule) silently rewrote every amount — a 53/57 split
   // across two rows printed as 47.14/62.86: right total, wrong lines (owner

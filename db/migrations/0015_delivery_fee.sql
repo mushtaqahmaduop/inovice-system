@@ -7,13 +7,13 @@ ALTER TABLE "invoices" ADD CONSTRAINT "invoices_delivery_fee_non_negative" CHECK
 -- driver's fee with the bill. That money is NOT the centre's supply, so it is
 -- stored BESIDE grand_total, never inside it:
 --
---   grand_total                    = the centre's supply  → what the Copy 2
+--   grand_total                    = the centre's supply  → what the FTA copy
 --                                    prints, what the VAT export reports
 --   grand_total + delivery_fee     = what the customer actually owes → the
---                                    Copy  1, payments, ledger, "who
+--                                    customer copy, payments, ledger, "who
 --                                    owes us"
 --
--- Keeping it out of grand_total is what lets the Copy 2 print a figure that
+-- Keeping it out of grand_total is what lets the FTA copy print a figure that
 -- is byte-identical to the sealed record while never mentioning delivery.
 
 -- Widen the immutability transition matrix (§4.1, migrations 0006/0011) so
