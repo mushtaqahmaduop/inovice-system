@@ -3,7 +3,7 @@
 //
 // Guards the owner-reported defect of 2026-07-31: the editor grid showed
 // 353.00 / 457.00 on a two-line invoice with 53 / 57 delivery, but the issued
-// customer copy printed 347.14 / 462.86. The total was right, so it looked
+// Copy  1 printed 347.14 / 462.86. The total was right, so it looked
 // fine until you read the lines — the copy was pro-rating the invoice-level
 // delivery by net weight instead of charging each row its own figure.
 //
@@ -13,7 +13,7 @@
 // compiles standalone. Node 20 cannot import .ts, and this repo has no test
 // runner — so shell out to the TypeScript already in devDependencies and
 // import the emitted JS. No new dependency, and the test exercises the SAME
-// source the customer copy renders from.
+// source the Copy  1 renders from.
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";

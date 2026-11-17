@@ -90,7 +90,7 @@ export type ExistingDraft = {
 };
 
 // "delivery" is a first-class cell alongside govt/service, not an extra column:
-// it is excluded from the sealed totals and never printed on the FTA copy (D-30),
+// it is excluded from the sealed totals and never printed on the Copy 2 (D-30),
 // which no user-defined extra column can express.
 type CellKey = "govt" | "service" | "delivery" | string;
 type EditorLine = { key: number; description: string; qty: string; fees: Record<CellKey, string> };
@@ -303,7 +303,7 @@ export function InvoiceEditor({
   // cells — NOT multiplied by qty, unlike every other fee cell: a driver's fee is
   // flat for the trip. It never enters calcInvoiceTotals (nor issue_invoice()),
   // so totals.grandTotal stays the centre's supply and the only figure the FTA
-  // copy prints, while the customer copy, payments panel and ledger all work
+  // copy prints, while the Copy  1, payments panel and ledger all work
   // from grand_total + delivery.
   const deliveryFils = useMemo(
     () => lines.reduce((s, l) => s + cellFils(l, "delivery"), 0),
@@ -689,8 +689,8 @@ export function InvoiceEditor({
   }
 
   // What this row costs the customer. Delivery is added FLAT (not × qty) and is
-  // the one part of this figure the FTA copy never shows — the Summary spells
-  // that out with its own "Invoice total on the FTA copy" line.
+  // the one part of this figure the Copy 2 never shows — the Summary spells
+  // that out with its own "Invoice total on the Copy 2" line.
   const lineTotal = (l: EditorLine) => {
     const qty = Math.max(1, Math.floor(Number(l.qty) || 1));
     return (
@@ -1000,8 +1000,8 @@ export function InvoiceEditor({
                     vat={vatRegistered ? `${ratePct}% VAT` : "0% VAT"}
                   />
                   {/* Built in, and not removable: delivery is the one column the
-                      FTA copy must never show (D-30). */}
-                  <FeeColumnChip label="Delivery" vat="not taxed · customer copy only" />
+                      Copy 2 must never show (D-30). */}
+                  <FeeColumnChip label="Delivery" vat="not taxed · Copy  1 only" />
                   {columns.map((c) => (
                     <FeeColumnChip
                       key={c.id}
@@ -1063,10 +1063,10 @@ export function InvoiceEditor({
                 <th className={`w-28 px-2 py-3 text-right ${captionClass}`}>Govt fee (AED)</th>
                 <th className={`w-28 px-2 py-3 text-right ${captionClass}`}>Service fee (AED)</th>
                 {/* Delivery sits beside the service fee (client, 2026-07-30).
-                    Flat per row, not taxed, never on the FTA copy — D-30. */}
+                    Flat per row, not taxed, never on the Copy 2 — D-30. */}
                 <th
                   className={`w-28 px-2 py-3 text-right ${captionClass}`}
-                  title="Driver's fee collected with this bill. Flat per row (not multiplied by quantity), never shown on the FTA copy."
+                  title="Driver's fee collected with this bill. Flat per row (not multiplied by quantity), never shown on the Copy 2."
                 >
                   Delivery (AED)
                 </th>
@@ -1079,7 +1079,7 @@ export function InvoiceEditor({
                     — it is back when it is needed. Nothing about the invoice
                     changed: VAT is still computed by issue_invoice() at the
                     seal, still shown in the totals panel below this grid, and
-                    still printed on the FTA copy. This was a display column
+                    still printed on the Copy 2. This was a display column
                     only. The taxable/0% badges stay on the fee headers, so it
                     is still visible WHICH fees carry VAT. */}
                 <th className={`w-28 px-3 py-3 text-right ${captionClass}`}>Line total (AED)</th>
@@ -1181,7 +1181,7 @@ export function InvoiceEditor({
           <FieldHint>
             Delivery totals AED {formatAed(deliveryFils)} — charged flat per row (quantity does not
             multiply it), added to the customer&rsquo;s total and balance, and never shown on the
-            FTA copy.
+            Copy 2.
           </FieldHint>
         ) : null}
         <div className="relative mt-3 flex flex-wrap items-center gap-2">
@@ -1378,7 +1378,7 @@ export function InvoiceEditor({
             {deliveryFils > 0 ? (
               <div className="mt-2 flex items-baseline justify-between">
                 <span className="text-[12px] leading-4 text-text-tertiary">
-                  Invoice total on the FTA copy (delivery excluded)
+                  Invoice total on the Copy 2 (delivery excluded)
                 </span>
                 <span className="mono text-[13px] font-[550] text-foreground">
                   <span className="mr-1.5 text-[11px] font-normal text-text-tertiary">AED</span>
@@ -1645,7 +1645,7 @@ export function InvoiceEditor({
             govtFee: cellFils(l, "govt"),
             serviceFee: cellFils(l, "service"),
             extraFees: columns.map((c) => cellFils(l, c.id)),
-            // Row total, never × qty — the customer copy charges this row
+            // Row total, never × qty — the Copy  1 charges this row
             // exactly what the grid above shows for it.
             deliveryFee: cellFils(l, "delivery"),
           }))}

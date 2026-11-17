@@ -40,7 +40,7 @@ export function Segmented<T extends string>({
               "h-[30px] cursor-pointer rounded-full px-3.5 text-[13px] whitespace-nowrap transition-colors duration-150 outline-none",
               "focus-visible:ring-2 focus-visible:ring-ring",
               // Owner feedback 2026-07-30: the active segment was too faint to
-              // read as selected (Customer/FTA copy, English/العربية). It now
+              // read as selected (Customer/Copy 2, English/العربية). It now
               // takes the accent fill — §5 permits the single accent on active
               // states, and this is the clearest legitimate use of it.
               active

@@ -58,7 +58,7 @@ export type DocLine = {
   /** Third-party delivery attributed to THIS row (D-30a, per line since 0017),
    *  AED fils. DELIBERATE exception to the unit-fee convention above: this is
    *  the ROW TOTAL and is never multiplied by qty — a driver's fee is flat for
-   *  the trip. Outside the sealed totals, so only the customer copy adds it.
+   *  the trip. Outside the sealed totals, so only the Copy  1 adds it.
    *  Omitted (undefined) on pre-0017 invoices, which carried delivery only at
    *  invoice level; see `custLineAmounts` for that fallback. */
   deliveryFee?: number;
@@ -99,7 +99,7 @@ type Labels = {
   subtotal: string;
   serviceFeeTotal: string;
   otherCharges: string;
-  inclusiveVat: string; // customer copy: "Total is inclusive of VAT" note
+  inclusiveVat: string; // Copy  1: "Total is inclusive of VAT" note
   totalAmount: string; // followed by the currency code
   exchangeRate: string;
   vatAed: string;
@@ -233,8 +233,8 @@ export function InvoiceDoc({
   displayCurrency?: string;
   exchangeRateE6?: number | null;
   /** Third-party delivery collected for the customer (D-30), AED fils. Sits
-   *  OUTSIDE the sealed totals: the CUSTOMER copy blends it into the line
-   *  amounts and its grand total, the FTA copy never shows or mentions it. */
+   *  OUTSIDE the sealed totals: the Copy  1 blends it into the line
+   *  amounts and its grand total, the Copy 2 never shows or mentions it. */
   deliveryFee?: number;
   /** kept for call-site compatibility; the sample layout has no issued-by block */
   issuedByName?: string | null;
@@ -246,7 +246,7 @@ export function InvoiceDoc({
   // VAT-inclusive amount per line and a single grand total, with the
   // government/service split and the VAT figure hidden so the customer cannot
   // see (and argue down) the service fee. "fta" = the full detailed copy for
-  // the books. Defaults to the customer copy — the one printed at point of
+  // the books. Defaults to the Copy  1 — the one printed at point of
   // sale — and, like the language toggle, controls print output too.
   const [copy, setCopy] = useState<"customer" | "fta">("customer");
 
@@ -262,7 +262,7 @@ export function InvoiceDoc({
   const lineAmount = (l: DocLine) => customerLineNet(l);
   // What the customer actually hands over: the sealed supply plus the driver's
   // fee we collected on their behalf (D-30). grand_total stays the centre's
-  // supply, and is the only figure the FTA copy is ever shown.
+  // supply, and is the only figure the Copy 2 is ever shown.
   const customerTotal = totals.grandTotal + Math.max(0, deliveryFee);
   // Customer-copy per-line amounts — see calcCustomerLineAmounts for the rules
   // (sealed VAT distributed across lines, per-line delivery charged as entered,
@@ -276,12 +276,12 @@ export function InvoiceDoc({
   // Arrears: on a partial or unpaid issued invoice, spell out what was paid and
   // what remains. AED fils in, rendered in the display currency.
   //
-  // The two copies settle against different totals (D-30). The customer copy
-  // uses everything received against what they owe. The FTA copy must never
+  // The two copies settle against different totals (D-30). The Copy  1
+  // uses everything received against what they owe. The Copy 2 must never
   // hint at delivery, so it credits payment to the SUPPLY only — capped at
   // grand_total — and derives its own paid/partial/unpaid word from that.
   // Without the cap, a fully-paid 450 invoice would print "Amount Paid 450"
-  // under a total of 400 on the FTA copy: a phantom overpayment that both
+  // under a total of 400 on the Copy 2: a phantom overpayment that both
   // looks broken and leaks the delivery charge.
   const paidAll = status === "issued" ? paidTotal : 0;
   const payFigures = (customer: boolean) => {
@@ -322,8 +322,8 @@ export function InvoiceDoc({
     const secAddressLines = addrLines(
       arabic ? company.addressAr || company.address : company.address
     );
-    // Copy-specific money: the customer copy totals what they owe (supply +
-    // delivery), the FTA copy totals the supply alone (D-30).
+    // Copy-specific money: the Copy  1 totals what they owe (supply +
+    // delivery), the Copy 2 totals the supply alone (D-30).
     const pay = payFigures(customer);
     const displayTotal = customer ? customerTotal : totals.grandTotal;
     return (
@@ -539,7 +539,7 @@ export function InvoiceDoc({
                 </td>
                 <td className="mono pt-1 text-end text-[14px] font-bold">{money(displayTotal)}</td>
               </tr>
-              {/* Customer copy: VAT figure is hidden, so state that the total is
+              {/* Copy  1: VAT figure is hidden, so state that the total is
                   VAT-inclusive (keeps it a valid simplified receipt). */}
               {customer && vatRegistered && totals.vatAmount > 0 ? (
                 <tr>
@@ -619,15 +619,15 @@ export function InvoiceDoc({
     <div>
       {/* Copy + language toggles — both control preview AND print, since they
           change what's actually in the DOM below. Copy defaults to the
-          customer copy (printed at point of sale); language to English. */}
+          Copy  1 (printed at point of sale); language to English. */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Segmented
           aria-label="Invoice copy type"
           value={copy}
           onChange={setCopy}
           options={[
-            { value: "customer", label: "Customer copy" },
-            { value: "fta", label: "FTA copy" },
+            { value: "customer", label: "Copy  1" },
+            { value: "fta", label: "Copy 2" },
           ]}
         />
         <Segmented
